@@ -89,7 +89,7 @@ export function defaultPolicy(repositoryId: string): Policy {
   };
 }
 
-const workflow = `name: Rigor\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened]\n\npermissions:\n  contents: read\n\njobs:\n  rigor:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n      - name: Independently verify Rigor evidence and policy\n        env:\n          RIGOR_BASE_SHA: \${{ github.event.pull_request.base.sha }}\n          RIGOR_HEAD_SHA: \${{ github.event.pull_request.head.sha }}\n        run: node .rigor/rigor-ci.cjs ci --base "$RIGOR_BASE_SHA" --head "$RIGOR_HEAD_SHA"\n`;
+const workflow = `name: Rigor\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened]\n\npermissions:\n  contents: read\n\njobs:\n  rigor:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        with:\n          fetch-depth: 0\n      - uses: actions/setup-node@v6\n        with:\n          node-version: 22\n      - name: Independently verify Rigor evidence and policy\n        env:\n          RIGOR_BASE_SHA: \${{ github.event.pull_request.base.sha }}\n          RIGOR_HEAD_SHA: \${{ github.event.pull_request.head.sha }}\n        run: node .rigor/rigor-ci.cjs ci --base "$RIGOR_BASE_SHA" --head "$RIGOR_HEAD_SHA"\n`;
 
 interface Candidate {
   relative: string;
