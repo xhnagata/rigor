@@ -16,6 +16,12 @@ import {
 import { ciVerify } from "./ci.js";
 import { EXIT, RigorError } from "./errors.js";
 import { findGitRoot, gitFacts } from "./git.js";
+import {
+  githubReader,
+  governanceVerify,
+  parseBranch,
+  parseRepository,
+} from "./governance.js";
 import { userPromptHook } from "./hook.js";
 import { evaluate } from "./policy.js";
 import { parseIntent } from "./schema.js";
@@ -63,7 +69,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|verify|escalate|review|retrospect|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -147,6 +153,23 @@ export async function main(
     return verification.status === "passed"
       ? EXIT.success
       : EXIT.policyViolation;
+  }
+  if (command === "governance") {
+    const repository = parseRepository(option(args, "--repo")!);
+    const branch = parseBranch(option(args, "--branch", false) ?? "main");
+    const requiredCheckContext =
+      option(args, "--required-check", false) ?? "rigor";
+    const token =
+      process.env.RIGOR_GITHUB_TOKEN ??
+      process.env.GITHUB_TOKEN ??
+      process.env.GH_TOKEN;
+    const result = await governanceVerify(
+      policy,
+      { ...repository, branch, requiredCheckContext },
+      githubReader(token),
+    );
+    output(result);
+    return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "retrospect") {
     output(await retrospect(root));

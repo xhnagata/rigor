@@ -139,7 +139,15 @@ For `main`, configure a ruleset or branch protection that:
 5. restricts force-pushes, deletion, and bypass; and
 6. applies the rules to administrators where organizational policy permits.
 
-Rigor cannot configure or verify these repository-host settings from the plugin. Treat a passing local command or model statement as insufficient.
+`rigor governance --repo owner/name` verifies these settings read-only against the GitHub API:
+
+```sh
+rigor governance --repo owner/name --branch main --required-check rigor
+```
+
+It reads active branch rules (rulesets), classic branch protection, CODEOWNERS (from `.github/CODEOWNERS`, `CODEOWNERS`, or `docs/CODEOWNERS`), and deployment environments, then reports one finding per requirement: pull requests required, at least one approval, stale-approval dismissal, code-owner review, last-push approval, the required `rigor` status check, force-push and deletion blocking, CODEOWNERS coverage of every policy-protected path, and protection rules on every deployment environment. The command sends only GET requests to `api.github.com`, uses an optional least-privilege read token from `RIGOR_GITHUB_TOKEN`, `GITHUB_TOKEN`, or `GH_TOKEN`, and never writes configuration; changing these settings remains a separately authorized human action. It exits `0` only when every finding is satisfied and `2` when any requirement fails or cannot be read with the available credentials, so missing scopes fail closed instead of passing silently. CODEOWNERS matching implements the documented last-match-wins subset (anchoring, `*`, `**`, `?`, escaped spaces, ownerless entries removing coverage) with case-sensitive comparison; classic protection needs repository administration read scope, while rulesets, contents, and environments need only repository read access.
+
+Rigor still cannot configure these repository-host settings, and a passing local command or model statement remains insufficient; the GitHub-side configuration and an independent human approval stay authoritative.
 
 ## Development and release
 
@@ -158,4 +166,4 @@ For release, update `CHANGELOG.md`, bump both `package.json` and `.claude-plugin
 
 Artifacts are intended for version control and therefore must never contain secrets. Rigor avoids persisting raw check output but cannot sanitize prose entered by a user. Keep intent, contract, and escalation summaries minimal. A malicious policy can execute a malicious check; protect policy changes with CODEOWNERS and review base/head diffs.
 
-MVP limitations and planned work are tracked in [MVP limitations](docs/mvp-limitations.md). In particular, Windows launch support, cryptographic provenance/attestation, semantic test-quality analysis, and GitHub-host configuration verification are out of scope for 0.1.0.
+MVP limitations and planned work are tracked in [MVP limitations](docs/mvp-limitations.md). In particular, Windows launch support, cryptographic provenance/attestation, semantic test-quality analysis, and any GitHub-host configuration writes are out of scope; `rigor governance` verifies host settings read-only but cannot change them.

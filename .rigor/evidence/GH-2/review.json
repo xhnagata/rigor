@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_0870a414-cf4a-4577-81e6-eeaa51ebb6c0",
+  "taskId": "GH-2",
+  "createdAt": "2026-07-10T12:43:11.238Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_80f65361-e2b9-4a6d-b210-ff47b4e95284",
+  "verificationArtifactId": "verification_d6b66bac-e7b5-414a-8241-79fee4c18173",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "src/cli.ts",
+    "src/governance.ts",
+    "test/governance.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "rigor governance exits 0 only when branch pull-request rules, the required rigor status check, approval count >= 1, stale-review dismissal, code-owner review, last-push approval, force-push and deletion blocking, CODEOWNERS coverage of policy-protected paths, and deployment environment protection all verify as satisfied",
+    "rigor governance exits 2 when any requirement fails or cannot be verified with the available read scope, and exit 3 is used for invalid inputs",
+    "the command performs only GET requests to api.github.com, sends credentials only there, and never performs a configuration write",
+    "CODEOWNERS coverage uses last-match-wins semantics where an entry without owners removes coverage",
+    "unit tests cover pass, fail, and unverifiable outcomes plus CODEOWNERS boundary cases including anchoring, escaped spaces, non-ASCII paths, negation lines, and empty-owner entries",
+    "npm run test:all passes including build, plugin validation, and link checks"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
