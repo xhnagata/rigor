@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { URL } from "node:url";
 import process from "node:process";
@@ -14,9 +14,7 @@ for (const file of files) {
     const target = match[1];
     if (!target || /^(https?:|#)/.test(target)) continue;
     try {
-      await readFile(
-        new URL(target, new URL(`file://${process.cwd()}/${file}`)),
-      );
+      await stat(new URL(target, new URL(`file://${process.cwd()}/${file}`)));
     } catch {
       failures.push(`${file}: ${target}`);
     }
