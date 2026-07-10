@@ -251,7 +251,7 @@ test("governanceVerify issues only repository-scoped GET reads", async () => {
     { owner: "o", repo: "r", branch: "feat/x", requiredCheckContext: "rigor" },
     (requestPath) => {
       requested.push(requestPath);
-      if (requestPath === "/repos/o/r/rules/branches/feat%2Fx")
+      if (requestPath === "/repos/o/r/rules/branches/feat%2Fx?per_page=100")
         return Promise.resolve({ status: 200, body: rulesetBody });
       if (requestPath === "/repos/o/r/contents/CODEOWNERS")
         return Promise.resolve({
@@ -260,7 +260,7 @@ test("governanceVerify issues only repository-scoped GET reads", async () => {
             content: Buffer.from("* @org/maintainers\n").toString("base64"),
           },
         });
-      if (requestPath === "/repos/o/r/environments")
+      if (requestPath === "/repos/o/r/environments?per_page=100")
         return Promise.resolve({
           status: 200,
           body: { total_count: 0, environments: [] },
@@ -318,6 +318,33 @@ test("githubReader treats undecodable bodies as unverifiable", async () => {
   assert.deepEqual(await reader(new Error("offline"))("/repos/o/r"), {
     status: 0,
     body: null,
+  });
+});
+
+test("githubReader treats paginated responses with a next page as unverifiable", async () => {
+  const paged = new Response("[]", {
+    status: 200,
+    headers: {
+      link: '<https://api.github.com/repos/o/r/environments?page=2>; rel="next", <https://api.github.com/repos/o/r/environments?page=3>; rel="last"',
+    },
+  });
+  const read = githubReader(undefined, (() =>
+    Promise.resolve(paged)) as typeof fetch);
+  assert.deepEqual(await read("/repos/o/r/environments"), {
+    status: 0,
+    body: null,
+  });
+  const lastOnly = new Response("[]", {
+    status: 200,
+    headers: {
+      link: '<https://api.github.com/repos/o/r/environments?page=1>; rel="prev"',
+    },
+  });
+  const readLast = githubReader(undefined, (() =>
+    Promise.resolve(lastOnly)) as typeof fetch);
+  assert.deepEqual(await readLast("/repos/o/r/environments"), {
+    status: 200,
+    body: [],
   });
 });
 

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_cf282f41-c0e4-4a95-b23c-b003b368b4f6",
+  "taskId": "GH-2-R3",
+  "createdAt": "2026-07-10T13:48:45.672Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_df7aef6d-eb51-493d-912d-395a75a98162",
+  "verificationArtifactId": "verification_088ed4fa-904a-4308-85d7-f9962ced45d1",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/threat-model.md",
+    "src/cli.ts",
+    "src/governance.ts",
+    "test/governance.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "a GitHub API response carrying a Link header with rel=next is treated as unverifiable so no governance requirement is decided on partially fetched data",
+    "list requests for branch rules and environments use per_page=100 to make truncation rare while remaining fail-closed when it occurs",
+    "unverifiable finding details say the configuration could not be fully read, covering both permission and pagination causes",
+    "README finding lists label the CODEOWNERS check as sampled early warning, not proof, in both languages",
+    "unit tests cover the Link rel=next unverifiable behavior",
+    "npm run test:all passes and the verification covers the full pull-request change set"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

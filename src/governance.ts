@@ -80,9 +80,9 @@ export function githubReader(
     if (token) headers.authorization = `Bearer ${token}`;
     // The only remote call Rigor makes: a GET to the fixed GitHub API host,
     // refusing redirects, bounded by a timeout and a response size limit.
-    // A body that cannot be decoded within these bounds is reported as
-    // status 0 so the evaluation treats it as unverifiable, never as a
-    // confirmed negative.
+    // A body that cannot be decoded within these bounds, or a paginated
+    // response with unfetched pages, is reported as status 0 so the
+    // evaluation treats it as unverifiable, never as a confirmed negative.
     try {
       const response = await fetchImpl(`https://api.github.com${requestPath}`, {
         method: "GET",
@@ -90,6 +90,8 @@ export function githubReader(
         redirect: "error",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
+      const link = response.headers.get("link");
+      if (link && /rel="next"/u.test(link)) return { status: 0, body: null };
       const text = await response.text();
       if (text.length > MAX_RESPONSE_BYTES) return { status: 0, body: null };
       if (text.length === 0) {
@@ -364,13 +366,13 @@ export function evaluateGovernance(
       findings.push({
         id,
         status: "unverifiable",
-        detail: `${requirement}: branch rules and classic protection could not be read with the available credentials`,
+        detail: `${requirement}: branch rules and classic protection could not be fully read with the available credentials`,
       });
     } else if (!classicKnown) {
       findings.push({
         id,
         status: "unverifiable",
-        detail: `${requirement}: not satisfied by rulesets, and classic protection could not be read with the available credentials`,
+        detail: `${requirement}: not satisfied by rulesets, and classic protection could not be fully read with the available credentials`,
       });
     } else {
       findings.push({
@@ -436,7 +438,8 @@ export function evaluateGovernance(
     findings.push({
       id: "codeowners-sampled-coverage",
       status: "unverifiable",
-      detail: "CODEOWNERS could not be read with the available credentials",
+      detail:
+        "CODEOWNERS could not be fully read with the available credentials",
     });
   } else if (input.codeowners.state === "missing") {
     findings.push({
@@ -500,7 +503,7 @@ export function evaluateGovernance(
       id: "deployment-environments",
       status: "unverifiable",
       detail:
-        "deployment environments could not be read with the available credentials",
+        "deployment environments could not be fully read with the available credentials",
     });
   }
   return {
@@ -570,10 +573,10 @@ export async function governanceVerify(
 ): Promise<GovernanceReport> {
   const base = `/repos/${encodeURIComponent(options.owner)}/${encodeURIComponent(options.repo)}`;
   const branch = encodeURIComponent(options.branch);
-  const rules = await read(`${base}/rules/branches/${branch}`);
+  const rules = await read(`${base}/rules/branches/${branch}?per_page=100`);
   const protection = await read(`${base}/branches/${branch}/protection`);
   const codeowners = await readCodeowners(read, base);
-  const environments = await read(`${base}/environments`);
+  const environments = await read(`${base}/environments?per_page=100`);
   return evaluateGovernance({
     repository: `${options.owner}/${options.repo}`,
     branch: options.branch,

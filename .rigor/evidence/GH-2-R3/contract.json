@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_df7aef6d-eb51-493d-912d-395a75a98162",
+  "taskId": "GH-2-R3",
+  "createdAt": "2026-07-10T13:46:41.379Z",
+  "preflightArtifactId": "preflight_f5eef83a-8a86-455d-990d-b6bec62554da",
+  "preflightHash": "9a2c0f94842b18d235598dc4a94ba76694716234768d890b737a2803f789e40b",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "a GitHub API response carrying a Link header with rel=next is treated as unverifiable so no governance requirement is decided on partially fetched data",
+    "list requests for branch rules and environments use per_page=100 to make truncation rare while remaining fail-closed when it occurs",
+    "unverifiable finding details say the configuration could not be fully read, covering both permission and pagination causes",
+    "README finding lists label the CODEOWNERS check as sampled early warning, not proof, in both languages",
+    "unit tests cover the Link rel=next unverifiable behavior",
+    "npm run test:all passes and the verification covers the full pull-request change set"
+  ],
+  "allowedPaths": [
+    "src/governance.ts",
+    "src/cli.ts",
+    "test/governance.test.ts",
+    "dist/rigor.cjs",
+    "README.md",
+    "README.ja.md",
+    "docs/architecture.md",
+    "docs/threat-model.md",
+    "docs/mvp-limitations.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "no new runtime dependency",
+    "no shell string execution",
+    "GET-only GitHub API access with token read from environment variables only",
+    "no raw HTTP response bodies or tokens persisted to Rigor evidence",
+    "no changes to .rigor policy, workflows, hooks, or CI verifier",
+    "GH-2 and GH-2-R2 artifacts are kept and not overwritten"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

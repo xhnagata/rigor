@@ -1057,6 +1057,8 @@ function githubReader(token, fetchImpl = fetch) {
         redirect: "error",
         signal: AbortSignal.timeout(TIMEOUT_MS)
       });
+      const link = response.headers.get("link");
+      if (link && /rel="next"/u.test(link)) return { status: 0, body: null };
       const text = await response.text();
       if (text.length > MAX_RESPONSE_BYTES) return { status: 0, body: null };
       if (text.length === 0) {
@@ -1264,13 +1266,13 @@ function evaluateGovernance(input) {
       findings.push({
         id,
         status: "unverifiable",
-        detail: `${requirement}: branch rules and classic protection could not be read with the available credentials`
+        detail: `${requirement}: branch rules and classic protection could not be fully read with the available credentials`
       });
     } else if (!classicKnown) {
       findings.push({
         id,
         status: "unverifiable",
-        detail: `${requirement}: not satisfied by rulesets, and classic protection could not be read with the available credentials`
+        detail: `${requirement}: not satisfied by rulesets, and classic protection could not be fully read with the available credentials`
       });
     } else {
       findings.push({
@@ -1332,7 +1334,7 @@ function evaluateGovernance(input) {
     findings.push({
       id: "codeowners-sampled-coverage",
       status: "unverifiable",
-      detail: "CODEOWNERS could not be read with the available credentials"
+      detail: "CODEOWNERS could not be fully read with the available credentials"
     });
   } else if (input.codeowners.state === "missing") {
     findings.push({
@@ -1389,7 +1391,7 @@ function evaluateGovernance(input) {
     findings.push({
       id: "deployment-environments",
       status: "unverifiable",
-      detail: "deployment environments could not be read with the available credentials"
+      detail: "deployment environments could not be fully read with the available credentials"
     });
   }
   return {
@@ -1437,10 +1439,10 @@ async function readCodeowners(read, base) {
 async function governanceVerify(policy, options, read) {
   const base = `/repos/${encodeURIComponent(options.owner)}/${encodeURIComponent(options.repo)}`;
   const branch = encodeURIComponent(options.branch);
-  const rules = await read(`${base}/rules/branches/${branch}`);
+  const rules = await read(`${base}/rules/branches/${branch}?per_page=100`);
   const protection = await read(`${base}/branches/${branch}/protection`);
   const codeowners = await readCodeowners(read, base);
-  const environments = await read(`${base}/environments`);
+  const environments = await read(`${base}/environments?per_page=100`);
   return evaluateGovernance({
     repository: `${options.owner}/${options.repo}`,
     branch: options.branch,
