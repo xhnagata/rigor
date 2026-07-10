@@ -15,7 +15,7 @@ export interface GovernanceReport {
   repository: string;
   branch: string;
   requiredCheckContext: string;
-  governedPaths: string[];
+  sampledPaths: string[];
   findings: GovernanceFinding[];
   status: "passed" | "failed";
 }
@@ -78,25 +78,36 @@ export function githubReader(
       "user-agent": "rigor-governance",
     };
     if (token) headers.authorization = `Bearer ${token}`;
-    let response;
+    // The only remote call Rigor makes: a GET to the fixed GitHub API host,
+    // refusing redirects, bounded by a timeout and a response size limit.
+    // A body that cannot be decoded within these bounds is reported as
+    // status 0 so the evaluation treats it as unverifiable, never as a
+    // confirmed negative.
     try {
-      response = await fetchImpl(`https://api.github.com${requestPath}`, {
+      const response = await fetchImpl(`https://api.github.com${requestPath}`, {
         method: "GET",
         headers,
         redirect: "error",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       });
+      const text = await response.text();
+      if (text.length > MAX_RESPONSE_BYTES) return { status: 0, body: null };
+      if (text.length === 0) {
+        // An empty error body still identifies the status; an empty success
+        // body is undecodable and therefore unverifiable.
+        if (response.status !== 200)
+          return { status: response.status, body: null };
+        return { status: 0, body: null };
+      }
+      return { status: response.status, body: JSON.parse(text) as unknown };
     } catch {
       return { status: 0, body: null };
     }
-    let body: unknown = null;
-    try {
-      body = (await response.json()) as unknown;
-    } catch {
-      body = null;
-    }
-    return { status: response.status, body };
   };
 }
+
+const TIMEOUT_MS = 10_000;
+const MAX_RESPONSE_BYTES = 1_000_000;
 
 export interface CodeownersEntry {
   pattern: string;
@@ -322,7 +333,7 @@ export interface GovernanceEvaluation {
   repository: string;
   branch: string;
   requiredCheckContext: string;
-  governedPaths: string[];
+  sampledPaths: string[];
   rules: GitHubResponse;
   protection: GitHubResponse;
   codeowners: CodeownersState;
@@ -417,35 +428,39 @@ export function evaluateGovernance(
     classic.deletionBlocked,
     "branch deletion is blocked",
   );
+  // Coverage is checked against one representative path per protected glob.
+  // A covered sample cannot prove that the whole glob is covered, so the
+  // positive result is an early warning only and says so; an uncovered
+  // sample, however, is a proven gap and fails.
   if (input.codeowners.state === "unverifiable") {
     findings.push({
-      id: "codeowners-coverage",
+      id: "codeowners-sampled-coverage",
       status: "unverifiable",
       detail: "CODEOWNERS could not be read with the available credentials",
     });
   } else if (input.codeowners.state === "missing") {
     findings.push({
-      id: "codeowners-coverage",
+      id: "codeowners-sampled-coverage",
       status: "failed",
       detail:
         "no CODEOWNERS file exists at .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS",
     });
   } else {
     const entries = parseCodeowners(input.codeowners.text);
-    const uncovered = input.governedPaths.filter(
+    const uncovered = input.sampledPaths.filter(
       (pathname) => codeownersOwners(entries, pathname).length === 0,
     );
     findings.push(
       uncovered.length === 0
         ? {
-            id: "codeowners-coverage",
+            id: "codeowners-sampled-coverage",
             status: "satisfied",
-            detail: `${input.codeowners.source} assigns owners to every policy-protected path`,
+            detail: `${input.codeowners.source} assigns owners to every sampled representative of the policy-protected globs; this sampled check is an early warning and does not prove full coverage of each glob`,
           }
         : {
-            id: "codeowners-coverage",
+            id: "codeowners-sampled-coverage",
             status: "failed",
-            detail: `${input.codeowners.source} leaves policy-protected paths without owners: ${uncovered.join(", ")}`,
+            detail: `${input.codeowners.source} leaves sampled policy-protected paths without owners: ${uncovered.join(", ")}`,
           },
     );
   }
@@ -493,7 +508,7 @@ export function evaluateGovernance(
     repository: input.repository,
     branch: input.branch,
     requiredCheckContext: input.requiredCheckContext,
-    governedPaths: input.governedPaths,
+    sampledPaths: input.sampledPaths,
     findings,
     status: findings.every((finding) => finding.status === "satisfied")
       ? "passed"
@@ -563,7 +578,7 @@ export async function governanceVerify(
     repository: `${options.owner}/${options.repo}`,
     branch: options.branch,
     requiredCheckContext: options.requiredCheckContext,
-    governedPaths: representativePaths(policy),
+    sampledPaths: representativePaths(policy),
     rules,
     protection,
     codeowners,

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_13c60187-9dff-4629-bea2-cf13b259fba6",
+  "taskId": "GH-2-R2",
+  "createdAt": "2026-07-10T13:21:56.482Z",
+  "preflightArtifactId": "preflight_865089cf-27c9-4836-a282-ccd0cc85f816",
+  "preflightHash": "1b8f71fa6c1a392b8d2c31920190fef8a6d8ab9755214d1504d4ada78f36cf2a",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "the CODEOWNERS finding is renamed to codeowners-sampled-coverage, its satisfied detail states it is a sampled early warning and not proof of full glob coverage, and the report field is renamed sampledPaths",
+    "the GitHub reader enforces a 10 second timeout, rejects redirects, treats unparseable or oversized (>1MB) response bodies as unverifiable rather than failed, and sends only GET requests to https://api.github.com with the token in the authorization header only",
+    "docs/threat-model.md documents the GitHub API as a trust boundary covering transmitted data, allowed host, token precedence, redirect refusal, timeout, response size limit, error concealment, and the GET-only mechanism",
+    "README documents the recommended execution order (edit everything including dist, then verify, then review, then one commit) and the write-once artifact behavior requiring a new task ID for revisions",
+    "unit tests cover the reader hardening (host, method, headers, oversize and unparseable bodies) and the renamed sampled finding",
+    "npm run test:all passes and the verification covers the full pull-request change set"
+  ],
+  "allowedPaths": [
+    "src/governance.ts",
+    "src/cli.ts",
+    "test/governance.test.ts",
+    "dist/rigor.cjs",
+    "README.md",
+    "README.ja.md",
+    "docs/architecture.md",
+    "docs/threat-model.md",
+    "docs/mvp-limitations.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "no new runtime dependency",
+    "no shell string execution",
+    "GET-only GitHub API access with token read from environment variables only",
+    "no raw HTTP response bodies or tokens persisted to Rigor evidence",
+    "no changes to .rigor policy, workflows, hooks, or CI verifier",
+    "GH-2 artifacts are kept and not overwritten"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

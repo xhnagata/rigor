@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   codeownersOwners,
+  githubReader,
   evaluateGovernance,
   governanceVerify,
   parseBranch,
@@ -42,7 +43,7 @@ function evaluation(overrides: {
   protection?: GitHubResponse;
   codeowners?: { state: "found" | "missing" | "unverifiable"; text: string };
   environments?: GitHubResponse;
-  governedPaths?: string[];
+  sampledPaths?: string[];
   requiredCheckContext?: string;
 }) {
   const codeowners = overrides.codeowners ?? {
@@ -53,7 +54,7 @@ function evaluation(overrides: {
     repository: "o/r",
     branch: "main",
     requiredCheckContext: overrides.requiredCheckContext ?? "rigor",
-    governedPaths: overrides.governedPaths ?? [
+    sampledPaths: overrides.sampledPaths ?? [
       ".rigor/governed",
       ".github/workflows/governed",
     ],
@@ -91,7 +92,7 @@ test("unreadable configuration is unverifiable, not passing", () => {
   assert.equal(report.status, "failed");
   assert.ok(
     report.findings
-      .filter((item) => item.id !== "codeowners-coverage")
+      .filter((item) => item.id !== "codeowners-sampled-coverage")
       .every((item) => item.status === "unverifiable"),
   );
 });
@@ -151,7 +152,7 @@ test("codeowners coverage flags governed paths without owners", () => {
     codeowners: { state: "found", text: "/docs/ @org/docs" },
   });
   const finding = report.findings.find(
-    (item) => item.id === "codeowners-coverage",
+    (item) => item.id === "codeowners-sampled-coverage",
   );
   assert.equal(finding?.status, "failed");
   assert.ok(finding?.detail.includes(".rigor/governed"));
@@ -160,15 +161,17 @@ test("codeowners coverage flags governed paths without owners", () => {
 test("missing codeowners fails and unreadable codeowners is unverifiable", () => {
   const missing = evaluation({ codeowners: { state: "missing", text: "" } });
   assert.equal(
-    missing.findings.find((item) => item.id === "codeowners-coverage")?.status,
+    missing.findings.find((item) => item.id === "codeowners-sampled-coverage")
+      ?.status,
     "failed",
   );
   const unreadable = evaluation({
     codeowners: { state: "unverifiable", text: "" },
   });
   assert.equal(
-    unreadable.findings.find((item) => item.id === "codeowners-coverage")
-      ?.status,
+    unreadable.findings.find(
+      (item) => item.id === "codeowners-sampled-coverage",
+    )?.status,
     "unverifiable",
   );
 });
@@ -268,4 +271,57 @@ test("governanceVerify issues only repository-scoped GET reads", async () => {
   assert.ok(requested.every((item) => item.startsWith("/repos/o/r/")));
   assert.equal(report.status, "passed");
   assert.equal(report.branch, "feat/x");
+});
+
+test("githubReader sends GET-only requests to the fixed GitHub API host", async () => {
+  const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
+  const fakeFetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return Promise.resolve(new Response('{"ok":true}', { status: 200 }));
+  }) as typeof fetch;
+  const read = githubReader("token-abc", fakeFetch);
+  const result = await read("/repos/o/r/environments");
+  assert.deepEqual(result, { status: 200, body: { ok: true } });
+  const call = calls[0];
+  assert.equal(call?.url, "https://api.github.com/repos/o/r/environments");
+  assert.equal(call?.init?.method, "GET");
+  assert.equal(call?.init?.redirect, "error");
+  assert.ok(call?.init?.signal instanceof AbortSignal);
+  const headers = call?.init?.headers as Record<string, string>;
+  assert.equal(headers.authorization, "Bearer token-abc");
+});
+
+test("githubReader treats undecodable bodies as unverifiable", async () => {
+  const reader = (response: Response | Error) =>
+    githubReader(undefined, (() =>
+      response instanceof Error
+        ? Promise.reject(response)
+        : Promise.resolve(response)) as typeof fetch);
+  assert.deepEqual(
+    await reader(new Response("not json", { status: 200 }))("/repos/o/r"),
+    { status: 0, body: null },
+  );
+  assert.deepEqual(
+    await reader(new Response("x".repeat(1_000_001), { status: 200 }))(
+      "/repos/o/r",
+    ),
+    { status: 0, body: null },
+  );
+  assert.deepEqual(
+    await reader(new Response(null, { status: 200 }))("/repos/o/r"),
+    { status: 0, body: null },
+  );
+  assert.deepEqual(
+    await reader(new Response(null, { status: 404 }))("/repos/o/r"),
+    { status: 404, body: null },
+  );
+  assert.deepEqual(await reader(new Error("offline"))("/repos/o/r"), {
+    status: 0,
+    body: null,
+  });
+});
+
+test("githubReader rejects malformed tokens", () => {
+  assert.throws(() => githubReader("bad token"));
+  assert.throws(() => githubReader("bad\ntoken"));
 });

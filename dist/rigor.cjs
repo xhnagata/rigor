@@ -1050,25 +1050,28 @@ function githubReader(token, fetchImpl = fetch) {
       "user-agent": "rigor-governance"
     };
     if (token) headers.authorization = `Bearer ${token}`;
-    let response;
     try {
-      response = await fetchImpl(`https://api.github.com${requestPath}`, {
+      const response = await fetchImpl(`https://api.github.com${requestPath}`, {
         method: "GET",
         headers,
-        redirect: "error"
+        redirect: "error",
+        signal: AbortSignal.timeout(TIMEOUT_MS)
       });
+      const text = await response.text();
+      if (text.length > MAX_RESPONSE_BYTES) return { status: 0, body: null };
+      if (text.length === 0) {
+        if (response.status !== 200)
+          return { status: response.status, body: null };
+        return { status: 0, body: null };
+      }
+      return { status: response.status, body: JSON.parse(text) };
     } catch {
       return { status: 0, body: null };
     }
-    let body = null;
-    try {
-      body = await response.json();
-    } catch {
-      body = null;
-    }
-    return { status: response.status, body };
   };
 }
+var TIMEOUT_MS = 1e4;
+var MAX_RESPONSE_BYTES = 1e6;
 function splitCodeownersLine(line) {
   const tokens = [];
   let current = "";
@@ -1327,30 +1330,30 @@ function evaluateGovernance(input) {
   );
   if (input.codeowners.state === "unverifiable") {
     findings.push({
-      id: "codeowners-coverage",
+      id: "codeowners-sampled-coverage",
       status: "unverifiable",
       detail: "CODEOWNERS could not be read with the available credentials"
     });
   } else if (input.codeowners.state === "missing") {
     findings.push({
-      id: "codeowners-coverage",
+      id: "codeowners-sampled-coverage",
       status: "failed",
       detail: "no CODEOWNERS file exists at .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS"
     });
   } else {
     const entries = parseCodeowners(input.codeowners.text);
-    const uncovered = input.governedPaths.filter(
+    const uncovered = input.sampledPaths.filter(
       (pathname) => codeownersOwners(entries, pathname).length === 0
     );
     findings.push(
       uncovered.length === 0 ? {
-        id: "codeowners-coverage",
+        id: "codeowners-sampled-coverage",
         status: "satisfied",
-        detail: `${input.codeowners.source} assigns owners to every policy-protected path`
+        detail: `${input.codeowners.source} assigns owners to every sampled representative of the policy-protected globs; this sampled check is an early warning and does not prove full coverage of each glob`
       } : {
-        id: "codeowners-coverage",
+        id: "codeowners-sampled-coverage",
         status: "failed",
-        detail: `${input.codeowners.source} leaves policy-protected paths without owners: ${uncovered.join(", ")}`
+        detail: `${input.codeowners.source} leaves sampled policy-protected paths without owners: ${uncovered.join(", ")}`
       }
     );
   }
@@ -1394,7 +1397,7 @@ function evaluateGovernance(input) {
     repository: input.repository,
     branch: input.branch,
     requiredCheckContext: input.requiredCheckContext,
-    governedPaths: input.governedPaths,
+    sampledPaths: input.sampledPaths,
     findings,
     status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
   };
@@ -1442,7 +1445,7 @@ async function governanceVerify(policy, options, read) {
     repository: `${options.owner}/${options.repo}`,
     branch: options.branch,
     requiredCheckContext: options.requiredCheckContext,
-    governedPaths: representativePaths(policy),
+    sampledPaths: representativePaths(policy),
     rules,
     protection,
     codeowners,

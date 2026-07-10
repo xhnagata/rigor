@@ -12,6 +12,7 @@ Rigor protects source confidentiality, secrets, repository integrity, production
 - **Pull-request CI:** independently checks the exact base/head objects. It must not trust a contributor's claimed SHA, tier, path list, or pass result.
 - **GitHub controls and humans:** required checks, branch protection, CODEOWNERS, and an independent approver are the authoritative merge boundary.
 - **External services/models:** no content may cross this boundary unless policy says it is exportable. Rigor itself performs no upload.
+- **GitHub API (read-only, `rigor governance` only):** the single remote endpoint Rigor calls. Transmitted data is limited to the URL-encoded owner, repository, and branch in the request path plus an optional token in the `authorization` header; no repository content, evidence, or prose is sent. The host is fixed to `https://api.github.com`, the method is hard-coded to GET (there is no code path that issues another verb), redirects are refused, every request times out after 10 seconds, and response bodies over 1 MB or that fail to decode are discarded. The token is read only from `RIGOR_GITHUB_TOKEN`, then `GITHUB_TOKEN`, then `GH_TOKEN`, is validated as printable ASCII, and is never logged or persisted. Transport and API errors are collapsed into an `unverifiable` finding without echoing response bodies, and unverifiable findings fail closed (exit 2). The API's answers are treated as observations about GitHub configuration, never as proof that a control cannot be bypassed by an administrator.
 
 ## Threats and responses
 
