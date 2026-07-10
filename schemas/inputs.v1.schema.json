@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/inputs.v1.schema.json",
+  "title": "Rigor v1 inputs",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["schemaVersion", "taskId", "summary", "plannedPaths"],
+      "properties": {
+        "schemaVersion": { "const": "rigor.intent.v1" },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "summary": { "type": "string", "minLength": 1 },
+        "plannedPaths": { "$ref": "#/$defs/strings" },
+        "operations": { "$ref": "#/$defs/strings" }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "taskId",
+        "acceptanceCriteria",
+        "allowedPaths",
+        "constraints"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "rigor.contract-input.v1" },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "acceptanceCriteria": { "$ref": "#/$defs/strings" },
+        "allowedPaths": { "$ref": "#/$defs/strings" },
+        "constraints": { "$ref": "#/$defs/strings" }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "taskId",
+        "facts",
+        "attempts",
+        "disprovedHypotheses",
+        "speculation",
+        "requestedDecision"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "rigor.escalation-input.v1" },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "facts": { "$ref": "#/$defs/strings" },
+        "attempts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["action", "result"],
+            "properties": {
+              "action": { "type": "string", "minLength": 1 },
+              "result": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "disprovedHypotheses": { "$ref": "#/$defs/strings" },
+        "speculation": { "$ref": "#/$defs/strings" },
+        "requestedDecision": { "type": "string", "minLength": 1 }
+      }
+    }
+  ],
+  "$defs": {
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "strings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

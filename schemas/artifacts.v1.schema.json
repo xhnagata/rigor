@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/artifacts.v1.schema.json",
+  "title": "Rigor v1 evidence artifacts",
+  "type": "object",
+  "required": ["schemaVersion", "artifactId", "taskId", "createdAt"],
+  "properties": {
+    "schemaVersion": {
+      "enum": [
+        "rigor.preflight.v1",
+        "rigor.contract.v1",
+        "rigor.verification.v1",
+        "rigor.escalation.v1",
+        "rigor.review.v1"
+      ]
+    },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "schemaVersion": { "const": "rigor.preflight.v1" } }
+      },
+      "then": {
+        "required": [
+          "policyHash",
+          "intentHash",
+          "git",
+          "plannedPaths",
+          "riskTier",
+          "externalTransmission",
+          "protectedPaths",
+          "requireHumanApproval",
+          "stopConditions",
+          "reasons"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "schemaVersion": { "const": "rigor.contract.v1" } }
+      },
+      "then": {
+        "required": [
+          "preflightArtifactId",
+          "preflightHash",
+          "riskTier",
+          "externalTransmission",
+          "acceptanceCriteria",
+          "allowedPaths",
+          "constraints",
+          "requiredChecks",
+          "stopConditions"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "schemaVersion": { "const": "rigor.verification.v1" } }
+      },
+      "then": {
+        "required": [
+          "contractArtifactId",
+          "policyHash",
+          "treeHash",
+          "changedPaths",
+          "scopeViolations",
+          "checks",
+          "status"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "schemaVersion": { "const": "rigor.review.v1" } }
+      },
+      "then": {
+        "required": [
+          "contractArtifactId",
+          "verificationArtifactId",
+          "riskTier",
+          "externalTransmission",
+          "verificationStatus"
+        ]
+      }
+    }
+  ]
+}

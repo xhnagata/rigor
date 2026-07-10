@@ -1,0 +1,4 @@
+dist
+node_modules
+.rigor
+package-lock.json

@@ -1,0 +1,4 @@
+node_modules/
+.rigor/events.jsonl
+*.log
+.DS_Store

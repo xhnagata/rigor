@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/policy.v1.schema.json",
+  "title": "Rigor policy v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "repositoryId",
+    "defaultTier",
+    "defaultExternalTransmission",
+    "rules",
+    "checks",
+    "stopConditions",
+    "ci"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.policy.v1" },
+    "repositoryId": { "type": "string", "minLength": 1 },
+    "defaultTier": { "$ref": "#/$defs/tier" },
+    "defaultExternalTransmission": { "enum": ["allow", "deny"] },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "paths", "tier", "reason"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "paths": { "$ref": "#/$defs/strings" },
+          "tier": { "$ref": "#/$defs/tier" },
+          "reason": { "type": "string", "minLength": 1 },
+          "protected": { "type": "boolean" },
+          "denyExternalTransmission": { "type": "boolean" },
+          "requireHumanApproval": { "type": "boolean" }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "command", "args", "tiers", "timeoutMs"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "command": { "type": "string", "minLength": 1 },
+          "args": { "$ref": "#/$defs/strings" },
+          "tiers": { "type": "array", "items": { "$ref": "#/$defs/tier" } },
+          "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 900000 }
+        }
+      }
+    },
+    "stopConditions": {
+      "type": "object",
+      "required": ["low", "medium", "high", "critical"],
+      "properties": {
+        "low": { "$ref": "#/$defs/strings" },
+        "medium": { "$ref": "#/$defs/strings" },
+        "high": { "$ref": "#/$defs/strings" },
+        "critical": { "$ref": "#/$defs/strings" }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "required": ["requireEvidence", "maxPolicyWeakening"],
+      "properties": {
+        "requireEvidence": { "type": "boolean" },
+        "maxPolicyWeakening": { "const": "none" }
+      }
+    }
+  },
+  "$defs": {
+    "tier": { "enum": ["low", "medium", "high", "critical"] },
+    "strings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
