@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "rigor",
+  "displayName": "Rigor",
+  "version": "0.1.0",
+  "description": "Risk-proportional contracts, deterministic verification, escalation, review evidence, and independent CI for AI-assisted changes",
+  "author": { "name": "xhnagata" },
+  "repository": "https://github.com/xhnagata/rigor",
+  "license": "MIT",
+  "keywords": ["governance", "verification", "risk", "audit"]
+}

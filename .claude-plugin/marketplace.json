@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "rigor-tools",
+  "owner": { "name": "xhnagata" },
+  "description": "Verifiable, risk-proportional controls for AI-assisted development",
+  "plugins": [
+    {
+      "name": "rigor",
+      "source": "./",
+      "description": "Task contracts, deterministic verification, structured escalation, review evidence, and independent CI",
+      "category": "development",
+      "tags": ["governance", "verification", "security"],
+      "strict": true
+    }
+  ]
+}

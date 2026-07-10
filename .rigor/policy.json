@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "rigor.policy.v1",
+  "repositoryId": "rigor",
+  "defaultTier": "medium",
+  "defaultExternalTransmission": "allow",
+  "rules": [
+    {
+      "id": "governance",
+      "paths": [
+        ".rigor/**",
+        ".github/workflows/**",
+        "CODEOWNERS"
+      ],
+      "tier": "critical",
+      "reason": "Governance and enforcement changes can weaken controls.",
+      "protected": true,
+      "requireHumanApproval": true
+    },
+    {
+      "id": "secrets",
+      "paths": [
+        "**/.env*",
+        "**/secrets/**",
+        "**/*.pem",
+        "**/*.key"
+      ],
+      "tier": "critical",
+      "reason": "The path may contain credentials or confidential material.",
+      "protected": true,
+      "denyExternalTransmission": true,
+      "requireHumanApproval": true
+    },
+    {
+      "id": "security-and-irreversible",
+      "paths": [
+        "**/auth/**",
+        "**/permissions/**",
+        "**/migrations/**",
+        "**/billing/**",
+        "infra/**"
+      ],
+      "tier": "critical",
+      "reason": "Authentication, authorization, billing, migration, or infrastructure changes can be irreversible or broadly impactful.",
+      "protected": true,
+      "requireHumanApproval": true
+    },
+    {
+      "id": "runtime-code",
+      "paths": [
+        "src/**",
+        "lib/**",
+        "app/**",
+        "packages/**"
+      ],
+      "tier": "high",
+      "reason": "Runtime code affects shipped behavior.",
+      "requireHumanApproval": true
+    },
+    {
+      "id": "tests-and-docs",
+      "paths": [
+        "test/**",
+        "tests/**",
+        "docs/**",
+        "**/*.md"
+      ],
+      "tier": "low",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "command": "git",
+      "args": [
+        "diff",
+        "--check"
+      ],
+      "tiers": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "timeoutMs": 30000
+    }
+  ],
+  "stopConditions": {
+    "low": [
+      "scope expands beyond the contract"
+    ],
+    "medium": [
+      "scope expands beyond the contract",
+      "a required check fails twice without a new hypothesis"
+    ],
+    "high": [
+      "scope expands beyond the contract",
+      "a protected path is discovered",
+      "a required check fails twice without a new hypothesis"
+    ],
+    "critical": [
+      "scope expands beyond the contract",
+      "an irreversible or external write is needed",
+      "credentials or personal data are encountered",
+      "independent human approval is unavailable"
+    ]
+  },
+  "ci": {
+    "requireEvidence": true,
+    "maxPolicyWeakening": "none"
+  }
+}

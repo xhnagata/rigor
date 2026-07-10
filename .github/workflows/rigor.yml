@@ -1,0 +1,24 @@
+name: Rigor
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  rigor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Independently verify Rigor evidence and policy
+        env:
+          RIGOR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RIGOR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .rigor/rigor-ci.cjs ci --base "$RIGOR_BASE_SHA" --head "$RIGOR_HEAD_SHA"

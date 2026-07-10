@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "rigor.intent.v1",
+  "taskId": "TASK-123",
+  "summary": "Describe the intended change",
+  "plannedPaths": [
+    "src/example.ts"
+  ],
+  "operations": [
+    "edit"
+  ]
+}
