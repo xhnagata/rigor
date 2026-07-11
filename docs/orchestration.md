@@ -15,10 +15,30 @@ Routing deliberately keeps two kinds of input separate:
 | Source          | Fields                                                                                             | Trust treatment                                                        |
 | --------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Rigor preflight | risk tier, transmission decision, protected paths, approval requirement                            | deterministically derived from policy, paths, and Git facts            |
-| routing input   | complexity, ambiguity, novelty, verification strength, assessment reasons                          | explicit assessment that can be wrong and must remain reviewable       |
+| routing input   | complexity, ambiguity, novelty, verification strength, assessment reasons or evidence              | explicit assessment that can be wrong and must remain reviewable       |
 | model profiles  | provider, capability class, supported purposes, relative cost, additional-transmission requirement | configured operational input, not a claim of model identity or quality |
 
-Risk is impact if a change is wrong. Capability is the estimated ability needed to perform the task. They are not interchangeable: a small security configuration change can be high risk but mechanically simple, while a low-impact algorithm experiment can be difficult.
+Risk is impact if a change is wrong. Capability is the estimated ability needed to perform the task. They are not interchangeable: a small security configuration change can be high risk but mechanically simple, while a low-impact algorithm experiment can be difficult. Introducing an explicit assessment confidence in `rigor.routing-input.v2` does not change this: confidence and evidence inform whether the _capability_ assessment is trustworthy enough to act on, never the risk tier itself.
+
+### Assessment confidence and evidence (schema version `rigor.routing-input.v2`)
+
+`rigor.routing-input.v2` replaces the flat `assessmentReasons` list with a structured `assessment` object: `confidence` (`low`, `medium`, or `high`) and `evidence` (one to twenty entries, each anchoring an `observation` to a repository-relative `path`).
+
+Two things this is deliberately _not_:
+
+- `confidence` is an explicit, reviewable judgment supplied by the model or human doing the assessment. It is not a calibrated probability, and Rigor does not calibrate it against outcomes before acting on it.
+- `evidence` anchors each observation to a path so a reviewer knows where to look. Rigor validates that the path is a well-formed, repository-relative string; it does not read the file, run the observation, or otherwise verify that the claimed observation is true. Evidence keeps an assessment reviewable — it does not turn the assessment into a deterministic fact.
+
+Routing fails closed, deterministically, in these cases:
+
+- **Malformed input**: an evidence entry missing `path` or `observation`, an out-of-range `confidence`, or any field that fails basic structural validation.
+- **Unsupported schema**: any `schemaVersion` other than `rigor.routing-input.v1` or `rigor.routing-input.v2`.
+- **Evidence-free**: `assessment.evidence` missing or empty. A confidence claim with nothing anchoring it is rejected outright rather than accepted with zero evidence.
+- **Contradictory assessment**: `confidence: "high"` together with `ambiguity: "critical"` or `verificationStrength: "weak"`. A task cannot simultaneously be maximally ambiguous, or unverifiable by deterministic means, and be assessed with high confidence.
+
+When parsing succeeds and `confidence` is `"low"`, `rigor route` never silently falls back to selecting the cheapest (economy-class) candidate. It always returns `status: "requires-review"` with `selection: null`, regardless of whether an eligible candidate exists, and exits `2`. Candidate filtering and exclusion reasons are still computed and reported so a reviewer sees the full picture; `createRoutingPlan` refuses to turn a `requires-review` (or `unroutable`) decision into a plan.
+
+**v1 migration path**: `rigor.routing-input.v1` inputs remain fully accepted, unchanged. A v1 input has no `assessment` field, so routing treats it as legacy `confidence: "medium"` with zero evidence — the same behavior as before this schema version existed. Routing plans recorded before this change carry no `assessment` summary at all; `parseRoutingPlan` synthesizes the same legacy default (`inputSchemaVersion: "rigor.routing-input.v1"`, `confidence: "medium"`, `evidenceCount: 0`) rather than rejecting an evidence file that was valid when it was written.
 
 ## Capability derivation
 
@@ -26,7 +46,7 @@ The selector maps `low`, `medium`, `high`, and `critical` assessment levels to `
 
 This is an initial, testable heuristic rather than an empirical quality claim. Later calibration must be based on accepted-change cost, retries, elapsed time, human intervention, review findings, and escaped defects.
 
-Every routing input includes at least one assessment reason. These reasons make the model- or human-supplied classification reviewable, but they do not turn an assessment into a deterministic fact.
+Every routing input includes at least one assessment reason (v1) or at least one piece of path-anchored evidence (v2). These make the model- or human-supplied classification reviewable, but they do not turn an assessment into a deterministic fact. See "Assessment confidence and evidence" above for the v2 confidence gate and its fail-closed cases.
 
 ## Candidate filtering and selection
 
@@ -51,10 +71,11 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 
 ## Schemas
 
-- `routing-input.v1.schema.json` describes the explicit task assessment and budget.
+- `routing-input.v1.schema.json` describes the explicit task assessment (flat `assessmentReasons`) and budget.
+- `routing-input.v2.schema.json` describes the explicit task assessment as a structured, path-anchored `confidence`/`evidence` object and budget.
 - `model-profiles.v1.schema.json` describes available candidates without asserting their real availability.
-- `routing-decision.v1.schema.json` describes dry-run output and exclusion reason codes.
-- `routing-plan.v1.schema.json` binds a selected decision to the preflight, contract, policy, profiles, and HEAD.
+- `routing-decision.v1.schema.json` describes dry-run output, exclusion reason codes, the `requires-review` status, and the assessment summary (`inputSchemaVersion`, `confidence`, `evidenceCount`).
+- `routing-plan.v1.schema.json` binds a selected decision to the preflight, contract, policy, profiles, and HEAD, and carries the same assessment summary (optional, for backward compatibility with plans recorded before `rigor.routing-input.v2`).
 - `attempt-session.v1.schema.json` records the selected candidate, budgets, and pre-execution Git state.
 - `attempt-result-input.v1.schema.json` records completion, failure, cancellation, and available external IDs.
 - `attempt.v1.schema.json` records duration, before/after state, scope violations, and linked passing verification.
@@ -76,7 +97,7 @@ rigor route --dry-run \
   --profiles /tmp/model-profiles.json
 ```
 
-The command exits `0` when it selects a candidate, `2` when policy, capability, purpose, or budget leaves the task unroutable, and `3` for malformed or mismatched inputs.
+The command exits `0` when it selects a candidate, `2` when policy, capability, purpose, or budget leaves the task unroutable (or a v2 input's low assessment confidence requires human review), and `3` for malformed, unsupported-schema, evidence-free, contradictory, or mismatched inputs.
 
 To persist a plan for execution, replace `--dry-run` with `--record` and add the linked contract:
 

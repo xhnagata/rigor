@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_63bc7603-9902-4b4a-ac60-87a41e0e9e82",
+  "taskId": "GH-10",
+  "createdAt": "2026-07-11T14:48:35.217Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "86631c98e1065b8ec2ec080ed97c6d33cce111a89fac43f9f964e3b46528be91",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor/.claude/worktrees/issue-10-assessment-confidence",
+    "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+    "dirty": true,
+    "changedPaths": [
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "schemas/routing-decision.v1.schema.json",
+      "schemas/routing-input.v2.schema.json",
+      "schemas/routing-plan.v1.schema.json",
+      "src/routing.ts",
+      "src/types.ts",
+      "test/routing.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-input.v2.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "src/routing.ts",
+    "src/types.ts",
+    "test/routing.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/routing.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/routing.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

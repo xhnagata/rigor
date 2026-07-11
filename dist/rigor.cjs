@@ -382,6 +382,7 @@ var ESCALATION_SCHEMA = "rigor.escalation.v1";
 var ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1";
 var REVIEW_SCHEMA = "rigor.review.v1";
 var ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1";
+var ROUTING_INPUT_V2_SCHEMA = "rigor.routing-input.v2";
 var MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1";
 var ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1";
 var ATTEMPT_SCHEMA = "rigor.attempt.v1";
@@ -2071,6 +2072,11 @@ var purposes = [
   "adversarial-review",
   "rescue"
 ];
+var confidenceLevels = ["low", "medium", "high"];
+var routingInputSchemaVersions = [
+  ROUTING_INPUT_SCHEMA,
+  ROUTING_INPUT_V2_SCHEMA
+];
 function oneOf(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
@@ -2086,53 +2092,123 @@ function bool2(value, name) {
     throw new RigorError(`${name} must be boolean`, EXIT.inputError);
   return value;
 }
-function parseRoutingInput(value) {
-  const item = record(value, "routing input");
-  if (item.schemaVersion !== ROUTING_INPUT_SCHEMA)
-    throw new RigorError("Unsupported routing input schema", EXIT.inputError);
-  const signals = record(item.signals, "signals");
-  const budget = record(item.budget, "budget");
-  const assessmentReasons = strings(
-    item.assessmentReasons,
-    "assessmentReasons",
-    20
-  );
-  if (assessmentReasons.length === 0)
+function assessmentPath(value, name) {
+  const p = textField(value, name, 1024);
+  if (p.startsWith("/") || p.split(/[\\/]/u).includes(".."))
     throw new RigorError(
-      "assessmentReasons must not be empty",
+      `${name} must be a repository-relative path`,
       EXIT.inputError
     );
+  return p;
+}
+function parseSignals(value) {
+  const signals = record(value, "signals");
   return {
-    schemaVersion: ROUTING_INPUT_SCHEMA,
-    taskId: taskId(item.taskId),
-    purpose: oneOf(item.purpose, purposes, "purpose"),
-    signals: {
-      complexity: oneOf(signals.complexity, signalLevels, "complexity"),
-      ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
-      novelty: oneOf(signals.novelty, signalLevels, "novelty"),
-      verificationStrength: oneOf(
-        signals.verificationStrength,
-        verificationStrengths,
-        "verificationStrength"
-      )
-    },
-    assessmentReasons,
-    budget: {
-      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
-      maxDurationMs: integer(
-        budget.maxDurationMs,
-        "maxDurationMs",
-        1e3,
-        864e5
-      ),
-      maxRelativeCost: integer(
-        budget.maxRelativeCost,
-        "maxRelativeCost",
-        1,
-        1e6
-      )
-    }
+    complexity: oneOf(signals.complexity, signalLevels, "complexity"),
+    ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
+    novelty: oneOf(signals.novelty, signalLevels, "novelty"),
+    verificationStrength: oneOf(
+      signals.verificationStrength,
+      verificationStrengths,
+      "verificationStrength"
+    )
   };
+}
+function parseBudget(value) {
+  const budget = record(value, "budget");
+  return {
+    maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
+    maxDurationMs: integer(
+      budget.maxDurationMs,
+      "maxDurationMs",
+      1e3,
+      864e5
+    ),
+    maxRelativeCost: integer(
+      budget.maxRelativeCost,
+      "maxRelativeCost",
+      1,
+      1e6
+    )
+  };
+}
+function parseEvidence(value) {
+  if (!Array.isArray(value) || value.length === 0)
+    throw new RigorError(
+      "assessment.evidence must not be empty",
+      EXIT.inputError
+    );
+  if (value.length > 20)
+    throw new RigorError(
+      "assessment.evidence must not exceed 20 items",
+      EXIT.inputError
+    );
+  return value.map((raw, index) => {
+    const item = record(raw, `assessment.evidence[${index}]`);
+    return {
+      path: assessmentPath(item.path, `assessment.evidence[${index}].path`),
+      observation: textField(
+        item.observation,
+        `assessment.evidence[${index}].observation`,
+        1e4
+      )
+    };
+  });
+}
+function parseRoutingInput(value) {
+  const item = record(value, "routing input");
+  if (item.schemaVersion === ROUTING_INPUT_SCHEMA) {
+    const assessmentReasons = strings(
+      item.assessmentReasons,
+      "assessmentReasons",
+      20
+    );
+    if (assessmentReasons.length === 0)
+      throw new RigorError(
+        "assessmentReasons must not be empty",
+        EXIT.inputError
+      );
+    return {
+      schemaVersion: ROUTING_INPUT_SCHEMA,
+      taskId: taskId(item.taskId),
+      purpose: oneOf(item.purpose, purposes, "purpose"),
+      signals: parseSignals(item.signals),
+      assessmentReasons,
+      budget: parseBudget(item.budget)
+    };
+  }
+  if (item.schemaVersion === ROUTING_INPUT_V2_SCHEMA) {
+    const assessmentRecord = record(item.assessment, "assessment");
+    const confidence = oneOf(
+      assessmentRecord.confidence,
+      confidenceLevels,
+      "assessment.confidence"
+    );
+    const evidence = parseEvidence(assessmentRecord.evidence);
+    const signals = parseSignals(item.signals);
+    if (confidence === "high" && (signals.ambiguity === "critical" || signals.verificationStrength === "weak"))
+      throw new RigorError(
+        "Contradictory assessment: high confidence with critical ambiguity or weak verification",
+        EXIT.inputError
+      );
+    return {
+      schemaVersion: ROUTING_INPUT_V2_SCHEMA,
+      taskId: taskId(item.taskId),
+      purpose: oneOf(item.purpose, purposes, "purpose"),
+      signals,
+      // v2 does not carry a separate top-level assessmentReasons field; the
+      // internal invariant that every routing input has non-empty reasons is
+      // preserved by deriving reasons from the evidence observations.
+      assessmentReasons: evidence.map((entry) => entry.observation),
+      budget: parseBudget(item.budget),
+      assessment: {
+        inputSchemaVersion: ROUTING_INPUT_V2_SCHEMA,
+        confidence,
+        evidence
+      }
+    };
+  }
+  throw new RigorError("Unsupported routing input schema", EXIT.inputError);
 }
 function parseCandidate(value, index) {
   const item = record(value, `candidates[${index}]`);
@@ -2215,6 +2291,7 @@ function route(preflight, input, profiles) {
       EXIT.inputError
     );
   const required = requiredCapability(input);
+  const confidence = input.assessment?.confidence ?? "medium";
   const eligible = [];
   const excluded = [];
   for (const candidate of profiles.candidates) {
@@ -2225,7 +2302,7 @@ function route(preflight, input, profiles) {
   eligible.sort(
     (left, right) => left.relativeCost - right.relativeCost || capabilityClasses.indexOf(left.capabilityClass) - capabilityClasses.indexOf(right.capabilityClass) || left.id.localeCompare(right.id)
   );
-  const selected = eligible[0];
+  const selected = confidence === "low" ? void 0 : eligible[0];
   const selection = selected ? {
     candidateId: selected.id,
     provider: selected.provider,
@@ -2233,6 +2310,7 @@ function route(preflight, input, profiles) {
     capabilityClass: selected.capabilityClass,
     relativeCost: selected.relativeCost
   } : null;
+  const status = confidence === "low" ? "requires-review" : selection ? "selected" : "unroutable";
   return {
     schemaVersion: ROUTING_DECISION_SCHEMA,
     mode: "dry-run",
@@ -2252,7 +2330,12 @@ function route(preflight, input, profiles) {
       requireIndependentReview: preflight.riskTier === "high" || preflight.riskTier === "critical" || preflight.protectedPaths.length > 0
     },
     budget: input.budget,
-    status: selection ? "selected" : "unroutable"
+    assessment: {
+      inputSchemaVersion: input.schemaVersion,
+      confidence,
+      evidenceCount: input.assessment?.evidence.length ?? 0
+    },
+    status
   };
 }
 function createRoutingPlan(decision, preflight, contract, now = /* @__PURE__ */ new Date()) {
@@ -2297,6 +2380,31 @@ function parseRoutingPlan(value) {
   const plannedHead = item.plannedHead;
   if (plannedHead !== null && typeof plannedHead !== "string")
     throw new RigorError("plannedHead is invalid", EXIT.inputError);
+  const assessment = item.assessment === void 0 ? {
+    inputSchemaVersion: ROUTING_INPUT_SCHEMA,
+    confidence: "medium",
+    evidenceCount: 0
+  } : (() => {
+    const raw = record(item.assessment, "assessment");
+    return {
+      inputSchemaVersion: oneOf(
+        raw.inputSchemaVersion,
+        routingInputSchemaVersions,
+        "assessment.inputSchemaVersion"
+      ),
+      confidence: oneOf(
+        raw.confidence,
+        confidenceLevels,
+        "assessment.confidence"
+      ),
+      evidenceCount: integer(
+        raw.evidenceCount,
+        "assessment.evidenceCount",
+        0,
+        20
+      )
+    };
+  })();
   const plan = {
     schemaVersion: ROUTING_PLAN_SCHEMA,
     artifactId: textField(item.artifactId, "artifactId", 128),
@@ -2375,6 +2483,7 @@ function parseRoutingPlan(value) {
         1e6
       )
     },
+    assessment,
     status: "planned"
   };
   if (selection.model !== void 0)

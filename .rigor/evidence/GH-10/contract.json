@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_33d334d7-3d96-40c9-9518-759df04c29e6",
+  "taskId": "GH-10",
+  "createdAt": "2026-07-11T14:48:35.270Z",
+  "preflightArtifactId": "preflight_63bc7603-9902-4b4a-ac60-87a41e0e9e82",
+  "preflightHash": "3aa34ab3e149a0c0aa6f1009ef2e12044281d80ce4d32ef31bb4353040e1a46a",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "Malformed, unsupported, contradictory, and evidence-free assessments fail closed at parse.",
+    "A low-confidence assessment produces an explicit review/escalation routing outcome instead of silently selecting the economy class.",
+    "Pure routing remains deterministic for identical inputs.",
+    "Existing v1 routing inputs and recorded plans remain compatible via an explicit migration path.",
+    "Risk from preflight stays separate from required capability.",
+    "Tests cover assessment boundary cases and v1 backward compatibility.",
+    "Orchestration documentation defines the trust treatment of assessment evidence."
+  ],
+  "allowedPaths": [
+    "src/types.ts",
+    "src/routing.ts",
+    "schemas/routing-input.v2.schema.json",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "docs/orchestration.md",
+    "test/routing.test.ts",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Do not invoke any model from the deterministic CLI.",
+    "Do not let an assessor directly choose a candidate.",
+    "Do not claim confidence is a calibrated probability.",
+    "Do not weaken, skip, or delete existing tests.",
+    "Do not change protected paths, public CLI command surface, or security boundaries.",
+    "dist/rigor.cjs is a generated build artifact rebuilt from the allowed source; it is not hand-edited.",
+    "Confidence and evidence semantics must be deterministic and reviewable, not verified facts."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}
