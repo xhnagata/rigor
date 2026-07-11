@@ -34,11 +34,11 @@ __export(cli_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(cli_exports);
-var import_node_path8 = __toESM(require("node:path"), 1);
+var import_node_path10 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
 
 // src/artifacts.ts
-var import_promises2 = require("node:fs/promises");
+var import_promises3 = require("node:fs/promises");
 var import_node_path4 = __toESM(require("node:path"), 1);
 
 // src/errors.ts
@@ -103,10 +103,13 @@ function matches(pathname, globs) {
 
 // src/git.ts
 var import_node_child_process = require("node:child_process");
+var import_node_crypto = require("node:crypto");
+var import_node_fs = require("node:fs");
+var import_promises = require("node:fs/promises");
 var import_node_path2 = __toESM(require("node:path"), 1);
 async function run(command, args, cwd, timeoutMs = 3e4, outputLimit = 1e6) {
   const start = performance.now();
-  return await new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject2) => {
     const child = (0, import_node_child_process.spawn)(command, args, {
       cwd,
       shell: false,
@@ -132,7 +135,7 @@ async function run(command, args, cwd, timeoutMs = 3e4, outputLimit = 1e6) {
     });
     child.on("error", (error) => {
       clearTimeout(timer);
-      reject(error);
+      reject2(error);
     });
     child.on("close", (code) => {
       clearTimeout(timer);
@@ -225,21 +228,54 @@ async function showFile(root, sha, file) {
   if (result.code !== 0) return null;
   return result.stdout.toString("utf8");
 }
-async function treeHash(root) {
-  const tracked = await git(root, ["ls-files", "-z"]);
-  const status = await git(root, [
-    "status",
-    "--porcelain=v1",
-    "-z",
-    "--untracked-files=all"
-  ]);
-  const { createHash: createHash2 } = await import("node:crypto");
-  return createHash2("sha256").update(tracked).update(status).digest("hex");
+async function treeHash(root, excludedPrefixes = []) {
+  const listed = nulPaths(
+    await git(root, [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ])
+  );
+  const files = [...new Set(listed)].filter(
+    (file) => !excludedPrefixes.some(
+      (prefix) => file === prefix || file.startsWith(prefix)
+    )
+  ).sort();
+  const digest = (0, import_node_crypto.createHash)("sha256");
+  for (const file of files) {
+    digest.update(`path\0${file}\0`);
+    const target = import_node_path2.default.join(root, file);
+    let info;
+    try {
+      info = await (0, import_promises.lstat)(target);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        digest.update("deleted\0");
+        continue;
+      }
+      throw error;
+    }
+    digest.update(`mode\0${info.mode}\0`);
+    if (info.isSymbolicLink()) {
+      digest.update(`symlink\0${await (0, import_promises.readlink)(target)}\0`);
+      continue;
+    }
+    if (!info.isFile())
+      throw new RigorError(
+        `Cannot hash non-file repository path: ${file}`,
+        EXIT.inputError
+      );
+    for await (const chunk of (0, import_node_fs.createReadStream)(target)) digest.update(chunk);
+    digest.update("\0");
+  }
+  return digest.digest("hex");
 }
 
 // src/util.ts
-var import_node_crypto = require("node:crypto");
-var import_promises = require("node:fs/promises");
+var import_node_crypto2 = require("node:crypto");
+var import_promises2 = require("node:fs/promises");
 var import_node_path3 = __toESM(require("node:path"), 1);
 function stable(value) {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
@@ -249,14 +285,14 @@ function stable(value) {
   return JSON.stringify(value);
 }
 function hash(value) {
-  return (0, import_node_crypto.createHash)("sha256").update(typeof value === "string" ? value : stable(value)).digest("hex");
+  return (0, import_node_crypto2.createHash)("sha256").update(typeof value === "string" ? value : stable(value)).digest("hex");
 }
 function artifactId(kind) {
-  return `${kind}_${(0, import_node_crypto.randomUUID)()}`;
+  return `${kind}_${(0, import_node_crypto2.randomUUID)()}`;
 }
 async function readJson(file) {
   try {
-    const text = await (0, import_promises.readFile)(file, "utf8");
+    const text = await (0, import_promises2.readFile)(file, "utf8");
     if (text.length > 2e6)
       throw new RigorError(`Input is too large: ${file}`, EXIT.inputError);
     return JSON.parse(text);
@@ -269,8 +305,8 @@ async function readJson(file) {
   }
 }
 async function writeJson(file, value) {
-  await (0, import_promises.mkdir)(import_node_path3.default.dirname(file), { recursive: true });
-  await (0, import_promises.writeFile)(file, `${JSON.stringify(value, null, 2)}
+  await (0, import_promises2.mkdir)(import_node_path3.default.dirname(file), { recursive: true });
+  await (0, import_promises2.writeFile)(file, `${JSON.stringify(value, null, 2)}
 `, {
     flag: "wx",
     mode: 384
@@ -315,9 +351,9 @@ async function assertContainedPath(root, target) {
   let cursor = target;
   while (cursor !== root) {
     try {
-      const stat = await (0, import_promises.lstat)(cursor);
+      const stat = await (0, import_promises2.lstat)(cursor);
       if (stat.isSymbolicLink()) {
-        const resolved = await (0, import_promises.realpath)(cursor);
+        const resolved = await (0, import_promises2.realpath)(cursor);
         const rel = import_node_path3.default.relative(root, resolved);
         if (rel.startsWith("..") || import_node_path3.default.isAbsolute(rel)) {
           throw new RigorError(
@@ -345,6 +381,19 @@ var VERIFY_SCHEMA = "rigor.verification.v1";
 var ESCALATION_SCHEMA = "rigor.escalation.v1";
 var ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1";
 var REVIEW_SCHEMA = "rigor.review.v1";
+var ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1";
+var MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1";
+var ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1";
+var ATTEMPT_SCHEMA = "rigor.attempt.v1";
+var CONSULTATION_SCHEMA = "rigor.consultation.v1";
+var CONSULTATION_REQUEST_SCHEMA = "rigor.consultation-request.v1";
+var CONSULTATION_SESSION_SCHEMA = "rigor.consultation-session.v1";
+var CONSULTATION_RESULT_INPUT_SCHEMA = "rigor.consultation-result-input.v1";
+var ROUTING_PLAN_SCHEMA = "rigor.routing-plan.v1";
+var ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1";
+var ATTEMPT_RESULT_INPUT_SCHEMA = "rigor.attempt-result-input.v1";
+var OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1";
+var OUTCOME_SCHEMA = "rigor.outcome.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -474,6 +523,18 @@ function parseContract(value) {
   strings(item.allowedPaths, "allowedPaths");
   return item;
 }
+function parseVerification(value) {
+  const item = record(value, "verification");
+  if (item.schemaVersion !== VERIFY_SCHEMA)
+    throw new RigorError("Unsupported verification schema", EXIT.inputError);
+  taskId(item.taskId);
+  textField(item.artifactId, "verification.artifactId", 128);
+  textField(item.contractArtifactId, "verification.contractArtifactId", 128);
+  strings(item.changedPaths, "verification.changedPaths");
+  if (item.status !== "passed" && item.status !== "failed")
+    throw new RigorError("Invalid verification status", EXIT.inputError);
+  return item;
+}
 function parseContractInput(value) {
   const item = record(value, "contract input");
   if (item.schemaVersion !== CONTRACT_INPUT_SCHEMA)
@@ -560,7 +621,7 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     createdAt: now.toISOString(),
     policyHash: hash(policy),
     head,
-    treeHash: await treeHash(root),
+    treeHash: await treeHash(root, [".rigor/evidence/", ".rigor/events.jsonl"]),
     changedPaths,
     scopeViolations,
     checks,
@@ -654,10 +715,28 @@ async function saveArtifact(root, task, kind, value) {
   });
   return file;
 }
+async function saveCollectionArtifact(root, task, collection, kind, value) {
+  if (!/^[a-z][a-z0-9-]*$/u.test(collection))
+    throw new RigorError("Invalid artifact collection", EXIT.inputError);
+  const item = record(value, kind);
+  const id = textField(item.artifactId, `${kind}.artifactId`, 128);
+  if (!/^[A-Za-z0-9_-]+$/u.test(id))
+    throw new RigorError("Invalid artifact identifier", EXIT.inputError);
+  const directory = import_node_path4.default.join(root, ".rigor", "evidence", task, collection);
+  const file = import_node_path4.default.join(directory, `${id}.json`);
+  await writeJson(file, value);
+  await appendEvent(root, {
+    type: kind,
+    taskId: task,
+    artifactId: id,
+    at: (/* @__PURE__ */ new Date()).toISOString()
+  });
+  return file;
+}
 async function appendEvent(root, event) {
   const directory = import_node_path4.default.join(root, ".rigor");
-  await (0, import_promises2.mkdir)(directory, { recursive: true });
-  await (0, import_promises2.appendFile)(
+  await (0, import_promises3.mkdir)(directory, { recursive: true });
+  await (0, import_promises3.appendFile)(
     import_node_path4.default.join(directory, "events.jsonl"),
     `${JSON.stringify(event)}
 `,
@@ -667,7 +746,7 @@ async function appendEvent(root, event) {
 async function retrospect(root) {
   let content = "";
   try {
-    content = await (0, import_promises2.readFile)(import_node_path4.default.join(root, ".rigor", "events.jsonl"), "utf8");
+    content = await (0, import_promises3.readFile)(import_node_path4.default.join(root, ".rigor", "events.jsonl"), "utf8");
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -683,23 +762,197 @@ async function retrospect(root) {
       counts.invalid = (counts.invalid ?? 0) + 1;
     }
   }
+  const { outcomeTotals, candidates } = await aggregateOutcomes(root);
   return {
     schemaVersion: "rigor.retrospective.v1",
     generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     taskCount: tasks.size,
-    eventCounts: counts
+    eventCounts: counts,
+    outcomeTotals,
+    candidates
   };
+}
+function optionalString(value) {
+  return typeof value === "string" ? value : null;
+}
+function optionalNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : void 0;
+}
+async function aggregateOutcomes(root) {
+  const evidence = import_node_path4.default.join(root, ".rigor", "evidence");
+  const totals = {
+    total: 0,
+    accepted: 0,
+    rejected: 0,
+    acceptedWithoutModelCodeChanges: 0,
+    reverted: 0,
+    escapedDefectSuspected: 0,
+    escapedDefectConfirmed: 0,
+    malformedOutcomes: 0,
+    dataCompleteness: {
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0,
+      modelIdentityAbsent: 0,
+      providerCostPresent: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      attemptLinked: 0,
+      attemptUnlinked: 0,
+      verificationLinked: 0
+    }
+  };
+  const candidateMap = /* @__PURE__ */ new Map();
+  let taskDirs = [];
+  try {
+    const entries = await (0, import_promises3.readdir)(evidence, { withFileTypes: true });
+    taskDirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  for (const task of taskDirs) {
+    let content;
+    try {
+      content = await (0, import_promises3.readFile)(
+        import_node_path4.default.join(evidence, task, "outcome.json"),
+        "utf8"
+      );
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      totals.malformedOutcomes += 1;
+      continue;
+    }
+    try {
+      const outcome = record(JSON.parse(content), "outcome");
+      if (outcome.schemaVersion !== OUTCOME_SCHEMA)
+        throw new RigorError("unexpected outcome schema", EXIT.inputError);
+      applyOutcome(totals, candidateMap, outcome);
+    } catch {
+      totals.malformedOutcomes += 1;
+    }
+  }
+  const candidates = [...candidateMap.values()].sort((a, b) => a.candidate.localeCompare(b.candidate)).map((entry) => ({
+    candidate: entry.candidate,
+    provider: entry.provider,
+    model: entry.model,
+    capabilityClass: entry.capabilityClass,
+    outcomes: entry.outcomes,
+    accepted: entry.accepted,
+    successRate: { numerator: entry.accepted, denominator: entry.outcomes },
+    retries: {
+      total: entry.retriesTotal,
+      perOutcome: entry.outcomes > 0 ? entry.retriesTotal / entry.outcomes : null
+    },
+    elapsedMs: {
+      total: entry.elapsedTotal,
+      average: entry.elapsedPresent > 0 ? entry.elapsedTotal / entry.elapsedPresent : null,
+      present: entry.elapsedPresent,
+      missing: entry.elapsedMissing
+    },
+    humanInterventionMinutes: {
+      total: entry.humanTotal,
+      outcomesWithIntervention: entry.humanOutcomes
+    },
+    dataCompleteness: {
+      usageRecorded: entry.usageRecorded,
+      usageUnavailable: entry.usageUnavailable,
+      usageUnknown: entry.usageUnknown,
+      modelIdentityPresent: entry.modelIdentityPresent
+    }
+  }));
+  return { outcomeTotals: totals, candidates };
+}
+function applyOutcome(totals, candidateMap, outcome) {
+  const completeness = totals.dataCompleteness;
+  totals.total += 1;
+  const decision = outcome.decision;
+  if (decision === "accepted") totals.accepted += 1;
+  else if (decision === "rejected") totals.rejected += 1;
+  if (outcome.acceptedWithoutModelCodeChanges === true)
+    totals.acceptedWithoutModelCodeChanges += 1;
+  if (outcome.revertStatus === "reverted") totals.reverted += 1;
+  if (outcome.escapedDefectStatus === "suspected")
+    totals.escapedDefectSuspected += 1;
+  if (outcome.escapedDefectStatus === "confirmed")
+    totals.escapedDefectConfirmed += 1;
+  const usage = typeof outcome.usage === "object" && outcome.usage !== null ? outcome.usage : {};
+  const usageStatus = usage.status;
+  if (usageStatus === "recorded") completeness.usageRecorded += 1;
+  else if (usageStatus === "unavailable") completeness.usageUnavailable += 1;
+  else if (usageStatus === "unknown") completeness.usageUnknown += 1;
+  const modelIdentityPresent = usage.modelIdentity !== null && usage.modelIdentity !== void 0;
+  if (modelIdentityPresent) completeness.modelIdentityPresent += 1;
+  else completeness.modelIdentityAbsent += 1;
+  if (usage.providerCost !== null && usage.providerCost !== void 0)
+    completeness.providerCostPresent += 1;
+  const elapsed = optionalNumber(outcome.attemptDurationMs);
+  if (elapsed !== void 0) completeness.elapsedPresent += 1;
+  else completeness.elapsedMissing += 1;
+  const attemptLinked = typeof outcome.attemptArtifactId === "string";
+  if (attemptLinked) completeness.attemptLinked += 1;
+  else completeness.attemptUnlinked += 1;
+  if (typeof outcome.verificationArtifactId === "string")
+    completeness.verificationLinked += 1;
+  let candidate = "unlinked";
+  let provider = null;
+  let model = null;
+  let capabilityClass = null;
+  if (attemptLinked) {
+    provider = optionalString(outcome.provider);
+    model = optionalString(outcome.model);
+    capabilityClass = optionalString(outcome.capabilityClass);
+    candidate = model ?? `${provider}/${capabilityClass}`;
+  }
+  let entry = candidateMap.get(candidate);
+  if (!entry) {
+    entry = {
+      candidate,
+      provider,
+      model,
+      capabilityClass,
+      outcomes: 0,
+      accepted: 0,
+      retriesTotal: 0,
+      elapsedTotal: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      humanTotal: 0,
+      humanOutcomes: 0,
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0
+    };
+    candidateMap.set(candidate, entry);
+  }
+  entry.outcomes += 1;
+  if (decision === "accepted") entry.accepted += 1;
+  entry.retriesTotal += optionalNumber(outcome.retryCount) ?? 0;
+  if (elapsed !== void 0) {
+    entry.elapsedTotal += elapsed;
+    entry.elapsedPresent += 1;
+  } else {
+    entry.elapsedMissing += 1;
+  }
+  const human = optionalNumber(outcome.humanCorrectionMinutes) ?? 0;
+  entry.humanTotal += human;
+  if (human > 0) entry.humanOutcomes += 1;
+  if (usageStatus === "recorded") entry.usageRecorded += 1;
+  else if (usageStatus === "unavailable") entry.usageUnavailable += 1;
+  else if (usageStatus === "unknown") entry.usageUnknown += 1;
+  if (modelIdentityPresent) entry.modelIdentityPresent += 1;
 }
 async function loadPolicy(root) {
   return parsePolicy(await readJson(import_node_path4.default.join(root, ".rigor", "policy.json")));
 }
 
 // src/ci.ts
-var import_promises4 = require("node:fs/promises");
+var import_promises5 = require("node:fs/promises");
 var import_node_path6 = __toESM(require("node:path"), 1);
 
 // src/setup.ts
-var import_promises3 = require("node:fs/promises");
+var import_promises4 = require("node:fs/promises");
 var import_node_path5 = __toESM(require("node:path"), 1);
 function defaultPolicy(repositoryId) {
   return {
@@ -833,16 +1086,16 @@ async function setup(root, bundlePath) {
     await assertContainedPath(root, target);
     let existing = null;
     try {
-      const stat = await (0, import_promises3.lstat)(target);
+      const stat = await (0, import_promises4.lstat)(target);
       if (stat.isSymbolicLink() || !stat.isFile()) {
         conflicts.push(candidate.relative);
         continue;
       }
-      existing = await (0, import_promises3.readFile)(target);
+      existing = await (0, import_promises4.readFile)(target);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
-    const desired = candidate.copyFrom ? await (0, import_promises3.readFile)(candidate.copyFrom) : Buffer.from(candidate.content ?? "");
+    const desired = candidate.copyFrom ? await (0, import_promises4.readFile)(candidate.copyFrom) : Buffer.from(candidate.content ?? "");
     if (existing !== null) {
       if (existing.equals(desired)) unchanged.push(candidate.relative);
       else conflicts.push(candidate.relative);
@@ -856,9 +1109,9 @@ async function setup(root, bundlePath) {
       EXIT.policyViolation
     );
   for (const { candidate, target, desired } of pending) {
-    await (0, import_promises3.mkdir)(import_node_path5.default.dirname(target), { recursive: true });
-    await (0, import_promises3.writeFile)(target, desired, { flag: "wx" });
-    if (candidate.mode) await (0, import_promises3.chmod)(target, candidate.mode);
+    await (0, import_promises4.mkdir)(import_node_path5.default.dirname(target), { recursive: true });
+    await (0, import_promises4.writeFile)(target, desired, { flag: "wx" });
+    if (candidate.mode) await (0, import_promises4.chmod)(target, candidate.mode);
     created.push(candidate.relative);
   }
   return { created, unchanged };
@@ -887,7 +1140,7 @@ async function evidenceFiles(root) {
   async function walk(dir) {
     let entries;
     try {
-      entries = await (0, import_promises4.readdir)(dir, { withFileTypes: true });
+      entries = await (0, import_promises5.readdir)(dir, { withFileTypes: true });
     } catch {
       return;
     }
@@ -1009,9 +1262,455 @@ async function ciVerify(root, baseSha, headSha) {
   };
 }
 
+// src/governance.ts
+var GOVERNANCE_SCHEMA = "rigor.governance.v1";
+function parseRepository(value) {
+  const text = textField(value, "--repo", 200);
+  const match = /^([A-Za-z0-9](?:[A-Za-z0-9-]{0,38})?)\/([A-Za-z0-9._-]{1,100})$/u.exec(
+    text
+  );
+  const owner = match?.[1];
+  const repo = match?.[2];
+  if (!owner || !repo || repo === "." || repo === "..") {
+    throw new RigorError(
+      "--repo must be an owner/name repository reference",
+      EXIT.inputError
+    );
+  }
+  return { owner, repo };
+}
+function parseBranch(value) {
+  const text = textField(value, "--branch", 255);
+  if (/[\u0000-\u001f\u007f ~^:?*[\\]/u.test(text) || text.includes("..")) {
+    throw new RigorError(
+      "--branch contains unsupported characters",
+      EXIT.inputError
+    );
+  }
+  return text;
+}
+function githubReader(token, fetchImpl = fetch) {
+  if (token !== void 0 && !/^[!-~]{1,512}$/u.test(token)) {
+    throw new RigorError(
+      "GitHub token contains unsupported characters",
+      EXIT.inputError
+    );
+  }
+  return async (requestPath) => {
+    const headers = {
+      accept: "application/vnd.github+json",
+      "x-github-api-version": "2022-11-28",
+      "user-agent": "rigor-governance"
+    };
+    if (token) headers.authorization = `Bearer ${token}`;
+    try {
+      const response = await fetchImpl(`https://api.github.com${requestPath}`, {
+        method: "GET",
+        headers,
+        redirect: "error",
+        signal: AbortSignal.timeout(TIMEOUT_MS)
+      });
+      const link = response.headers.get("link");
+      if (link && /rel="next"/u.test(link)) return { status: 0, body: null };
+      const text = await response.text();
+      if (text.length > MAX_RESPONSE_BYTES) return { status: 0, body: null };
+      if (text.length === 0) {
+        if (response.status !== 200)
+          return { status: response.status, body: null };
+        return { status: 0, body: null };
+      }
+      return { status: response.status, body: JSON.parse(text) };
+    } catch {
+      return { status: 0, body: null };
+    }
+  };
+}
+var TIMEOUT_MS = 1e4;
+var MAX_RESPONSE_BYTES = 1e6;
+function splitCodeownersLine(line) {
+  const tokens = [];
+  let current = "";
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === "\\" && i + 1 < line.length) {
+      current += line[i + 1];
+      i += 1;
+    } else if (char === "#") {
+      break;
+    } else if (char === " " || char === "	") {
+      if (current) tokens.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+function parseCodeowners(text) {
+  const entries = [];
+  for (const rawLine of text.split(/\r?\n/u)) {
+    const tokens = splitCodeownersLine(rawLine);
+    const pattern = tokens[0];
+    if (!pattern) continue;
+    if (pattern.startsWith("!")) continue;
+    entries.push({ pattern, owners: tokens.slice(1) });
+  }
+  return entries;
+}
+function escapeRegex2(character) {
+  return /[\\^$.*+?()[\]{}|]/u.test(character) ? `\\${character}` : character;
+}
+function codeownersPatternToRegExp(pattern) {
+  let body = pattern;
+  let directoryOnly = false;
+  if (body.endsWith("/")) {
+    directoryOnly = true;
+    body = body.slice(0, -1);
+  }
+  let anchored = false;
+  if (body.startsWith("/")) {
+    anchored = true;
+    body = body.slice(1);
+  } else if (body.includes("/")) {
+    anchored = true;
+  }
+  let source = anchored ? "^" : "^(?:.*/)?";
+  for (let i = 0; i < body.length; i += 1) {
+    const char = body[i];
+    if (char === "*") {
+      if (body[i + 1] === "*") {
+        i += 1;
+        if (body[i + 1] === "/") {
+          i += 1;
+          source += "(?:.*/)?";
+        } else source += ".*";
+      } else source += "[^/]*";
+    } else if (char === "?") source += "[^/]";
+    else source += escapeRegex2(char);
+  }
+  const last = body[body.length - 1];
+  if (directoryOnly) source += "/.*";
+  else if (last !== "*" && last !== "?") source += "(?:/.*)?";
+  return new RegExp(`${source}$`, "u");
+}
+function codeownersOwners(entries, pathname) {
+  let owners = [];
+  for (const entry of entries) {
+    if (codeownersPatternToRegExp(entry.pattern).test(pathname)) {
+      owners = entry.owners;
+    }
+  }
+  return owners;
+}
+function representativePaths(policy) {
+  const paths = /* @__PURE__ */ new Set();
+  for (const rule of policy.rules) {
+    if (!rule.protected) continue;
+    for (const glob of rule.paths) {
+      paths.add(
+        glob.split("/").map(
+          (segment) => segment === "**" ? "governed" : segment.replaceAll("**", "governed").replaceAll("*", "governed").replaceAll("?", "x")
+        ).join("/")
+      );
+    }
+  }
+  return [...paths].sort();
+}
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function rulesetFacts(body) {
+  const facts = {
+    pullRequestRule: false,
+    approvals: 0,
+    dismissStale: false,
+    codeOwnerReview: false,
+    lastPushApproval: false,
+    contexts: [],
+    forcePushBlocked: false,
+    deletionBlocked: false
+  };
+  if (!Array.isArray(body)) return facts;
+  for (const item of body) {
+    if (!isRecord(item)) continue;
+    const parameters = isRecord(item.parameters) ? item.parameters : {};
+    if (item.type === "pull_request") {
+      facts.pullRequestRule = true;
+      const count = parameters.required_approving_review_count;
+      if (typeof count === "number" && count > facts.approvals)
+        facts.approvals = count;
+      if (parameters.dismiss_stale_reviews_on_push === true)
+        facts.dismissStale = true;
+      if (parameters.require_code_owner_review === true)
+        facts.codeOwnerReview = true;
+      if (parameters.require_last_push_approval === true)
+        facts.lastPushApproval = true;
+    } else if (item.type === "required_status_checks") {
+      const checks = parameters.required_status_checks;
+      if (Array.isArray(checks)) {
+        for (const check of checks) {
+          if (isRecord(check) && typeof check.context === "string")
+            facts.contexts.push(check.context);
+        }
+      }
+    } else if (item.type === "non_fast_forward") facts.forcePushBlocked = true;
+    else if (item.type === "deletion") facts.deletionBlocked = true;
+  }
+  return facts;
+}
+function classicFacts(body) {
+  const facts = {
+    pullRequestRule: false,
+    approvals: 0,
+    dismissStale: false,
+    codeOwnerReview: false,
+    lastPushApproval: false,
+    contexts: [],
+    forcePushBlocked: false,
+    deletionBlocked: false
+  };
+  if (!isRecord(body)) return facts;
+  const reviews = body.required_pull_request_reviews;
+  if (isRecord(reviews)) {
+    facts.pullRequestRule = true;
+    const count = reviews.required_approving_review_count;
+    if (typeof count === "number") facts.approvals = count;
+    if (reviews.dismiss_stale_reviews === true) facts.dismissStale = true;
+    if (reviews.require_code_owner_reviews === true)
+      facts.codeOwnerReview = true;
+    if (reviews.require_last_push_approval === true)
+      facts.lastPushApproval = true;
+  }
+  const checks = body.required_status_checks;
+  if (isRecord(checks)) {
+    if (Array.isArray(checks.contexts)) {
+      for (const context of checks.contexts) {
+        if (typeof context === "string") facts.contexts.push(context);
+      }
+    }
+    if (Array.isArray(checks.checks)) {
+      for (const check of checks.checks) {
+        if (isRecord(check) && typeof check.context === "string")
+          facts.contexts.push(check.context);
+      }
+    }
+  }
+  const forcePushes = body.allow_force_pushes;
+  if (isRecord(forcePushes) && forcePushes.enabled === false)
+    facts.forcePushBlocked = true;
+  const deletions = body.allow_deletions;
+  if (isRecord(deletions) && deletions.enabled === false)
+    facts.deletionBlocked = true;
+  return facts;
+}
+function evaluateGovernance(input) {
+  const findings = [];
+  const rulesKnown = input.rules.status === 200;
+  const classicKnown = input.protection.status === 200 || input.protection.status === 404;
+  const ruleset = rulesetFacts(rulesKnown ? input.rules.body : null);
+  const classic = classicFacts(
+    input.protection.status === 200 ? input.protection.body : null
+  );
+  const branchRequirement = (id, fromRuleset, fromClassic, requirement) => {
+    if (rulesKnown && fromRuleset || classicKnown && fromClassic) {
+      findings.push({ id, status: "satisfied", detail: requirement });
+    } else if (!rulesKnown && !classicKnown) {
+      findings.push({
+        id,
+        status: "unverifiable",
+        detail: `${requirement}: branch rules and classic protection could not be fully read with the available credentials`
+      });
+    } else if (!classicKnown) {
+      findings.push({
+        id,
+        status: "unverifiable",
+        detail: `${requirement}: not satisfied by rulesets, and classic protection could not be fully read with the available credentials`
+      });
+    } else {
+      findings.push({
+        id,
+        status: "failed",
+        detail: `${requirement}: not required by any active ruleset or classic protection on ${input.branch}`
+      });
+    }
+  };
+  branchRequirement(
+    "pull-request-required",
+    ruleset.pullRequestRule,
+    classic.pullRequestRule,
+    "pull requests are required before merging"
+  );
+  branchRequirement(
+    "approval-count",
+    ruleset.approvals >= 1,
+    classic.approvals >= 1,
+    "at least one approving review is required"
+  );
+  branchRequirement(
+    "stale-review-dismissal",
+    ruleset.dismissStale,
+    classic.dismissStale,
+    "stale approvals are dismissed on new commits"
+  );
+  branchRequirement(
+    "code-owner-review",
+    ruleset.codeOwnerReview,
+    classic.codeOwnerReview,
+    "review from code owners is required"
+  );
+  branchRequirement(
+    "last-push-approval",
+    ruleset.lastPushApproval,
+    classic.lastPushApproval,
+    "approval from someone other than the last pusher is required"
+  );
+  branchRequirement(
+    "required-check",
+    ruleset.contexts.includes(input.requiredCheckContext),
+    classic.contexts.includes(input.requiredCheckContext),
+    `the status check "${input.requiredCheckContext}" is required`
+  );
+  branchRequirement(
+    "force-push-blocked",
+    ruleset.forcePushBlocked,
+    classic.forcePushBlocked,
+    "force pushes are blocked"
+  );
+  branchRequirement(
+    "deletion-blocked",
+    ruleset.deletionBlocked,
+    classic.deletionBlocked,
+    "branch deletion is blocked"
+  );
+  if (input.codeowners.state === "unverifiable") {
+    findings.push({
+      id: "codeowners-sampled-coverage",
+      status: "unverifiable",
+      detail: "CODEOWNERS could not be fully read with the available credentials"
+    });
+  } else if (input.codeowners.state === "missing") {
+    findings.push({
+      id: "codeowners-sampled-coverage",
+      status: "failed",
+      detail: "no CODEOWNERS file exists at .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS"
+    });
+  } else {
+    const entries = parseCodeowners(input.codeowners.text);
+    const uncovered = input.sampledPaths.filter(
+      (pathname) => codeownersOwners(entries, pathname).length === 0
+    );
+    findings.push(
+      uncovered.length === 0 ? {
+        id: "codeowners-sampled-coverage",
+        status: "satisfied",
+        detail: `${input.codeowners.source} assigns owners to every sampled representative of the policy-protected globs; this sampled check is an early warning and does not prove full coverage of each glob`
+      } : {
+        id: "codeowners-sampled-coverage",
+        status: "failed",
+        detail: `${input.codeowners.source} leaves sampled policy-protected paths without owners: ${uncovered.join(", ")}`
+      }
+    );
+  }
+  if (input.environments.status === 200 && isRecord(input.environments.body)) {
+    const list = Array.isArray(input.environments.body.environments) ? input.environments.body.environments : [];
+    const unprotected = [];
+    for (const environment of list) {
+      if (!isRecord(environment)) continue;
+      const name = typeof environment.name === "string" ? environment.name : "unnamed";
+      const rules = environment.protection_rules;
+      if (!Array.isArray(rules) || rules.length === 0) unprotected.push(name);
+    }
+    if (list.length === 0) {
+      findings.push({
+        id: "deployment-environments",
+        status: "satisfied",
+        detail: "no deployment environments are configured"
+      });
+    } else if (unprotected.length === 0) {
+      findings.push({
+        id: "deployment-environments",
+        status: "satisfied",
+        detail: `all ${String(list.length)} deployment environments have protection rules`
+      });
+    } else {
+      findings.push({
+        id: "deployment-environments",
+        status: "failed",
+        detail: `deployment environments without protection rules: ${unprotected.join(", ")}`
+      });
+    }
+  } else {
+    findings.push({
+      id: "deployment-environments",
+      status: "unverifiable",
+      detail: "deployment environments could not be fully read with the available credentials"
+    });
+  }
+  return {
+    schemaVersion: GOVERNANCE_SCHEMA,
+    repository: input.repository,
+    branch: input.branch,
+    requiredCheckContext: input.requiredCheckContext,
+    sampledPaths: input.sampledPaths,
+    findings,
+    status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
+  };
+}
+var CODEOWNERS_LOCATIONS = [
+  ".github/CODEOWNERS",
+  "CODEOWNERS",
+  "docs/CODEOWNERS"
+];
+async function readCodeowners(read, base) {
+  let unverifiable = false;
+  for (const location of CODEOWNERS_LOCATIONS) {
+    const response = await read(
+      `${base}/contents/${location.split("/").map(encodeURIComponent).join("/")}`
+    );
+    if (response.status === 200 && isRecord(response.body)) {
+      const content = response.body.content;
+      if (typeof content === "string") {
+        try {
+          return {
+            state: "found",
+            source: location,
+            text: Buffer.from(content, "base64").toString("utf8")
+          };
+        } catch {
+          unverifiable = true;
+        }
+      }
+    } else if (response.status !== 404) unverifiable = true;
+  }
+  return {
+    state: unverifiable ? "unverifiable" : "missing",
+    source: "",
+    text: ""
+  };
+}
+async function governanceVerify(policy, options, read) {
+  const base = `/repos/${encodeURIComponent(options.owner)}/${encodeURIComponent(options.repo)}`;
+  const branch = encodeURIComponent(options.branch);
+  const rules = await read(`${base}/rules/branches/${branch}?per_page=100`);
+  const protection = await read(`${base}/branches/${branch}/protection`);
+  const codeowners = await readCodeowners(read, base);
+  const environments = await read(`${base}/environments?per_page=100`);
+  return evaluateGovernance({
+    repository: `${options.owner}/${options.repo}`,
+    branch: options.branch,
+    requiredCheckContext: options.requiredCheckContext,
+    sampledPaths: representativePaths(policy),
+    rules,
+    protection,
+    codeowners,
+    environments
+  });
+}
+
 // src/hook.ts
 var import_node_path7 = __toESM(require("node:path"), 1);
-var import_promises5 = require("node:fs/promises");
+var import_promises6 = require("node:fs/promises");
 async function userPromptHook(input, cwd = process.cwd()) {
   if (input === null || typeof input !== "object" || Array.isArray(input))
     return {
@@ -1025,7 +1724,7 @@ async function userPromptHook(input, cwd = process.cwd()) {
     return null;
   }
   try {
-    await (0, import_promises5.access)(import_node_path7.default.join(root, ".rigor"));
+    await (0, import_promises6.access)(import_node_path7.default.join(root, ".rigor"));
   } catch {
     return null;
   }
@@ -1103,6 +1802,1435 @@ function evaluate(policy, intent, git2, now = /* @__PURE__ */ new Date()) {
   };
 }
 
+// src/release.ts
+var import_promises7 = require("node:fs/promises");
+var import_node_os = __toESM(require("node:os"), 1);
+var import_node_path8 = __toESM(require("node:path"), 1);
+var RELEASE_SCHEMA = "rigor.release.v1";
+function isRecord2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function evaluateRelease(facts) {
+  const findings = [];
+  findings.push(
+    facts.dirty ? {
+      id: "clean-tree",
+      status: "failed",
+      detail: "the worktree has uncommitted changes; a release must be cut from a clean tree"
+    } : {
+      id: "clean-tree",
+      status: "satisfied",
+      detail: "the worktree is clean"
+    }
+  );
+  if (facts.packageVersion === facts.version && facts.manifestVersion === facts.version) {
+    findings.push({
+      id: "version-sync",
+      status: "satisfied",
+      detail: `package.json and .claude-plugin/plugin.json both declare ${facts.version}`
+    });
+  } else {
+    findings.push({
+      id: "version-sync",
+      status: "failed",
+      detail: `version mismatch: package.json=${facts.packageVersion || "(unreadable)"}, .claude-plugin/plugin.json=${facts.manifestVersion || "(unreadable)"}, requested=${facts.version}`
+    });
+  }
+  findings.push(
+    facts.changelogVersions.includes(facts.version) ? {
+      id: "changelog-entry",
+      status: "satisfied",
+      detail: `CHANGELOG.md has a section for ${facts.version}`
+    } : {
+      id: "changelog-entry",
+      status: "failed",
+      detail: `CHANGELOG.md has no section for ${facts.version}`
+    }
+  );
+  findings.push(
+    facts.bundleMatches ? {
+      id: "bundle-built",
+      status: "satisfied",
+      detail: "dist/rigor.cjs matches a fresh build"
+    } : {
+      id: "bundle-built",
+      status: "failed",
+      detail: "committed dist/rigor.cjs differs from a fresh build; rebuild and commit it"
+    }
+  );
+  findings.push(
+    facts.branch === facts.expectedBranch ? {
+      id: "expected-branch",
+      status: "satisfied",
+      detail: `HEAD is on the expected branch ${facts.expectedBranch}`
+    } : {
+      id: "expected-branch",
+      status: "failed",
+      detail: `HEAD is on ${facts.branch || "(unknown)"}, not the expected branch ${facts.expectedBranch}`
+    }
+  );
+  if (facts.expectedSha === null) {
+    findings.push({
+      id: "expected-commit",
+      status: "satisfied",
+      detail: `HEAD is ${facts.head ?? "(none)"}; no expected SHA was pinned`
+    });
+  } else if (facts.head === facts.expectedSha) {
+    findings.push({
+      id: "expected-commit",
+      status: "satisfied",
+      detail: `HEAD is the expected commit ${facts.expectedSha}`
+    });
+  } else {
+    findings.push({
+      id: "expected-commit",
+      status: "failed",
+      detail: `HEAD is ${facts.head ?? "(none)"}, not the expected commit ${facts.expectedSha}`
+    });
+  }
+  if (facts.ci.state === "success") {
+    findings.push({
+      id: "ci-success",
+      status: "satisfied",
+      detail: facts.ci.detail
+    });
+  } else if (facts.ci.state === "failed") {
+    findings.push({
+      id: "ci-success",
+      status: "failed",
+      detail: facts.ci.detail
+    });
+  } else if (facts.ci.state === "unverifiable") {
+    findings.push({
+      id: "ci-success",
+      status: "unverifiable",
+      detail: facts.ci.detail
+    });
+  } else {
+    findings.push({
+      id: "ci-success",
+      status: "unverifiable",
+      detail: "GitHub CI was not checked; pass --repo to verify the required check(s) for the exact SHA"
+    });
+  }
+  return {
+    schemaVersion: RELEASE_SCHEMA,
+    version: facts.version,
+    branch: facts.branch,
+    head: facts.head,
+    requiredChecks: facts.requiredChecks,
+    findings,
+    status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
+  };
+}
+async function releaseCiFact(read, ref, sha, requiredChecks) {
+  if (!/^[0-9a-fA-F]{7,64}$/u.test(sha))
+    return { state: "unverifiable", detail: "invalid commit identifier" };
+  if (requiredChecks.length === 0)
+    return {
+      state: "unverifiable",
+      detail: "no required checks were specified to verify"
+    };
+  const base = `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}`;
+  const response = await read(
+    `${base}/commits/${encodeURIComponent(sha)}/check-runs?per_page=100`
+  );
+  if (response.status !== 200 || !isRecord2(response.body) || !Array.isArray(response.body.check_runs))
+    return {
+      state: "unverifiable",
+      detail: `check runs for ${sha} could not be read with the available credentials`
+    };
+  const runs = response.body.check_runs;
+  const satisfied = [];
+  const missing = [];
+  for (const check of requiredChecks) {
+    const ok = runs.some(
+      (item) => isRecord2(item) && item.name === check && item.status === "completed" && item.conclusion === "success"
+    );
+    if (ok) satisfied.push(check);
+    else missing.push(check);
+  }
+  if (missing.length === 0)
+    return {
+      state: "success",
+      detail: `all required checks succeeded for ${sha}: ${satisfied.join(", ")}`
+    };
+  return {
+    state: "failed",
+    detail: `required checks not successful for ${sha}: ${missing.join(", ")}`
+  };
+}
+async function readJsonVersion(file) {
+  try {
+    const parsed = JSON.parse(await (0, import_promises7.readFile)(file, "utf8"));
+    if (isRecord2(parsed) && typeof parsed.version === "string")
+      return parsed.version;
+  } catch {
+  }
+  return "";
+}
+async function readChangelogVersions(root) {
+  try {
+    const text = await (0, import_promises7.readFile)(import_node_path8.default.join(root, "CHANGELOG.md"), "utf8");
+    const versions = [];
+    for (const match of text.matchAll(/^##\s+(\d+\.\d+\.\d+)\b/gmu))
+      if (match[1]) versions.push(match[1]);
+    return versions;
+  } catch {
+    return [];
+  }
+}
+async function bundleMatchesFreshBuild(root) {
+  const temp = import_node_path8.default.join(
+    import_node_os.default.tmpdir(),
+    `rigor-release-bundle-${String(process.pid)}.cjs`
+  );
+  try {
+    const result = await run(
+      "npm",
+      ["run", "build", "--", `--outfile=${temp}`],
+      root,
+      12e4
+    );
+    if (result.code !== 0) return false;
+    const [fresh, committed] = await Promise.all([
+      (0, import_promises7.readFile)(temp),
+      (0, import_promises7.readFile)(import_node_path8.default.join(root, "dist", "rigor.cjs"))
+    ]);
+    return fresh.equals(committed);
+  } catch {
+    return false;
+  } finally {
+    await (0, import_promises7.rm)(temp, { force: true }).catch(() => void 0);
+  }
+}
+async function releaseVerify(root, options, read) {
+  const packageVersion = await readJsonVersion(import_node_path8.default.join(root, "package.json"));
+  const manifestVersion = await readJsonVersion(
+    import_node_path8.default.join(root, ".claude-plugin", "plugin.json")
+  );
+  const facts = await gitFacts(root);
+  const branchResult = await run(
+    "git",
+    ["rev-parse", "--abbrev-ref", "HEAD"],
+    root
+  );
+  const branch = branchResult.stdout.toString("utf8").trim();
+  const changelogVersions = await readChangelogVersions(root);
+  const bundleMatches = await bundleMatchesFreshBuild(root);
+  let ci;
+  if (options.repo && read) {
+    ci = facts.head === null ? {
+      state: "unverifiable",
+      detail: "there is no HEAD commit to check remote CI for"
+    } : await releaseCiFact(
+      read,
+      options.repo,
+      facts.head,
+      options.requiredChecks
+    );
+  } else {
+    ci = {
+      state: "not-requested",
+      detail: "the remote GitHub CI check was not requested (no --repo)"
+    };
+  }
+  return evaluateRelease({
+    version: options.version,
+    packageVersion,
+    manifestVersion,
+    branch,
+    expectedBranch: options.expectedBranch,
+    head: facts.head,
+    expectedSha: options.expectedSha,
+    dirty: facts.dirty,
+    changelogVersions,
+    bundleMatches,
+    requiredChecks: options.requiredChecks,
+    ci
+  });
+}
+
+// src/routing.ts
+var signalLevels = ["low", "medium", "high", "critical"];
+var verificationStrengths = [
+  "weak",
+  "moderate",
+  "strong"
+];
+var capabilityClasses = [
+  "economy",
+  "standard",
+  "premium",
+  "frontier"
+];
+var purposes = [
+  "implementation",
+  "consultation",
+  "review",
+  "adversarial-review",
+  "rescue"
+];
+function oneOf(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function integer(value, name, minimum, maximum) {
+  if (!Number.isInteger(value) || value < minimum || value > maximum)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function bool2(value, name) {
+  if (typeof value !== "boolean")
+    throw new RigorError(`${name} must be boolean`, EXIT.inputError);
+  return value;
+}
+function parseRoutingInput(value) {
+  const item = record(value, "routing input");
+  if (item.schemaVersion !== ROUTING_INPUT_SCHEMA)
+    throw new RigorError("Unsupported routing input schema", EXIT.inputError);
+  const signals = record(item.signals, "signals");
+  const budget = record(item.budget, "budget");
+  const assessmentReasons = strings(
+    item.assessmentReasons,
+    "assessmentReasons",
+    20
+  );
+  if (assessmentReasons.length === 0)
+    throw new RigorError(
+      "assessmentReasons must not be empty",
+      EXIT.inputError
+    );
+  return {
+    schemaVersion: ROUTING_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    purpose: oneOf(item.purpose, purposes, "purpose"),
+    signals: {
+      complexity: oneOf(signals.complexity, signalLevels, "complexity"),
+      ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
+      novelty: oneOf(signals.novelty, signalLevels, "novelty"),
+      verificationStrength: oneOf(
+        signals.verificationStrength,
+        verificationStrengths,
+        "verificationStrength"
+      )
+    },
+    assessmentReasons,
+    budget: {
+      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
+      maxDurationMs: integer(
+        budget.maxDurationMs,
+        "maxDurationMs",
+        1e3,
+        864e5
+      ),
+      maxRelativeCost: integer(
+        budget.maxRelativeCost,
+        "maxRelativeCost",
+        1,
+        1e6
+      )
+    }
+  };
+}
+function parseCandidate(value, index) {
+  const item = record(value, `candidates[${index}]`);
+  const candidate = {
+    id: textField(item.id, `candidates[${index}].id`, 128),
+    provider: textField(item.provider, `candidates[${index}].provider`, 128),
+    capabilityClass: oneOf(
+      item.capabilityClass,
+      capabilityClasses,
+      `candidates[${index}].capabilityClass`
+    ),
+    purposes: strings(
+      item.purposes,
+      `candidates[${index}].purposes`,
+      purposes.length
+    ).map(
+      (purpose) => oneOf(purpose, purposes, `candidates[${index}].purpose`)
+    ),
+    relativeCost: integer(
+      item.relativeCost,
+      `candidates[${index}].relativeCost`,
+      1,
+      1e6
+    ),
+    requiresAdditionalExternalTransmission: bool2(
+      item.requiresAdditionalExternalTransmission,
+      `candidates[${index}].requiresAdditionalExternalTransmission`
+    ),
+    enabled: bool2(item.enabled, `candidates[${index}].enabled`)
+  };
+  if (item.model !== void 0)
+    candidate.model = textField(item.model, `candidates[${index}].model`, 256);
+  if (candidate.purposes.length === 0)
+    throw new RigorError(
+      `candidates[${index}].purposes must not be empty`,
+      EXIT.inputError
+    );
+  if (new Set(candidate.purposes).size !== candidate.purposes.length)
+    throw new RigorError(
+      `candidates[${index}].purposes contains duplicates`,
+      EXIT.inputError
+    );
+  return candidate;
+}
+function parseModelProfiles(value) {
+  const item = record(value, "model profiles");
+  if (item.schemaVersion !== MODEL_PROFILES_SCHEMA)
+    throw new RigorError("Unsupported model profiles schema", EXIT.inputError);
+  if (!Array.isArray(item.candidates) || item.candidates.length === 0)
+    throw new RigorError("candidates must not be empty", EXIT.inputError);
+  const candidates = item.candidates.map(parseCandidate);
+  if (new Set(candidates.map((candidate) => candidate.id)).size !== candidates.length)
+    throw new RigorError("Candidate IDs must be unique", EXIT.inputError);
+  return { schemaVersion: MODEL_PROFILES_SCHEMA, candidates };
+}
+function requiredCapability(input) {
+  const signalRank = Math.max(
+    signalLevels.indexOf(input.signals.complexity),
+    signalLevels.indexOf(input.signals.ambiguity),
+    signalLevels.indexOf(input.signals.novelty)
+  );
+  const weaknessBump = input.signals.verificationStrength === "weak" ? 1 : 0;
+  return capabilityClasses[Math.min(signalRank + weaknessBump, 3)];
+}
+function exclusionReason(candidate, input, preflight, required) {
+  if (!candidate.enabled) return "DISABLED";
+  if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
+  if (preflight.externalTransmission === "denied" && candidate.requiresAdditionalExternalTransmission)
+    return "EXTERNAL_TRANSMISSION_DENIED";
+  if (capabilityClasses.indexOf(candidate.capabilityClass) < capabilityClasses.indexOf(required))
+    return "INSUFFICIENT_CAPABILITY";
+  if (candidate.relativeCost > input.budget.maxRelativeCost)
+    return "BUDGET_EXCEEDED";
+  return null;
+}
+function route(preflight, input, profiles) {
+  if (input.taskId !== preflight.taskId)
+    throw new RigorError(
+      "Routing taskId does not match preflight",
+      EXIT.inputError
+    );
+  const required = requiredCapability(input);
+  const eligible = [];
+  const excluded = [];
+  for (const candidate of profiles.candidates) {
+    const reasonCode = exclusionReason(candidate, input, preflight, required);
+    if (reasonCode) excluded.push({ candidateId: candidate.id, reasonCode });
+    else eligible.push(candidate);
+  }
+  eligible.sort(
+    (left, right) => left.relativeCost - right.relativeCost || capabilityClasses.indexOf(left.capabilityClass) - capabilityClasses.indexOf(right.capabilityClass) || left.id.localeCompare(right.id)
+  );
+  const selected = eligible[0];
+  const selection = selected ? {
+    candidateId: selected.id,
+    provider: selected.provider,
+    ...selected.model === void 0 ? {} : { model: selected.model },
+    capabilityClass: selected.capabilityClass,
+    relativeCost: selected.relativeCost
+  } : null;
+  return {
+    schemaVersion: ROUTING_DECISION_SCHEMA,
+    mode: "dry-run",
+    taskId: input.taskId,
+    preflightArtifactId: preflight.artifactId,
+    preflightHash: hash(preflight),
+    routingInputHash: hash(input),
+    modelProfilesHash: hash(profiles),
+    purpose: input.purpose,
+    requiredCapabilityClass: required,
+    eligibleCandidates: eligible.map((candidate) => candidate.id),
+    excludedCandidates: excluded,
+    selection,
+    controls: {
+      externalTransmission: preflight.externalTransmission,
+      requireHumanApproval: preflight.requireHumanApproval,
+      requireIndependentReview: preflight.riskTier === "high" || preflight.riskTier === "critical" || preflight.protectedPaths.length > 0
+    },
+    budget: input.budget,
+    status: selection ? "selected" : "unroutable"
+  };
+}
+function createRoutingPlan(decision, preflight, contract, now = /* @__PURE__ */ new Date()) {
+  if (decision.status !== "selected" || decision.selection === null || decision.taskId !== contract.taskId || preflight.taskId !== contract.taskId)
+    throw new RigorError(
+      "A selected, task-matched routing decision is required",
+      EXIT.policyViolation
+    );
+  if (contract.preflightArtifactId !== preflight.artifactId || contract.preflightHash !== hash(preflight))
+    throw new RigorError(
+      "Contract is not linked to the routing preflight",
+      EXIT.policyViolation
+    );
+  const {
+    schemaVersion: _schemaVersion,
+    mode: _mode,
+    status: _status,
+    ...rest
+  } = decision;
+  void _schemaVersion;
+  void _mode;
+  void _status;
+  return {
+    ...rest,
+    schemaVersion: ROUTING_PLAN_SCHEMA,
+    artifactId: artifactId("routing-plan"),
+    createdAt: now.toISOString(),
+    contractArtifactId: contract.artifactId,
+    contractHash: hash(contract),
+    policyHash: preflight.policyHash,
+    plannedHead: preflight.git.head,
+    status: "planned"
+  };
+}
+function parseRoutingPlan(value) {
+  const item = record(value, "routing plan");
+  if (item.schemaVersion !== ROUTING_PLAN_SCHEMA)
+    throw new RigorError("Unsupported routing plan schema", EXIT.inputError);
+  const selection = record(item.selection, "selection");
+  const controls = record(item.controls, "controls");
+  const budget = record(item.budget, "budget");
+  const plannedHead = item.plannedHead;
+  if (plannedHead !== null && typeof plannedHead !== "string")
+    throw new RigorError("plannedHead is invalid", EXIT.inputError);
+  const plan = {
+    schemaVersion: ROUTING_PLAN_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    taskId: taskId(item.taskId),
+    preflightArtifactId: textField(
+      item.preflightArtifactId,
+      "preflightArtifactId",
+      128
+    ),
+    preflightHash: textField(item.preflightHash, "preflightHash", 128),
+    routingInputHash: textField(item.routingInputHash, "routingInputHash", 128),
+    modelProfilesHash: textField(
+      item.modelProfilesHash,
+      "modelProfilesHash",
+      128
+    ),
+    contractArtifactId: textField(
+      item.contractArtifactId,
+      "contractArtifactId",
+      128
+    ),
+    contractHash: textField(item.contractHash, "contractHash", 128),
+    policyHash: textField(item.policyHash, "policyHash", 128),
+    plannedHead,
+    purpose: oneOf(item.purpose, purposes, "purpose"),
+    requiredCapabilityClass: oneOf(
+      item.requiredCapabilityClass,
+      capabilityClasses,
+      "requiredCapabilityClass"
+    ),
+    eligibleCandidates: strings(item.eligibleCandidates, "eligibleCandidates"),
+    excludedCandidates: [],
+    selection: {
+      candidateId: textField(selection.candidateId, "candidateId", 128),
+      provider: textField(selection.provider, "provider", 128),
+      capabilityClass: oneOf(
+        selection.capabilityClass,
+        capabilityClasses,
+        "selection.capabilityClass"
+      ),
+      relativeCost: integer(
+        selection.relativeCost,
+        "selection.relativeCost",
+        1,
+        1e6
+      )
+    },
+    controls: {
+      externalTransmission: oneOf(
+        controls.externalTransmission,
+        ["allowed", "denied"],
+        "externalTransmission"
+      ),
+      requireHumanApproval: bool2(
+        controls.requireHumanApproval,
+        "requireHumanApproval"
+      ),
+      requireIndependentReview: bool2(
+        controls.requireIndependentReview,
+        "requireIndependentReview"
+      )
+    },
+    budget: {
+      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
+      maxDurationMs: integer(
+        budget.maxDurationMs,
+        "maxDurationMs",
+        1e3,
+        864e5
+      ),
+      maxRelativeCost: integer(
+        budget.maxRelativeCost,
+        "maxRelativeCost",
+        1,
+        1e6
+      )
+    },
+    status: "planned"
+  };
+  if (selection.model !== void 0)
+    plan.selection.model = textField(selection.model, "selection.model", 256);
+  if (!Array.isArray(item.excludedCandidates))
+    throw new RigorError(
+      "excludedCandidates must be an array",
+      EXIT.inputError
+    );
+  plan.excludedCandidates = item.excludedCandidates.map((raw, index) => {
+    const excluded = record(raw, `excludedCandidates[${index}]`);
+    return {
+      candidateId: textField(excluded.candidateId, "candidateId", 128),
+      reasonCode: oneOf(
+        excluded.reasonCode,
+        [
+          "DISABLED",
+          "PURPOSE_UNSUPPORTED",
+          "EXTERNAL_TRANSMISSION_DENIED",
+          "INSUFFICIENT_CAPABILITY",
+          "BUDGET_EXCEEDED"
+        ],
+        "reasonCode"
+      )
+    };
+  });
+  return plan;
+}
+
+// src/consultation.ts
+var ignoredEvidence = [".rigor/evidence/", ".rigor/events.jsonl"];
+var modes = [
+  "review",
+  "adversarial-review",
+  "consultation",
+  "rescue"
+];
+var outcomes = [
+  "accept",
+  "revise",
+  "reject",
+  "investigate",
+  "ask-human"
+];
+function oneOf2(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function optionalText(value, name) {
+  return value === void 0 ? void 0 : textField(value, name, 512);
+}
+function filteredChangedPaths(paths) {
+  return paths.filter(
+    (file) => !ignoredEvidence.some((prefix) => file.startsWith(prefix))
+  );
+}
+function parseConsultationRequest(value) {
+  const item = record(value, "consultation request");
+  if (item.schemaVersion !== CONSULTATION_REQUEST_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation request schema",
+      EXIT.inputError
+    );
+  if (item.provider !== "codex-plugin-cc")
+    throw new RigorError(
+      "Phase 2 consultations require codex-plugin-cc",
+      EXIT.inputError
+    );
+  return {
+    schemaVersion: CONSULTATION_REQUEST_SCHEMA,
+    taskId: taskId(item.taskId),
+    provider: "codex-plugin-cc",
+    mode: oneOf2(item.mode, modes, "mode"),
+    requestedDecision: textField(
+      item.requestedDecision,
+      "requestedDecision",
+      2e3
+    )
+  };
+}
+function parseConsultationSession(value) {
+  const item = record(value, "consultation session");
+  if (item.schemaVersion !== CONSULTATION_SESSION_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation session schema",
+      EXIT.inputError
+    );
+  if (item.provider !== "codex-plugin-cc" || item.transmissionDecision !== "allowed")
+    throw new RigorError("Invalid consultation session", EXIT.inputError);
+  const beforeHead = item.beforeHead;
+  if (beforeHead !== null && typeof beforeHead !== "string")
+    throw new RigorError("beforeHead is invalid", EXIT.inputError);
+  return {
+    schemaVersion: CONSULTATION_SESSION_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    taskId: taskId(item.taskId),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    preflightArtifactId: textField(
+      item.preflightArtifactId,
+      "preflightArtifactId",
+      128
+    ),
+    preflightHash: textField(item.preflightHash, "preflightHash", 128),
+    provider: "codex-plugin-cc",
+    mode: oneOf2(item.mode, modes, "mode"),
+    requestedDecision: textField(
+      item.requestedDecision,
+      "requestedDecision",
+      2e3
+    ),
+    transmissionDecision: "allowed",
+    beforeHead,
+    beforeTreeHash: textField(item.beforeTreeHash, "beforeTreeHash", 128),
+    changedPathsBefore: strings(item.changedPathsBefore, "changedPathsBefore")
+  };
+}
+function parseConsultationResultInput(value) {
+  const item = record(value, "consultation result input");
+  if (item.schemaVersion !== CONSULTATION_RESULT_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation result input schema",
+      EXIT.inputError
+    );
+  if (!Number.isInteger(item.findingCount) || item.findingCount < 0)
+    throw new RigorError("findingCount is invalid", EXIT.inputError);
+  const result = {
+    schemaVersion: CONSULTATION_RESULT_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    status: oneOf2(item.status, ["completed", "failed"], "status"),
+    outcome: oneOf2(item.outcome, outcomes, "outcome"),
+    findingCount: item.findingCount,
+    requiredActions: strings(item.requiredActions, "requiredActions", 100),
+    usageStatus: oneOf2(
+      item.usageStatus,
+      ["recorded", "unavailable"],
+      "usageStatus"
+    )
+  };
+  for (const [key, value2] of Object.entries({
+    externalJobId: optionalText(item.externalJobId, "externalJobId"),
+    externalSessionId: optionalText(
+      item.externalSessionId,
+      "externalSessionId"
+    ),
+    externalTurnId: optionalText(item.externalTurnId, "externalTurnId"),
+    model: optionalText(item.model, "model"),
+    reasoningEffort: optionalText(item.reasoningEffort, "reasoningEffort")
+  }))
+    if (value2 !== void 0) Object.assign(result, { [key]: value2 });
+  return result;
+}
+async function startConsultation(root, policy, preflight, request, now = /* @__PURE__ */ new Date()) {
+  if (request.taskId !== preflight.taskId)
+    throw new RigorError(
+      "Consultation taskId does not match preflight",
+      EXIT.inputError
+    );
+  if (preflight.policyHash !== hash(policy))
+    throw new RigorError(
+      "Consultation preflight does not match the current policy",
+      EXIT.policyViolation
+    );
+  if (preflight.externalTransmission !== "allowed")
+    throw new RigorError(
+      "Policy denies transmission to codex-plugin-cc",
+      EXIT.policyViolation
+    );
+  const facts = await gitFacts(root);
+  if (preflight.git.head !== facts.head)
+    throw new RigorError(
+      "Git HEAD changed after preflight; run preflight again",
+      EXIT.policyViolation
+    );
+  const changedPathsBefore = filteredChangedPaths(facts.changedPaths);
+  const unplanned = changedPathsBefore.filter(
+    (file) => !matches(file, preflight.plannedPaths)
+  );
+  if (unplanned.length > 0)
+    throw new RigorError(
+      `Changed paths are outside preflight scope: ${unplanned.join(", ")}`,
+      EXIT.policyViolation
+    );
+  const session = {
+    schemaVersion: CONSULTATION_SESSION_SCHEMA,
+    artifactId: artifactId("consultation-session"),
+    taskId: request.taskId,
+    createdAt: now.toISOString(),
+    preflightArtifactId: preflight.artifactId,
+    preflightHash: hash(preflight),
+    provider: "codex-plugin-cc",
+    mode: request.mode,
+    requestedDecision: request.requestedDecision,
+    transmissionDecision: "allowed",
+    beforeHead: facts.head,
+    beforeTreeHash: await treeHash(root, ignoredEvidence),
+    changedPathsBefore
+  };
+  const saved = await saveCollectionArtifact(
+    root,
+    request.taskId,
+    "consultations",
+    "consultation-session",
+    session
+  );
+  return { session, saved };
+}
+async function finishConsultation(root, session, input, now = /* @__PURE__ */ new Date()) {
+  if (input.taskId !== session.taskId)
+    throw new RigorError(
+      "Consultation result taskId does not match session",
+      EXIT.inputError
+    );
+  const facts = await gitFacts(root);
+  const afterTreeHash = await treeHash(root, ignoredEvidence);
+  const changedPathsAfter = filteredChangedPaths(facts.changedPaths);
+  const mutated = session.beforeHead !== facts.head || session.beforeTreeHash !== afterTreeHash || JSON.stringify(session.changedPathsBefore) !== JSON.stringify(changedPathsAfter);
+  const consultation = {
+    schemaVersion: CONSULTATION_SCHEMA,
+    artifactId: artifactId("consultation"),
+    taskId: session.taskId,
+    createdAt: now.toISOString(),
+    sessionArtifactId: session.artifactId,
+    sessionHash: hash(session),
+    provider: session.provider,
+    mode: session.mode,
+    requestedDecision: session.requestedDecision,
+    transmissionDecision: session.transmissionDecision,
+    beforeTreeHash: session.beforeTreeHash,
+    afterTreeHash,
+    beforeHead: session.beforeHead,
+    afterHead: facts.head,
+    changedPathsBefore: session.changedPathsBefore,
+    changedPathsAfter,
+    usageStatus: input.usageStatus,
+    status: mutated ? "mutated-worktree" : input.status,
+    outcome: input.outcome,
+    findingCount: input.findingCount,
+    requiredActions: input.requiredActions
+  };
+  for (const key of [
+    "externalJobId",
+    "externalSessionId",
+    "externalTurnId",
+    "model",
+    "reasoningEffort"
+  ]) {
+    const value = input[key];
+    if (value !== void 0) consultation[key] = value;
+  }
+  const saved = await saveCollectionArtifact(
+    root,
+    session.taskId,
+    "consultations",
+    "consultation",
+    consultation
+  );
+  return { consultation, saved };
+}
+
+// src/attempt.ts
+var import_promises8 = require("node:fs/promises");
+var import_node_path9 = __toESM(require("node:path"), 1);
+var ignoredEvidence2 = [".rigor/evidence/", ".rigor/events.jsonl"];
+var capabilities = [
+  "economy",
+  "standard",
+  "premium",
+  "frontier"
+];
+var purposes2 = [
+  "implementation",
+  "consultation",
+  "review",
+  "adversarial-review",
+  "rescue"
+];
+function oneOf3(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function optionalText2(value, name) {
+  return value === void 0 ? void 0 : textField(value, name, 512);
+}
+function filteredChangedPaths2(paths) {
+  return paths.filter(
+    (file) => !ignoredEvidence2.some((prefix) => file.startsWith(prefix))
+  );
+}
+async function attemptState(root, task) {
+  const directory = import_node_path9.default.join(root, ".rigor", "evidence", task, "attempts");
+  let names;
+  try {
+    names = await (0, import_promises8.readdir)(directory);
+  } catch (error) {
+    if (error.code === "ENOENT")
+      return { count: 0, unfinished: [] };
+    throw error;
+  }
+  const sessions = /* @__PURE__ */ new Set();
+  const finished = /* @__PURE__ */ new Set();
+  for (const name of names.filter((item) => item.endsWith(".json"))) {
+    let item;
+    try {
+      item = record(
+        JSON.parse(
+          await (0, import_promises8.readFile)(import_node_path9.default.join(directory, name), "utf8")
+        ),
+        "attempt artifact"
+      );
+    } catch {
+      throw new RigorError(
+        `Invalid attempt artifact: ${name}`,
+        EXIT.inputError
+      );
+    }
+    if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
+      sessions.add(textField(item.artifactId, "artifactId", 128));
+    if (item.schemaVersion === ATTEMPT_SCHEMA)
+      finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
+  }
+  return {
+    count: sessions.size,
+    unfinished: [...sessions].filter((id) => !finished.has(id))
+  };
+}
+function parseAttemptSession(value) {
+  const item = record(value, "attempt session");
+  if (item.schemaVersion !== ATTEMPT_SESSION_SCHEMA)
+    throw new RigorError("Unsupported attempt session schema", EXIT.inputError);
+  const selection = record(item.selection, "selection");
+  const budget = record(item.budget, "budget");
+  const beforeHead = item.beforeHead;
+  if (beforeHead !== null && typeof beforeHead !== "string")
+    throw new RigorError("beforeHead is invalid", EXIT.inputError);
+  const session = {
+    schemaVersion: ATTEMPT_SESSION_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    taskId: taskId(item.taskId),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    sequence: Number(item.sequence),
+    routingPlanArtifactId: textField(
+      item.routingPlanArtifactId,
+      "routingPlanArtifactId",
+      128
+    ),
+    routingPlanHash: textField(item.routingPlanHash, "routingPlanHash", 128),
+    contractArtifactId: textField(
+      item.contractArtifactId,
+      "contractArtifactId",
+      128
+    ),
+    contractHash: textField(item.contractHash, "contractHash", 128),
+    provider: textField(selection.provider, "selection.provider", 128),
+    capabilityClass: oneOf3(
+      selection.capabilityClass,
+      capabilities,
+      "selection.capabilityClass"
+    ),
+    purpose: oneOf3(item.purpose, purposes2, "purpose"),
+    budget: {
+      maxAttempts: Number(budget.maxAttempts),
+      maxDurationMs: Number(budget.maxDurationMs),
+      maxRelativeCost: Number(budget.maxRelativeCost)
+    },
+    executionIdentityStatus: "unverified",
+    beforeHead,
+    beforeTreeHash: textField(item.beforeTreeHash, "beforeTreeHash", 128),
+    changedPathsBefore: strings(item.changedPathsBefore, "changedPathsBefore")
+  };
+  for (const [name, number, minimum, maximum] of [
+    ["sequence", session.sequence, 1, 20],
+    ["maxAttempts", session.budget.maxAttempts, 1, 20],
+    ["maxDurationMs", session.budget.maxDurationMs, 1e3, 864e5],
+    ["maxRelativeCost", session.budget.maxRelativeCost, 1, 1e6]
+  ])
+    if (!Number.isInteger(number) || number < minimum || number > maximum)
+      throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  if (item.executionIdentityStatus !== "unverified")
+    throw new RigorError(
+      "executionIdentityStatus must be unverified",
+      EXIT.inputError
+    );
+  if (selection.model !== void 0)
+    session.model = textField(selection.model, "selection.model", 256);
+  return session;
+}
+function parseAttempt(value) {
+  const item = record(value, "attempt");
+  if (item.schemaVersion !== ATTEMPT_SCHEMA)
+    throw new RigorError("Unsupported attempt schema", EXIT.inputError);
+  taskId(item.taskId);
+  textField(item.artifactId, "attempt.artifactId", 128);
+  if (!Number.isInteger(item.sequence) || item.sequence < 1 || item.sequence > 20)
+    throw new RigorError("attempt.sequence is invalid", EXIT.inputError);
+  oneOf3(
+    item.status,
+    ["completed", "failed", "cancelled", "scope-violation", "budget-exceeded"],
+    "attempt.status"
+  );
+  if (!Number.isInteger(item.durationMs) || item.durationMs < 0)
+    throw new RigorError("attempt.durationMs is invalid", EXIT.inputError);
+  textField(item.provider, "attempt.provider", 128);
+  oneOf3(item.capabilityClass, capabilities, "attempt.capabilityClass");
+  if (item.executionIdentityStatus !== "unverified")
+    throw new RigorError(
+      "executionIdentityStatus must be unverified",
+      EXIT.inputError
+    );
+  if (item.model !== void 0) textField(item.model, "attempt.model", 256);
+  if (item.verificationArtifactId !== void 0)
+    textField(
+      item.verificationArtifactId,
+      "attempt.verificationArtifactId",
+      128
+    );
+  return item;
+}
+function parseAttemptResultInput(value) {
+  const item = record(value, "attempt result input");
+  if (item.schemaVersion !== ATTEMPT_RESULT_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported attempt result input schema",
+      EXIT.inputError
+    );
+  const result = {
+    schemaVersion: ATTEMPT_RESULT_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    status: oneOf3(item.status, ["completed", "failed", "cancelled"], "status")
+  };
+  for (const [key, value2] of Object.entries({
+    failureClass: optionalText2(item.failureClass, "failureClass"),
+    externalSessionId: optionalText2(
+      item.externalSessionId,
+      "externalSessionId"
+    ),
+    externalTurnId: optionalText2(item.externalTurnId, "externalTurnId")
+  }))
+    if (value2 !== void 0) Object.assign(result, { [key]: value2 });
+  return result;
+}
+async function startAttempt(root, policy, plan, contract, now = /* @__PURE__ */ new Date()) {
+  if (plan.taskId !== contract.taskId || plan.contractArtifactId !== contract.artifactId || plan.contractHash !== hash(contract))
+    throw new RigorError(
+      "Routing plan is not linked to the contract",
+      EXIT.policyViolation
+    );
+  if (plan.policyHash !== hash(policy))
+    throw new RigorError(
+      "Routing plan does not match the current policy",
+      EXIT.policyViolation
+    );
+  if (plan.selection === null)
+    throw new RigorError("Routing plan has no selection", EXIT.inputError);
+  if (plan.selection.provider !== "claude" && plan.selection.provider !== "codex-plugin-cc")
+    throw new RigorError(
+      "Phase 3 attempts support only claude or codex-plugin-cc",
+      EXIT.inputError
+    );
+  if (plan.selection.provider === "codex-plugin-cc" && plan.controls.externalTransmission !== "allowed")
+    throw new RigorError(
+      "Routing plan denies Codex transmission",
+      EXIT.policyViolation
+    );
+  const state = await attemptState(root, plan.taskId);
+  if (state.unfinished.length > 0)
+    throw new RigorError(
+      "An unfinished attempt must be finalized first",
+      EXIT.policyViolation
+    );
+  if (state.count >= plan.budget.maxAttempts)
+    throw new RigorError("Attempt budget is exhausted", EXIT.policyViolation);
+  const facts = await gitFacts(root);
+  if (facts.head !== plan.plannedHead)
+    throw new RigorError(
+      "Git HEAD changed after routing; create a new plan",
+      EXIT.policyViolation
+    );
+  const changedPathsBefore = filteredChangedPaths2(facts.changedPaths);
+  const outside = changedPathsBefore.filter(
+    (file) => !matches(file, contract.allowedPaths)
+  );
+  if (outside.length > 0)
+    throw new RigorError(
+      `Changed paths are outside contract scope: ${outside.join(", ")}`,
+      EXIT.policyViolation
+    );
+  const session = {
+    schemaVersion: ATTEMPT_SESSION_SCHEMA,
+    artifactId: artifactId("attempt-session"),
+    taskId: plan.taskId,
+    createdAt: now.toISOString(),
+    sequence: state.count + 1,
+    routingPlanArtifactId: plan.artifactId,
+    routingPlanHash: hash(plan),
+    contractArtifactId: contract.artifactId,
+    contractHash: hash(contract),
+    provider: plan.selection.provider,
+    ...plan.selection.model === void 0 ? {} : { model: plan.selection.model },
+    capabilityClass: plan.selection.capabilityClass,
+    purpose: plan.purpose,
+    budget: plan.budget,
+    executionIdentityStatus: "unverified",
+    beforeHead: facts.head,
+    beforeTreeHash: await treeHash(root, ignoredEvidence2),
+    changedPathsBefore
+  };
+  const serialized = {
+    ...session,
+    selection: {
+      provider: session.provider,
+      ...session.model === void 0 ? {} : { model: session.model },
+      capabilityClass: session.capabilityClass
+    }
+  };
+  delete serialized.provider;
+  delete serialized.model;
+  delete serialized.capabilityClass;
+  const saved = await saveCollectionArtifact(
+    root,
+    plan.taskId,
+    "attempts",
+    "attempt-session",
+    serialized
+  );
+  return { session, saved };
+}
+async function finishAttempt(root, session, contract, input, verification, now = /* @__PURE__ */ new Date()) {
+  if (input.taskId !== session.taskId || contract.taskId !== session.taskId || session.contractArtifactId !== contract.artifactId || session.contractHash !== hash(contract))
+    throw new RigorError(
+      "Attempt result, session, and contract are not linked",
+      EXIT.policyViolation
+    );
+  if (verification !== void 0) {
+    if (verification.taskId !== session.taskId || verification.contractArtifactId !== contract.artifactId)
+      throw new RigorError(
+        "Verification is not linked to the attempt contract",
+        EXIT.policyViolation
+      );
+  }
+  if (input.status === "completed" && (verification === void 0 || verification.status !== "passed"))
+    throw new RigorError(
+      "A completed attempt requires passing verification",
+      EXIT.policyViolation
+    );
+  const facts = await gitFacts(root);
+  const changedPaths = filteredChangedPaths2(facts.changedPaths);
+  const scopeViolations = changedPaths.filter(
+    (file) => !matches(file, contract.allowedPaths)
+  );
+  const afterTreeHash = await treeHash(root, ignoredEvidence2);
+  const started = Date.parse(session.createdAt);
+  const durationMs = now.getTime() - started;
+  if (!Number.isFinite(durationMs) || durationMs < 0)
+    throw new RigorError("Attempt timestamps are invalid", EXIT.inputError);
+  const status = scopeViolations.length > 0 ? "scope-violation" : durationMs > session.budget.maxDurationMs ? "budget-exceeded" : input.status;
+  const attempt = {
+    schemaVersion: ATTEMPT_SCHEMA,
+    artifactId: artifactId("attempt"),
+    taskId: session.taskId,
+    createdAt: now.toISOString(),
+    sessionArtifactId: session.artifactId,
+    sessionHash: hash(session),
+    routingPlanArtifactId: session.routingPlanArtifactId,
+    routingPlanHash: session.routingPlanHash,
+    contractArtifactId: session.contractArtifactId,
+    contractHash: session.contractHash,
+    sequence: session.sequence,
+    provider: session.provider,
+    ...session.model === void 0 ? {} : { model: session.model },
+    capabilityClass: session.capabilityClass,
+    purpose: session.purpose,
+    startedAt: session.createdAt,
+    completedAt: now.toISOString(),
+    durationMs,
+    executionIdentityStatus: "unverified",
+    status,
+    beforeHead: session.beforeHead,
+    afterHead: facts.head,
+    beforeTreeHash: session.beforeTreeHash,
+    afterTreeHash,
+    changedPathsBefore: session.changedPathsBefore,
+    changedPaths,
+    scopeViolations,
+    ...verification === void 0 ? {} : { verificationArtifactId: verification.artifactId }
+  };
+  for (const key of [
+    "failureClass",
+    "externalSessionId",
+    "externalTurnId"
+  ]) {
+    const value = input[key];
+    if (value !== void 0) attempt[key] = value;
+  }
+  const saved = await saveCollectionArtifact(
+    root,
+    session.taskId,
+    "attempts",
+    "attempt",
+    attempt
+  );
+  return { attempt, saved };
+}
+
+// src/outcome.ts
+function oneOf4(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function boolean(value, name) {
+  if (typeof value !== "boolean")
+    throw new RigorError(`${name} must be a boolean`, EXIT.inputError);
+  return value;
+}
+function integer2(value, name, min, max) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function finite(value, name, min, max) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function reject(message) {
+  throw new RigorError(message, EXIT.policyViolation);
+}
+function parseUsageInput(value) {
+  const item = record(value, "usage");
+  const usage = {
+    status: oneOf4(
+      item.status,
+      ["recorded", "unavailable", "unknown"],
+      "usage.status"
+    )
+  };
+  if (item.inputTokens !== void 0)
+    usage.inputTokens = integer2(item.inputTokens, "usage.inputTokens", 0, 1e12);
+  if (item.outputTokens !== void 0)
+    usage.outputTokens = integer2(
+      item.outputTokens,
+      "usage.outputTokens",
+      0,
+      1e12
+    );
+  if (item.totalTokens !== void 0)
+    usage.totalTokens = integer2(item.totalTokens, "usage.totalTokens", 0, 1e12);
+  if (item.reasoningEffort !== void 0)
+    usage.reasoningEffort = textField(
+      item.reasoningEffort,
+      "usage.reasoningEffort",
+      128
+    );
+  if (item.modelIdentity !== void 0)
+    usage.modelIdentity = textField(
+      item.modelIdentity,
+      "usage.modelIdentity",
+      256
+    );
+  if (item.providerCost !== void 0) {
+    const cost = record(item.providerCost, "usage.providerCost");
+    const currency = textField(cost.currency, "usage.providerCost.currency", 3);
+    if (!/^[A-Z]{3}$/u.test(currency))
+      throw new RigorError(
+        "usage.providerCost.currency is invalid",
+        EXIT.inputError
+      );
+    usage.providerCost = {
+      currency,
+      amount: finite(cost.amount, "usage.providerCost.amount", 0, 1e12)
+    };
+  }
+  return usage;
+}
+function parseOutcomeInput(value) {
+  const item = record(value, "outcome input");
+  if (item.schemaVersion !== OUTCOME_INPUT_SCHEMA)
+    throw new RigorError("Unsupported outcome input schema", EXIT.inputError);
+  const findings = record(item.reviewFindings, "reviewFindings");
+  const input = {
+    schemaVersion: OUTCOME_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    decision: oneOf4(item.decision, ["accepted", "rejected"], "decision"),
+    acceptedWithoutModelCodeChanges: boolean(
+      item.acceptedWithoutModelCodeChanges,
+      "acceptedWithoutModelCodeChanges"
+    ),
+    humanCorrectionMinutes: integer2(
+      item.humanCorrectionMinutes,
+      "humanCorrectionMinutes",
+      0,
+      1e5
+    ),
+    escalationCount: integer2(item.escalationCount, "escalationCount", 0, 100),
+    reviewFindings: {
+      critical: integer2(
+        findings.critical,
+        "reviewFindings.critical",
+        0,
+        1e4
+      ),
+      high: integer2(findings.high, "reviewFindings.high", 0, 1e4),
+      medium: integer2(findings.medium, "reviewFindings.medium", 0, 1e4),
+      low: integer2(findings.low, "reviewFindings.low", 0, 1e4)
+    },
+    revertStatus: oneOf4(
+      item.revertStatus,
+      ["none", "reverted"],
+      "revertStatus"
+    ),
+    escapedDefectStatus: oneOf4(
+      item.escapedDefectStatus,
+      ["none", "suspected", "confirmed"],
+      "escapedDefectStatus"
+    ),
+    usage: parseUsageInput(item.usage)
+  };
+  if (item.retryCount !== void 0)
+    input.retryCount = integer2(item.retryCount, "retryCount", 0, 100);
+  if (item.commit !== void 0) {
+    const commit = textField(item.commit, "commit", 64);
+    if (!/^[0-9a-f]{7,64}$/u.test(commit))
+      throw new RigorError("commit is invalid", EXIT.inputError);
+    input.commit = commit;
+  }
+  if (item.pullRequest !== void 0)
+    input.pullRequest = textField(item.pullRequest, "pullRequest", 256);
+  if (item.notes !== void 0) {
+    if (!Array.isArray(item.notes) || item.notes.length > 100)
+      throw new RigorError("notes must be an array", EXIT.inputError);
+    input.notes = item.notes.map(
+      (note, index) => textField(note, `notes[${index}]`, 2e3)
+    );
+  }
+  return input;
+}
+function parseReviewArtifact(value) {
+  const item = record(value, "review");
+  if (item.schemaVersion !== REVIEW_SCHEMA)
+    throw new RigorError("Unsupported review schema", EXIT.inputError);
+  const review = {
+    taskId: taskId(item.taskId),
+    artifactId: textField(item.artifactId, "review.artifactId", 128)
+  };
+  if (item.verificationArtifactId !== void 0)
+    review.verificationArtifactId = textField(
+      item.verificationArtifactId,
+      "review.verificationArtifactId",
+      128
+    );
+  return review;
+}
+function createOutcome(input, links, now = /* @__PURE__ */ new Date()) {
+  const { attempt, verification, review } = links;
+  const task = input.taskId;
+  if (attempt && attempt.taskId !== task)
+    reject("Attempt taskId does not match the outcome");
+  if (verification && verification.taskId !== task)
+    reject("Verification taskId does not match the outcome");
+  if (review && review.taskId !== task)
+    reject("Review taskId does not match the outcome");
+  if (input.decision === "rejected" && input.acceptedWithoutModelCodeChanges)
+    reject("A rejected outcome cannot be accepted without model code changes");
+  if (input.revertStatus === "reverted" && input.decision !== "accepted")
+    reject("A reverted outcome must be accepted");
+  if (input.escapedDefectStatus !== "none" && input.decision !== "accepted")
+    reject("An escaped defect requires an accepted outcome");
+  const linkage = {};
+  let retryCount;
+  if (attempt) {
+    const derived = attempt.sequence - 1;
+    if (input.retryCount !== void 0 && input.retryCount !== derived)
+      reject("retryCount conflicts with the linked attempt");
+    retryCount = derived;
+    linkage.routingPlanArtifactId = attempt.routingPlanArtifactId;
+    linkage.attemptArtifactId = attempt.artifactId;
+    linkage.attemptSequence = attempt.sequence;
+    linkage.attemptStatus = attempt.status;
+    linkage.attemptDurationMs = attempt.durationMs;
+    linkage.provider = attempt.provider;
+    if (attempt.model !== void 0) linkage.model = attempt.model;
+    linkage.capabilityClass = attempt.capabilityClass;
+    if (input.decision === "accepted" && attempt.status !== "completed")
+      reject("An accepted outcome requires a completed attempt");
+  } else {
+    if (input.retryCount === void 0)
+      reject("retryCount is required without a linked attempt");
+    retryCount = input.retryCount;
+  }
+  if (verification) {
+    if (attempt && attempt.verificationArtifactId !== void 0 && verification.artifactId !== attempt.verificationArtifactId)
+      reject("Verification does not match the attempt's linked verification");
+    if (input.decision === "accepted" && verification.status !== "passed")
+      reject("An accepted outcome requires a linked passing verification");
+    linkage.verificationArtifactId = verification.artifactId;
+    linkage.verificationStatus = verification.status;
+  } else if (input.decision === "accepted") {
+    reject("an accepted outcome requires a linked passing verification");
+  }
+  if (review) {
+    linkage.reviewArtifactId = review.artifactId;
+    if (review.verificationArtifactId !== void 0 && verification && review.verificationArtifactId !== verification.artifactId)
+      reject("Review verification does not match the linked verification");
+  }
+  const u = input.usage;
+  const measured = u.inputTokens !== void 0 || u.outputTokens !== void 0 || u.totalTokens !== void 0 || u.providerCost !== void 0 || u.reasoningEffort !== void 0;
+  if (u.status !== "recorded") {
+    if (measured) reject("Usage measurements are not available");
+  } else if (u.inputTokens === void 0 && u.outputTokens === void 0 && u.providerCost === void 0) {
+    reject("recorded usage requires at least one measured value");
+  }
+  if (u.totalTokens !== void 0) {
+    if (u.inputTokens !== void 0 && u.totalTokens < u.inputTokens)
+      reject("token totals are inconsistent");
+    if (u.outputTokens !== void 0 && u.totalTokens < u.outputTokens)
+      reject("token totals are inconsistent");
+    if (u.inputTokens !== void 0 && u.outputTokens !== void 0 && u.totalTokens !== u.inputTokens + u.outputTokens)
+      reject("token totals are inconsistent");
+  }
+  if (input.commit !== void 0) linkage.commit = input.commit;
+  if (input.pullRequest !== void 0) linkage.pullRequest = input.pullRequest;
+  const findings = input.reviewFindings;
+  const outcome = {
+    schemaVersion: OUTCOME_SCHEMA,
+    artifactId: artifactId("outcome"),
+    taskId: task,
+    createdAt: now.toISOString(),
+    decision: input.decision,
+    acceptedWithoutModelCodeChanges: input.acceptedWithoutModelCodeChanges,
+    humanCorrectionMinutes: input.humanCorrectionMinutes,
+    escalationCount: input.escalationCount,
+    retryCount,
+    reviewFindings: {
+      ...findings,
+      total: findings.critical + findings.high + findings.medium + findings.low
+    },
+    revertStatus: input.revertStatus,
+    escapedDefectStatus: input.escapedDefectStatus,
+    executionIdentityStatus: "unverified",
+    ...linkage,
+    usage: {
+      status: u.status,
+      inputTokens: u.inputTokens ?? null,
+      outputTokens: u.outputTokens ?? null,
+      totalTokens: u.totalTokens ?? null,
+      reasoningEffort: u.reasoningEffort ?? null,
+      providerCost: u.providerCost ?? null,
+      modelIdentity: u.modelIdentity === void 0 ? null : { value: u.modelIdentity, attestation: "unverified" }
+    },
+    notes: input.notes ?? []
+  };
+  return outcome;
+}
+
 // src/cli.ts
 function option(args, name, required = true) {
   const index = args.indexOf(name);
@@ -1135,13 +3263,13 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|verify|escalate|review|retrospect|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
   const root = await findGitRoot(cwd);
   if (command === "setup" || command === "upgrade") {
-    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path8.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
+    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path10.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
     output(await setup(root, bundle));
     return EXIT.success;
   }
@@ -1170,6 +3298,91 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output({ ...result, saved });
     return EXIT.success;
   }
+  if (command === "route") {
+    const dryRun = args.includes("--dry-run");
+    const recordPlan = args.includes("--record");
+    if (dryRun === recordPlan)
+      throw new RigorError(
+        "route requires exactly one of --dry-run or --record",
+        EXIT.inputError
+      );
+    const preflight = parsePreflight(
+      await readJson(option(args, "--preflight"))
+    );
+    const input = parseRoutingInput(await readJson(option(args, "--input")));
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles"))
+    );
+    const result = route(preflight, input, profiles);
+    if (result.status !== "selected") {
+      output(result);
+      return EXIT.policyViolation;
+    }
+    if (dryRun) {
+      output(result);
+      return EXIT.success;
+    }
+    const contract = parseContract(await readJson(option(args, "--contract")));
+    const plan = createRoutingPlan(result, preflight, contract);
+    const saved = await saveCollectionArtifact(
+      root,
+      plan.taskId,
+      "routing",
+      "routing-plan",
+      plan
+    );
+    output({ ...plan, saved });
+    return EXIT.success;
+  }
+  if (command === "attempt-start") {
+    const plan = parseRoutingPlan(await readJson(option(args, "--plan")));
+    const contract = parseContract(await readJson(option(args, "--contract")));
+    const result = await startAttempt(root, policy, plan, contract);
+    output({ ...result.session, saved: result.saved });
+    return EXIT.success;
+  }
+  if (command === "attempt-finish") {
+    const session = parseAttemptSession(
+      await readJson(option(args, "--session"))
+    );
+    const contract = parseContract(await readJson(option(args, "--contract")));
+    const input = parseAttemptResultInput(
+      await readJson(option(args, "--input"))
+    );
+    const verificationPath = option(args, "--verification", false);
+    const verification = verificationPath ? parseVerification(await readJson(verificationPath)) : void 0;
+    const result = await finishAttempt(
+      root,
+      session,
+      contract,
+      input,
+      verification
+    );
+    output({ ...result.attempt, saved: result.saved });
+    return result.attempt.status === "completed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "consult-start") {
+    const preflight = parsePreflight(
+      await readJson(option(args, "--preflight"))
+    );
+    const request = parseConsultationRequest(
+      await readJson(option(args, "--input"))
+    );
+    const result = await startConsultation(root, policy, preflight, request);
+    output({ ...result.session, saved: result.saved });
+    return EXIT.success;
+  }
+  if (command === "consult-finish") {
+    const session = parseConsultationSession(
+      await readJson(option(args, "--session"))
+    );
+    const input = parseConsultationResultInput(
+      await readJson(option(args, "--input"))
+    );
+    const result = await finishConsultation(root, session, input);
+    output({ ...result.consultation, saved: result.saved });
+    return result.consultation.status === "completed" ? EXIT.success : EXIT.policyViolation;
+  }
   if (command === "verify") {
     const contract = parseContract(await readJson(option(args, "--contract")));
     const facts = await gitFacts(root);
@@ -1182,6 +3395,10 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
       ),
       facts.head
     );
+    if (args.includes("--dry-run")) {
+      output(result);
+      return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
+    }
     const saved = await saveArtifact(
       root,
       result.taskId,
@@ -1214,6 +3431,56 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output({ ...record(result, "review"), saved });
     return verification.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
+  if (command === "governance") {
+    const repository = parseRepository(option(args, "--repo"));
+    const branch = parseBranch(option(args, "--branch", false) ?? "main");
+    const requiredCheckContext = option(args, "--required-check", false) ?? "rigor";
+    const token = import_node_process.default.env.RIGOR_GITHUB_TOKEN ?? import_node_process.default.env.GITHUB_TOKEN ?? import_node_process.default.env.GH_TOKEN;
+    const result = await governanceVerify(
+      policy,
+      { ...repository, branch, requiredCheckContext },
+      githubReader(token)
+    );
+    output(result);
+    return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "release-check") {
+    const version = option(args, "--version");
+    if (!/^\d+\.\d+\.\d+$/u.test(version))
+      throw new RigorError(
+        "--version must be a semantic version like X.Y.Z",
+        EXIT.inputError
+      );
+    const expectedBranch = parseBranch(
+      option(args, "--branch", false) ?? "main"
+    );
+    const expectedSha = option(args, "--expected-sha", false) ?? null;
+    const repoArg = option(args, "--repo", false);
+    const requiredChecks = (option(args, "--required-check", false) ?? "quality").split(",").map((value) => value.trim()).filter(Boolean);
+    const repo = repoArg ? parseRepository(repoArg) : null;
+    const token = import_node_process.default.env.RIGOR_GITHUB_TOKEN ?? import_node_process.default.env.GITHUB_TOKEN ?? import_node_process.default.env.GH_TOKEN;
+    const read = repo ? githubReader(token) : null;
+    const report = await releaseVerify(
+      root,
+      { version, expectedBranch, expectedSha, repo, requiredChecks },
+      read
+    );
+    output(report);
+    return report.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "outcome") {
+    const input = parseOutcomeInput(await readJson(option(args, "--input")));
+    const attemptPath = option(args, "--attempt", false);
+    const verificationPath = option(args, "--verification", false);
+    const reviewPath = option(args, "--review", false);
+    const attempt = attemptPath ? parseAttempt(await readJson(attemptPath)) : void 0;
+    const verification = verificationPath ? parseVerification(await readJson(verificationPath)) : void 0;
+    const review = reviewPath ? parseReviewArtifact(await readJson(reviewPath)) : void 0;
+    const outcome = createOutcome(input, { attempt, verification, review });
+    const saved = await saveArtifact(root, outcome.taskId, "outcome", outcome);
+    output({ ...outcome, saved });
+    return EXIT.success;
+  }
   if (command === "retrospect") {
     output(await retrospect(root));
     return EXIT.success;
@@ -1229,8 +3496,8 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   }
   throw new RigorError(`Unknown command: ${command}`, EXIT.inputError);
 }
-var entryName = import_node_process.default.argv[1] ? import_node_path8.default.basename(import_node_process.default.argv[1]) : "";
-var isEntry = entryName === "rigor.cjs" || entryName === "cli.ts";
+var entryName = import_node_process.default.argv[1] ? import_node_path10.default.basename(import_node_process.default.argv[1]) : "";
+var isEntry = entryName === "rigor.cjs" || entryName === "rigor-ci.cjs" || entryName === "cli.ts";
 if (isEntry) {
   main().then((code) => {
     import_node_process.default.exitCode = code;

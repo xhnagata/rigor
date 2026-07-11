@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_f1111d6a-aab6-4559-8599-bec53abe9dcb",
+  "taskId": "OPS-CI-BUNDLE",
+  "createdAt": "2026-07-11T14:00:48.109Z",
+  "externalTransmission": "allowed",
+  "riskTier": "critical",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_8034668c-fae1-4f8c-b74b-e75935122691",
+  "verificationArtifactId": "verification_e0bb10ed-e384-490c-a25f-bfd7d54baf0c",
+  "changedPaths": [
+    ".rigor/rigor-ci.cjs"
+  ],
+  "acceptanceCriteria": [
+    ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs.",
+    "Running node .rigor/rigor-ci.cjs ci --base <sha> --head <sha> executes the verifier and emits parseable JSON (no longer a silent no-op).",
+    "No source, policy, workflow, or other file is changed; only the CI bundle is refreshed.",
+    "The full suite (test:all, bench, plugin validate --strict, git diff --check) still passes."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

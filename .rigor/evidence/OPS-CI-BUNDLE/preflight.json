@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_f7c4f72d-a6f8-49a1-a4c2-d245936859f0",
+  "taskId": "OPS-CI-BUNDLE",
+  "createdAt": "2026-07-11T14:00:00.064Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "b90b5568ed94bd7c2b8b4a35c111ec73c35ba4a1bc6796edc1a5db7a96edcbea",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "2c9804199dccd65fd833cd512e7069b079fbbdb4",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    ".rigor/rigor-ci.cjs"
+  ],
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "protectedPaths": [
+    ".rigor/rigor-ci.cjs"
+  ],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ],
+  "reasons": [
+    {
+      "ruleId": "governance",
+      "path": ".rigor/rigor-ci.cjs",
+      "reason": "Governance and enforcement changes can weaken controls."
+    }
+  ]
+}
