@@ -53,13 +53,37 @@ Every routing input includes at least one assessment reason (v1) or at least one
 Candidates are considered in this order:
 
 1. reject disabled candidates;
-2. reject candidates that do not support the requested purpose;
-3. when preflight denies transmission, reject candidates requiring additional external transmission;
-4. reject candidates below the required capability class;
-5. reject candidates above the task's relative-cost budget;
-6. select the remaining candidate with the lowest relative cost, then the least excess capability, then lexicographic candidate ID.
+2. reject candidates observed as `incompatible` or `unavailable` when an availability report is supplied (see below);
+3. reject candidates that do not support the requested purpose;
+4. when preflight denies transmission, reject candidates requiring additional external transmission;
+5. reject candidates below the required capability class;
+6. reject candidates above the task's relative-cost budget;
+7. select the remaining candidate with the lowest relative cost, then the least excess capability, then lexicographic candidate ID.
 
 `relativeCost` is a configured comparison weight. It is not a price, invoice, token count, or verified provider charge. Unknown model, effort, usage, and cost data must remain unknown instead of being inferred from a display name.
+
+Selection is deterministic and every excluded candidate is recorded with its reason code, so choosing the next eligible candidate is not a silent substitution. When availability, capability, purpose, transmission, or budget leaves no candidate, the decision is `unroutable` and the command exits `2`; the router never quietly swaps in a model the caller did not select.
+
+## Availability, configured identity, and attested identity
+
+Rigor distinguishes three separate ideas and never conflates them:
+
+- **Availability** is an _observation_ of whether the current Claude Code / `codex-plugin-cc` environment can invoke a configured candidate. It is not attestation.
+- **Configured identity** is what the profile or Claude Code configuration _claims_ the model is (for example `ANTHROPIC_MODEL`). It is always recorded as `unverified`.
+- **Attested identity** — cryptographic proof of which runtime actually served a request — is _not provided_ by Rigor and remains a documented gap.
+
+`rigor availability --profiles <file>` produces a versioned `rigor.availability.v1` report that marks each configured candidate as exactly one of `available`, `unavailable`, `unknown`, or `incompatible`. Probing reads only documented, bounded local interfaces — a fixed set of environment variables (`CLAUDE_PLUGIN_ROOT`/`CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_VERSION`, `ANTHROPIC_MODEL`, `RIGOR_CODEX_PLUGIN_PRESENT`, `RIGOR_CODEX_PLUGIN_VERSION`). It performs no installation, authentication, network transmission, or scraping of undocumented UI, so it is never a claim that the selected model exists, was invoked, or has any quality, effort, usage, or cost.
+
+These variables do not all have the same provenance. The Claude Code variables are set by Claude Code itself, but `RIGOR_CODEX_PLUGIN_PRESENT`/`RIGOR_CODEX_PLUGIN_VERSION` are a declaration channel: the orchestrator (typically a model-driven agent) sets them after observing the plugin through Claude Code's own documented plugin listing, and the report records that declaration, not a direct plugin observation. A wrong declaration can exclude codex candidates (`absent`) or mark them `available` (`present`), but it never bypasses the external-transmission policy gate, never invokes anything by itself, and never turns configured identity into attested identity; an unrecognized or missing declaration stays `unknown`.
+
+State derivation:
+
+- `available` — the environment was positively observed to support the candidate (Claude Code present for a `claude` candidate; `codex-plugin-cc` declared present for a Codex candidate).
+- `unavailable` — a supported provider was positively declared or observed to be missing (for example `codex-plugin-cc` declared absent). Missing `codex-plugin-cc` excludes only candidates that require it.
+- `incompatible` — the provider cannot be invoked by the Claude Code execution layer at all (anything other than `claude` or `codex-plugin-cc`). This is a static property of the provider type, so it is derived even when probing is unsupported.
+- `unknown` — probing is unsupported, failed, changed format, or the signal was simply not observable. Unknown is never treated as available and never excludes a candidate: the flow fails safe by leaving the candidate eligible under the remaining deterministic filters, exactly as it would with no availability report at all.
+
+Tool and plugin versions and the observation time are recorded when observable and represented as explicitly `null`/unknown otherwise; they are never fabricated. When `rigor route` is given `--availability`, the report's `modelProfilesHash` must match the profiles being routed, and the selected decision records an `availabilityReportHash` so the observation is traceable. Availability is an optional input: routing without a report behaves exactly as before.
 
 ## Claude and Codex
 
@@ -73,9 +97,10 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 
 - `routing-input.v1.schema.json` describes the explicit task assessment (flat `assessmentReasons`) and budget.
 - `routing-input.v2.schema.json` describes the explicit task assessment as a structured, path-anchored `confidence`/`evidence` object and budget.
-- `model-profiles.v1.schema.json` describes available candidates without asserting their real availability.
-- `routing-decision.v1.schema.json` describes dry-run output, exclusion reason codes, the `requires-review` status, and the assessment summary (`inputSchemaVersion`, `confidence`, `evidenceCount`).
-- `routing-plan.v1.schema.json` binds a selected decision to the preflight, contract, policy, profiles, and HEAD, and carries the same assessment summary (optional, for backward compatibility with plans recorded before `rigor.routing-input.v2`).
+- `model-profiles.v1.schema.json` describes configured candidates without asserting their real availability.
+- `availability.v1.schema.json` describes an observed per-candidate availability report (available/unavailable/unknown/incompatible) with recorded tool/plugin version and observation time.
+- `routing-decision.v1.schema.json` describes dry-run output, exclusion reason codes (including `UNAVAILABLE` and `INCOMPATIBLE`), the `requires-review` status, and the assessment summary (`inputSchemaVersion`, `confidence`, `evidenceCount`).
+- `routing-plan.v1.schema.json` binds a selected decision to the preflight, contract, policy, profiles, and HEAD, and carries the same assessment summary (optional, for backward compatibility with plans recorded before `rigor.routing-input.v2`) plus the optional `availabilityReportHash`.
 - `attempt-session.v1.schema.json` records the selected candidate, budgets, and pre-execution Git state.
 - `attempt-result-input.v1.schema.json` records completion, failure, cancellation, and available external IDs.
 - `attempt.v1.schema.json` records duration, before/after state, scope violations, and linked passing verification.
@@ -86,7 +111,7 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 - `outcome-input.v1.schema.json` bounds the human-reported disposition of a task.
 - `outcome.v1.schema.json` links the outcome to its attempt, verification, and review and normalizes usage as measured-or-unavailable.
 
-Model execution remains a Claude Code Skill responsibility rather than a TypeScript CLI action. Provider/model identity is recorded as `unverified`: configuration and an agent's report do not attest which runtime served the request.
+Model execution remains a Claude Code Skill responsibility rather than a TypeScript CLI action. Provider/model identity is recorded as `unverified`: configuration and an agent's report do not attest which runtime served the request. Availability probing observes only whether a candidate can be invoked; it does not raise configured identity to attested identity, and runtime model identity, reasoning effort, usage, and cost remain unverified/unknown unless an authoritative source is added later.
 
 ## Example
 
@@ -99,7 +124,18 @@ rigor route --dry-run \
 
 The command exits `0` when it selects a candidate, `2` when policy, capability, purpose, or budget leaves the task unroutable (or a v2 input's low assessment confidence requires human review), and `3` for malformed, unsupported-schema, evidence-free, contradictory, or mismatched inputs.
 
-To persist a plan for execution, replace `--dry-run` with `--record` and add the linked contract:
+To observe candidate availability before routing and let it filter unavailable or incompatible candidates, produce a report and pass it with `--availability`:
+
+```sh
+rigor availability --profiles /tmp/model-profiles.json > /tmp/availability.json
+rigor route --dry-run \
+  --preflight .rigor/evidence/APP-123/preflight.json \
+  --input /tmp/routing-input.json \
+  --profiles /tmp/model-profiles.json \
+  --availability /tmp/availability.json
+```
+
+To persist a plan for execution, replace `--dry-run` with `--record` and add the linked contract (`--availability` may be combined with `--record`):
 
 ```sh
 rigor route --record \

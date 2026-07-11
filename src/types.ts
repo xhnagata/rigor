@@ -25,6 +25,7 @@ export const ATTEMPT_RESULT_INPUT_SCHEMA =
   "rigor.attempt-result-input.v1" as const;
 export const OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1" as const;
 export const OUTCOME_SCHEMA = "rigor.outcome.v1" as const;
+export const AVAILABILITY_SCHEMA = "rigor.availability.v1" as const;
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
@@ -207,7 +208,60 @@ export type RoutingExclusionReason =
   | "PURPOSE_UNSUPPORTED"
   | "EXTERNAL_TRANSMISSION_DENIED"
   | "INSUFFICIENT_CAPABILITY"
-  | "BUDGET_EXCEEDED";
+  | "BUDGET_EXCEEDED"
+  | "UNAVAILABLE"
+  | "INCOMPATIBLE";
+
+export type AvailabilityState =
+  | "available"
+  | "unavailable"
+  | "unknown"
+  | "incompatible";
+
+export type CodexPluginPresence = "present" | "absent" | "unknown";
+
+/**
+ * Raw observation of the local execution environment gathered through
+ * documented, bounded interfaces only (environment variables). It performs no
+ * installation, authentication, or network transmission and never scrapes
+ * undocumented UI output. `probeSupported` is false when the interface is
+ * unavailable or its format changed, so every derived state fails safe to
+ * `unknown` rather than fabricating availability.
+ */
+export interface EnvironmentObservation {
+  probeSupported: boolean;
+  claudeCode: { present: boolean; version: string | null };
+  configuredModel: string | null;
+  codexPlugin: { presence: CodexPluginPresence; version: string | null };
+}
+
+export interface CandidateAvailability {
+  candidateId: string;
+  provider: string;
+  state: AvailabilityState;
+  reason: string;
+  observedAt: string;
+  toolVersion: string | null;
+}
+
+/**
+ * A versioned observation (not attestation) of which configured candidates the
+ * current environment can invoke. Configured model identity, reasoning effort,
+ * usage, and cost remain unverified; availability is never runtime attestation.
+ */
+export interface AvailabilityReport {
+  schemaVersion: typeof AVAILABILITY_SCHEMA;
+  artifactId: string;
+  createdAt: string;
+  modelProfilesHash: string;
+  probeStatus: "supported" | "unsupported";
+  environment: {
+    claudeCode: { present: boolean; version: string | null };
+    configuredModel: { value: string; attestation: "unverified" } | null;
+    codexPlugin: { presence: CodexPluginPresence; version: string | null };
+  };
+  candidates: CandidateAvailability[];
+}
 
 export interface RoutingDecision {
   schemaVersion: typeof ROUTING_DECISION_SCHEMA;
@@ -237,6 +291,7 @@ export interface RoutingDecision {
     requireIndependentReview: boolean;
   };
   budget: RoutingInput["budget"];
+  availabilityReportHash?: string;
   assessment: {
     inputSchemaVersion:
       | typeof ROUTING_INPUT_SCHEMA

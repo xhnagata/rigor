@@ -35,6 +35,11 @@ import {
   route,
 } from "./routing.js";
 import {
+  buildAvailabilityReport,
+  parseAvailabilityReport,
+  probeEnvironment,
+} from "./availability.js";
+import {
   finishConsultation,
   parseConsultationRequest,
   parseConsultationResultInput,
@@ -98,7 +103,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -135,6 +140,14 @@ export async function main(
     output({ ...result, saved });
     return EXIT.success;
   }
+  if (command === "availability") {
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles")!),
+    );
+    const report = buildAvailabilityReport(profiles, probeEnvironment());
+    output(report);
+    return EXIT.success;
+  }
   if (command === "route") {
     const dryRun = args.includes("--dry-run");
     const recordPlan = args.includes("--record");
@@ -150,7 +163,11 @@ export async function main(
     const profiles = parseModelProfiles(
       await readJson(option(args, "--profiles")!),
     );
-    const result = route(preflight, input, profiles);
+    const availabilityPath = option(args, "--availability", false);
+    const availability = availabilityPath
+      ? parseAvailabilityReport(await readJson(availabilityPath))
+      : undefined;
+    const result = route(preflight, input, profiles, availability);
     if (result.status !== "selected") {
       output(result);
       return EXIT.policyViolation;

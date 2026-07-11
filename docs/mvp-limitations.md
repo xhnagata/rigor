@@ -2,7 +2,7 @@
 
 Rigor 0.1.0 intentionally leaves these controls to follow-up work:
 
-- Provider availability probing, cryptographic runtime/model attestation, concurrent attempt coordination, authoritative remote usage/cost collection, and empirical routing calibration. Claude and `codex-plugin-cc` execution occurs only through explicitly invoked Skills; the CLI records configured identity as unverified and does not invoke a model or observe actual provider usage.
+- Cryptographic runtime/model attestation, concurrent attempt coordination, authoritative remote usage/cost collection, and empirical routing calibration. Claude and `codex-plugin-cc` execution occurs only through explicitly invoked Skills; the CLI records configured identity as unverified and does not invoke a model or observe actual provider usage. `rigor availability` now probes candidate invocability through documented, bounded local interfaces and marks each candidate available/unavailable/unknown/incompatible, but this is an observation, not attestation: it does not prove which runtime model served a request, and runtime identity, reasoning effort, usage, and cost remain unverified/unknown.
 
 - [Windows-native launcher and path/case testing](https://github.com/xhnagata/rigor/issues/1). The runtime logic is portable, but plugin execution is currently a POSIX shell script.
 - [Cryptographic artifact signing, binary attestation, and SLSA provenance](https://github.com/xhnagata/rigor/issues/4). CI independently re-derives Git facts but does not attest who produced local evidence.

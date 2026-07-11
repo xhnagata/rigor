@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_f53be59d-9b45-4d59-8e42-395fc68eb156",
+  "taskId": "GH-12-R2",
+  "createdAt": "2026-07-11T15:18:06.385Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "8bd9eb59ebfe9ede1e86807a996ecea3836f7420c78cf21dc99f424303b3ee54",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-12",
+    "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-12/attempts/attempt-session_644f30a2-3b82-49dd-bcb0-c43a5258dead.json",
+      ".rigor/evidence/GH-12/attempts/attempt_aff71374-d5a5-49b8-85e9-1cbaf5d95b6c.json",
+      ".rigor/evidence/GH-12/contract.json",
+      ".rigor/evidence/GH-12/preflight.json",
+      ".rigor/evidence/GH-12/routing/routing-plan_88b4c730-0b8f-4aee-8c80-661e022277d5.json",
+      ".rigor/evidence/GH-12/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/mvp-limitations.md",
+      "docs/orchestration.md",
+      "docs/threat-model.md",
+      "schemas/availability.v1.schema.json",
+      "schemas/routing-decision.v1.schema.json",
+      "schemas/routing-plan.v1.schema.json",
+      "skills/orchestrate/SKILL.md",
+      "skills/route/SKILL.md",
+      "src/availability.ts",
+      "src/cli.ts",
+      "src/routing.ts",
+      "src/types.ts",
+      "test/availability.test.ts",
+      "test/e2e.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "src/availability.ts",
+    "test/availability.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/availability.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/availability.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

@@ -189,6 +189,45 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
     modelProfiles,
   ]);
   assert.equal(routingPlan.status, "planned");
+  const availabilityReport = await rigor(root, [
+    "availability",
+    "--profiles",
+    modelProfiles,
+  ]);
+  assert.equal(availabilityReport.schemaVersion, "rigor.availability.v1");
+  const availabilityCandidates = availabilityReport.candidates as Array<{
+    candidateId: string;
+    state: string;
+  }>;
+  for (const candidate of availabilityCandidates)
+    assert.ok(
+      ["available", "unavailable", "unknown", "incompatible"].includes(
+        candidate.state,
+      ),
+    );
+  const availabilityFile = path.join(parent, "availability.json");
+  await writeFile(availabilityFile, JSON.stringify(availabilityReport));
+  const routedWithAvailability = await rigor(root, [
+    "route",
+    "--dry-run",
+    "--preflight",
+    String(preflight.saved),
+    "--input",
+    routingInput,
+    "--profiles",
+    modelProfiles,
+    "--availability",
+    availabilityFile,
+  ]);
+  assert.equal(routedWithAvailability.status, "selected");
+  assert.equal(
+    (routedWithAvailability.selection as { candidateId: string }).candidateId,
+    "claude-standard",
+  );
+  assert.match(
+    routedWithAvailability.availabilityReportHash as string,
+    /^[a-f0-9]{64}$/u,
+  );
   const consultationRequest = path.join(parent, "consultation-request.json");
   await writeFile(
     consultationRequest,

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c70b8b54-a5a4-4431-be08-17be4b5f6285",
+  "taskId": "GH-12-R3",
+  "createdAt": "2026-07-11T15:47:05.097Z",
+  "preflightArtifactId": "preflight_f28a4479-7c50-432b-8bb6-f2bb8e193904",
+  "preflightHash": "50e500e53c72066f1a8706442d97aca6b00daa12f3ca9f99eef3cb3d328bec5d",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "The branch tree contains both the GH-12 availability feature and main's #10 assessment-confidence feature with no conflict markers and no behavior of either feature removed.",
+    "The routing decision and plan carry both the optional availabilityReportHash and the assessment summary; the status enum includes selected, unroutable, and requires-review; exclusion reason codes include UNAVAILABLE and INCOMPATIBLE.",
+    "Availability filtering and the low-confidence requires-review gate compose: exclusion runs per candidate and a low-confidence assessment still yields requires-review with no selection.",
+    "dist/rigor.cjs is rebuilt from the merged sources.",
+    "Full suite (test:all including both features' tests, bench, plugin validate --strict, git diff --check) passes on the merged tree."
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "skills/**",
+    "dist/**",
+    ".claude-plugin/plugin.json",
+    "package.json"
+  ],
+  "constraints": [
+    "Resolve conflicts additively; do not drop or weaken either feature's validation, tests, or documentation.",
+    "Do not delete, weaken, or skip any test from either side.",
+    "Preserve the unverified identity boundary, fail-safe unknown semantics, and the fail-closed assessment validation.",
+    "No new features beyond reconciling the two merged changes."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

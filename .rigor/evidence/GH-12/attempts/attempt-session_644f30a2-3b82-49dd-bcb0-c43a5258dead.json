@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_644f30a2-3b82-49dd-bcb0-c43a5258dead",
+  "taskId": "GH-12",
+  "createdAt": "2026-07-11T14:51:55.412Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_88b4c730-0b8f-4aee-8c80-661e022277d5",
+  "routingPlanHash": "3d0a3e00bb3ff2dab59b9c76f99f40cb330db432d23336715bff4342c5c32342",
+  "contractArtifactId": "contract_c2e95e09-a9a2-4351-87e2-d23c3724e985",
+  "contractHash": "22ea3bc8098a80f9a96d2bb055e3730836d5bef8ee85c68d4e2f518142c9ea03",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 2,
+    "maxDurationMs": 3600000,
+    "maxRelativeCost": 100
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "beforeTreeHash": "971555008817d4bdbe64c62d32f9d6df410a7907a1289f2b3a5c9995ed937c39",
+  "changedPathsBefore": [],
+  "selection": {
+    "provider": "claude",
+    "model": "claude-opus-4-8",
+    "capabilityClass": "premium"
+  }
+}

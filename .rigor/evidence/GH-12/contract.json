@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c2e95e09-a9a2-4351-87e2-d23c3724e985",
+  "taskId": "GH-12",
+  "createdAt": "2026-07-11T14:51:34.447Z",
+  "preflightArtifactId": "preflight_5e1afe34-6291-4a71-915e-a01f24b45168",
+  "preflightHash": "7cc9f8b5041eb65f706053de9ddf1b7d5900e5374f988816544e66aea9cf9b97",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A versioned availability artifact represents each configured candidate as exactly one of available, unavailable, unknown, or incompatible.",
+    "Probing reads only documented, bounded interfaces for Claude Code model configuration and optional codex-plugin-cc presence; it performs no installation, no authentication, and no network transmission.",
+    "Tool or plugin version and observation time are recorded when observable and represented as explicitly unknown otherwise, never fabricated.",
+    "A candidate whose availability is unavailable or incompatible is filtered before attempt start; missing codex-plugin-cc excludes only candidates that require it.",
+    "Unsupported, failed, or format-changed probing is represented as unknown, not available, and the flow fails safely.",
+    "The router never silently substitutes a different model; an unroutable or unavailable selection stops with an explicit result.",
+    "Runtime model identity, reasoning effort, usage, and cost remain unverified/unknown; availability is never presented as runtime attestation.",
+    "Tests use fixtures or mocks and do not require live provider access.",
+    "Documentation clearly separates availability, configured identity, and attested identity.",
+    "Existing v1 artifacts remain readable; schema changes are additive."
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "skills/**",
+    "dist/**"
+  ],
+  "constraints": [
+    "Implement only the Scope and Acceptance criteria of issue #12; do not add unrelated features.",
+    "Do not perform installation, login, network calls, or external transmission during probing.",
+    "Do not scrape undocumented UI output as an authoritative identity source.",
+    "Do not implement cryptographic runtime attestation; availability is an observation, not attestation.",
+    "Do not delete, weaken, or skip existing tests; new tests may be added.",
+    "Treat configured model identity as unverified; never claim the runtime model is proven.",
+    "Represent unavailable observations explicitly as unknown; never infer availability or identity from a display name.",
+    "Keep schema changes additive so existing artifacts remain readable.",
+    "Bound and validate all prose with the existing textField/strings rules."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

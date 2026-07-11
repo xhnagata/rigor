@@ -50,7 +50,9 @@
               "PURPOSE_UNSUPPORTED",
               "EXTERNAL_TRANSMISSION_DENIED",
               "INSUFFICIENT_CAPABILITY",
-              "BUDGET_EXCEEDED"
+              "BUDGET_EXCEEDED",
+              "UNAVAILABLE",
+              "INCOMPATIBLE"
             ]
           }
         }
@@ -102,6 +104,7 @@
         "maxRelativeCost": { "type": "integer", "minimum": 1 }
       }
     },
+    "availabilityReportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "assessment": {
       "type": "object",
       "additionalProperties": false,

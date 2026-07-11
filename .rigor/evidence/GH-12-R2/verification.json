@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_cc59dc35-deff-462d-9707-b736969692b9",
+  "taskId": "GH-12-R2",
+  "contractArtifactId": "contract_a1caefda-6545-4b6c-ab6c-7576ca3ee819",
+  "createdAt": "2026-07-11T15:20:51.496Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "treeHash": "3d9c2d34cd115af6fc3971bfb39154d5e513df3b7b3b7f743c63366971aebea5",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/availability.v1.schema.json",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "skills/orchestrate/SKILL.md",
+    "skills/route/SKILL.md",
+    "src/availability.ts",
+    "src/cli.ts",
+    "src/routing.ts",
+    "src/types.ts",
+    "test/availability.test.ts",
+    "test/e2e.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 10,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}

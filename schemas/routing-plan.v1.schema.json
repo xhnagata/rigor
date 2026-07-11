@@ -61,7 +61,9 @@
               "PURPOSE_UNSUPPORTED",
               "EXTERNAL_TRANSMISSION_DENIED",
               "INSUFFICIENT_CAPABILITY",
-              "BUDGET_EXCEEDED"
+              "BUDGET_EXCEEDED",
+              "UNAVAILABLE",
+              "INCOMPATIBLE"
             ]
           }
         }
@@ -116,6 +118,7 @@
         }
       }
     },
+    "availabilityReportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "assessment": {
       "description": "Optional: plans recorded before schema version rigor.routing-input.v2 was introduced have no assessment summary. parseRoutingPlan synthesizes the legacy default { inputSchemaVersion: \"rigor.routing-input.v1\", confidence: \"medium\", evidenceCount: 0 } for those plans instead of failing closed.",
       "type": "object",

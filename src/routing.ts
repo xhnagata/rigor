@@ -7,6 +7,8 @@ import {
   ROUTING_PLAN_SCHEMA,
   type AssessmentConfidence,
   type AssessmentEvidence,
+  type AvailabilityReport,
+  type AvailabilityState,
   type CapabilityClass,
   type ModelCandidate,
   type ModelProfiles,
@@ -292,8 +294,12 @@ function exclusionReason(
   input: RoutingInput,
   preflight: Preflight,
   required: CapabilityClass,
+  availability: Map<string, AvailabilityState>,
 ): RoutingExclusionReason | null {
   if (!candidate.enabled) return "DISABLED";
+  const state = availability.get(candidate.id);
+  if (state === "incompatible") return "INCOMPATIBLE";
+  if (state === "unavailable") return "UNAVAILABLE";
   if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
   if (
     preflight.externalTransmission === "denied" &&
@@ -314,12 +320,23 @@ export function route(
   preflight: Preflight,
   input: RoutingInput,
   profiles: ModelProfiles,
+  availability?: AvailabilityReport,
 ): RoutingDecision {
   if (input.taskId !== preflight.taskId)
     throw new RigorError(
       "Routing taskId does not match preflight",
       EXIT.inputError,
     );
+  const availabilityStates = new Map<string, AvailabilityState>();
+  if (availability !== undefined) {
+    if (availability.modelProfilesHash !== hash(profiles))
+      throw new RigorError(
+        "Availability report does not match the model profiles",
+        EXIT.inputError,
+      );
+    for (const entry of availability.candidates)
+      availabilityStates.set(entry.candidateId, entry.state);
+  }
   const required = requiredCapability(input);
   // v1 legacy inputs carry no assessment, so they are treated as "medium"
   // confidence and proceed exactly as they did before this change.
@@ -328,7 +345,13 @@ export function route(
   const eligible: ModelCandidate[] = [];
   const excluded: RoutingDecision["excludedCandidates"] = [];
   for (const candidate of profiles.candidates) {
-    const reasonCode = exclusionReason(candidate, input, preflight, required);
+    const reasonCode = exclusionReason(
+      candidate,
+      input,
+      preflight,
+      required,
+      availabilityStates,
+    );
     if (reasonCode) excluded.push({ candidateId: candidate.id, reasonCode });
     else eligible.push(candidate);
   }
@@ -380,6 +403,9 @@ export function route(
         preflight.protectedPaths.length > 0,
     },
     budget: input.budget,
+    ...(availability === undefined
+      ? {}
+      : { availabilityReportHash: hash(availability) }),
     assessment: {
       inputSchemaVersion: input.schemaVersion,
       confidence,
@@ -577,10 +603,18 @@ export function parseRoutingPlan(value: unknown): RoutingPlan {
           "EXTERNAL_TRANSMISSION_DENIED",
           "INSUFFICIENT_CAPABILITY",
           "BUDGET_EXCEEDED",
+          "UNAVAILABLE",
+          "INCOMPATIBLE",
         ],
         "reasonCode",
       ),
     };
   });
+  if (item.availabilityReportHash !== undefined)
+    plan.availabilityReportHash = textField(
+      item.availabilityReportHash,
+      "availabilityReportHash",
+      128,
+    );
   return plan;
 }
