@@ -1,0 +1,8 @@
+# Code owners for xhnagata/rigor. Review by a code owner is required on
+# governed paths via the main branch ruleset. Last matching entry wins.
+* @xhnagata
+/.rigor/ @xhnagata
+/.github/ @xhnagata
+/CODEOWNERS @xhnagata
+/docs/ @xhnagata
+/schemas/ @xhnagata

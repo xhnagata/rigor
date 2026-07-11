@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_753b0b15-8499-4b42-ac15-c426792cef9c",
+  "taskId": "GH-6",
+  "createdAt": "2026-07-11T04:35:58.858Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "de3c29a31a8e9360f1b2d6abb3dbd4c84db5beeb80dc665a02b40aa2774bd5ab",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "ffa3b6a0b3c4ae01432a6a8046e745446178cb4e",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "CODEOWNERS"
+  ],
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "protectedPaths": [
+    "CODEOWNERS"
+  ],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ],
+  "reasons": [
+    {
+      "ruleId": "governance",
+      "path": "CODEOWNERS",
+      "reason": "Governance and enforcement changes can weaken controls."
+    }
+  ]
+}

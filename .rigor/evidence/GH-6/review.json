@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_76c9af4e-b6f1-4e3b-b6da-4908f070b090",
+  "taskId": "GH-6",
+  "createdAt": "2026-07-11T04:37:22.460Z",
+  "externalTransmission": "allowed",
+  "riskTier": "critical",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_6e7c4686-4c07-46a1-83fe-8526edba1690",
+  "verificationArtifactId": "verification_4567dd98-74af-41fc-8b65-1523712b6399",
+  "changedPaths": [
+    "CODEOWNERS"
+  ],
+  "acceptanceCriteria": [
+    "a root CODEOWNERS file exists whose entries all name at least one owner, covering every path via a catch-all rule and explicitly naming the policy-protected governance paths",
+    "after merge, the rigor governance codeowners-sampled-coverage finding is satisfied for xhnagata/rigor main",
+    "the pull request passes the independent rigor CI check with critical-tier linked evidence",
+    "npm run test:all still passes"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
