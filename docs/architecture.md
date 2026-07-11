@@ -17,7 +17,7 @@
 
 The CLI reads `.rigor/policy.json`, an intent JSON file, and Git facts. Pure policy evaluation produces a preflight artifact. Contract creation consumes that artifact and explicit acceptance criteria. Verification rechecks scope and executes configured commands directly (no shell), storing only status, duration, and a digest. Escalation and review consume the linked artifacts. Retrospective reads redacted JSONL events.
 
-Optional routing preview consumes a preflight artifact, an explicit assessment, and model profiles. A pure selector excludes candidates by enabled state, purpose, additional-transmission policy, capability, and relative-cost budget. It invokes no model and persists no evidence in Phase 1. The [orchestration design](orchestration.md) defines the boundary for later Claude Code and `codex-plugin-cc` integration.
+Optional routing preview consumes a preflight artifact, an explicit assessment, and model profiles. A pure selector excludes candidates by enabled state, purpose, additional-transmission policy, capability, and relative-cost budget. It invokes no model and persists no evidence. Claude execution is guided by the orchestration Skill. Optional `codex-plugin-cc` consultation is bracketed by CLI-created append-only snapshots that detect content, path, or HEAD mutation. The [orchestration design](orchestration.md) defines these boundaries.
 
 In CI, `rigor ci` receives GitHub-provided base/head SHAs, verifies that both are commits, reads policy and evidence directly from each Git object, computes `git diff`, rejects policy weakening or unmatched evidence, and runs the head policy's checks. The verifier does not accept contributor-provided changed-path or pass claims as facts.
 
@@ -29,7 +29,7 @@ In CI, `rigor ci` receives GitHub-provided base/head SHAs, verifies that both ar
 - Globs are deliberately limited to segment-aware `*`, `?`, and `**`. Paths are normalized before matching. This keeps matching reviewable and consistent in local and CI execution.
 - Setup writes only absent, Rigor-owned files. Existing unequal content is reported as a conflict; upgrades never silently replace user changes.
 - Hook input is treated as untrusted JSON. Unconfigured repositories exit successfully; configured repositories with missing or invalid policy return a blocking `UserPromptSubmit` decision.
-- External transmission is a policy result, not an action. The workflow commands never call a model or remote endpoint; the single deliberate exception is `rigor governance`, which sends read-only GET requests to the GitHub API to verify branch rules, classic protection, sampled CODEOWNERS coverage, and deployment environments, and writes nothing. The [threat model](threat-model.md) documents this trust boundary (transmitted data, fixed host, token precedence, redirect refusal, timeout, response size limit, and error concealment).
+- External transmission is a policy result, not an action by the deterministic CLI. The CLI never calls a model; `rigor governance` is its single remote command and sends read-only GET requests to the GitHub API. When explicitly invoked, the orchestration/consult Skills may delegate minimal context to Claude Code agents or an installed `codex-plugin-cc` only after policy permits it. The [threat model](threat-model.md) documents these trust boundaries.
 
 ## Official specification basis
 

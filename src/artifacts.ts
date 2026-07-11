@@ -158,7 +158,7 @@ export async function verify(
     createdAt: now.toISOString(),
     policyHash: hash(policy),
     head,
-    treeHash: await treeHash(root),
+    treeHash: await treeHash(root, [".rigor/evidence/", ".rigor/events.jsonl"]),
     changedPaths,
     scopeViolations,
     checks,
@@ -271,6 +271,31 @@ export async function saveArtifact(
     type: kind,
     taskId: task,
     artifactId: record(value, kind).artifactId,
+    at: new Date().toISOString(),
+  });
+  return file;
+}
+
+export async function saveCollectionArtifact(
+  root: string,
+  task: string,
+  collection: string,
+  kind: string,
+  value: unknown,
+): Promise<string> {
+  if (!/^[a-z][a-z0-9-]*$/u.test(collection))
+    throw new RigorError("Invalid artifact collection", EXIT.inputError);
+  const item = record(value, kind);
+  const id = textField(item.artifactId, `${kind}.artifactId`, 128);
+  if (!/^[A-Za-z0-9_-]+$/u.test(id))
+    throw new RigorError("Invalid artifact identifier", EXIT.inputError);
+  const directory = path.join(root, ".rigor", "evidence", task, collection);
+  const file = path.join(directory, `${id}.json`);
+  await writeJson(file, value);
+  await appendEvent(root, {
+    type: kind,
+    taskId: task,
+    artifactId: id,
     at: new Date().toISOString(),
   });
   return file;

@@ -12,6 +12,12 @@ export const MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1" as const;
 export const ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1" as const;
 export const ATTEMPT_SCHEMA = "rigor.attempt.v1" as const;
 export const CONSULTATION_SCHEMA = "rigor.consultation.v1" as const;
+export const CONSULTATION_REQUEST_SCHEMA =
+  "rigor.consultation-request.v1" as const;
+export const CONSULTATION_SESSION_SCHEMA =
+  "rigor.consultation-session.v1" as const;
+export const CONSULTATION_RESULT_INPUT_SCHEMA =
+  "rigor.consultation-result-input.v1" as const;
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
@@ -235,13 +241,16 @@ export interface Consultation {
   artifactId: string;
   taskId: string;
   createdAt: string;
-  sequence: number;
+  sessionArtifactId: string;
+  sessionHash: string;
   provider: string;
   mode: "review" | "adversarial-review" | "consultation" | "rescue";
   requestedDecision: string;
   transmissionDecision: Transmission;
   beforeTreeHash: string;
   afterTreeHash: string;
+  beforeHead: string | null;
+  afterHead: string | null;
   changedPathsBefore: string[];
   changedPathsAfter: string[];
   externalJobId?: string;
@@ -254,4 +263,43 @@ export interface Consultation {
   outcome: "accept" | "revise" | "reject" | "investigate" | "ask-human";
   findingCount: number;
   requiredActions: string[];
+}
+
+export interface ConsultationRequest {
+  schemaVersion: typeof CONSULTATION_REQUEST_SCHEMA;
+  taskId: string;
+  provider: "codex-plugin-cc";
+  mode: "review" | "adversarial-review" | "consultation" | "rescue";
+  requestedDecision: string;
+}
+
+export interface ConsultationSession {
+  schemaVersion: typeof CONSULTATION_SESSION_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  preflightArtifactId: string;
+  preflightHash: string;
+  provider: "codex-plugin-cc";
+  mode: ConsultationRequest["mode"];
+  requestedDecision: string;
+  transmissionDecision: "allowed";
+  beforeHead: string | null;
+  beforeTreeHash: string;
+  changedPathsBefore: string[];
+}
+
+export interface ConsultationResultInput {
+  schemaVersion: typeof CONSULTATION_RESULT_INPUT_SCHEMA;
+  taskId: string;
+  status: "completed" | "failed";
+  outcome: "accept" | "revise" | "reject" | "investigate" | "ask-human";
+  findingCount: number;
+  requiredActions: string[];
+  externalJobId?: string;
+  externalSessionId?: string;
+  externalTurnId?: string;
+  model?: string;
+  reasoningEffort?: string;
+  usageStatus: "recorded" | "unavailable";
 }

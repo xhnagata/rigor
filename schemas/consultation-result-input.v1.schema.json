@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/consultation-result-input.v1.schema.json",
+  "title": "Rigor consultation result input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "status",
+    "outcome",
+    "findingCount",
+    "requiredActions",
+    "usageStatus"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.consultation-result-input.v1" },
+    "taskId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["completed", "failed"] },
+    "outcome": {
+      "enum": ["accept", "revise", "reject", "investigate", "ask-human"]
+    },
+    "findingCount": { "type": "integer", "minimum": 0 },
+    "requiredActions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "externalJobId": { "type": "string", "minLength": 1 },
+    "externalSessionId": { "type": "string", "minLength": 1 },
+    "externalTurnId": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "reasoningEffort": { "type": "string", "minLength": 1 },
+    "usageStatus": { "enum": ["recorded", "unavailable"] }
+  }
+}

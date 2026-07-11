@@ -4,7 +4,7 @@
 
 Rigor separates model orchestration from deterministic control. The TypeScript CLI validates routing inputs, applies repository policy, excludes ineligible candidates, and previews a selection. It does not invoke Claude, Codex, or another model. Claude Code skills and agents will remain the execution layer in later phases.
 
-Phase 1 provides `rigor route --dry-run`. It is advisory and creates no evidence artifact. A selected candidate does not authorize transmission, satisfy verification, or replace human approval.
+Phase 1 provides `rigor route --dry-run`. It is advisory and creates no evidence artifact. A selected candidate does not authorize transmission, satisfy verification, or replace human approval. Phase 2 adds Claude Code orchestration guidance and an append-only, policy-gated consultation protocol for `codex-plugin-cc`.
 
 The dry-run result hashes the preflight, routing input, and model profiles so the exact inputs can be compared without embedding their prose in later summaries.
 
@@ -45,7 +45,7 @@ Candidates are considered in this order:
 
 Claude Code is the required execution environment. Claude candidates normally set `requiresAdditionalExternalTransmission` to `false` because they remain in the already active Claude Code execution boundary. A `codex-plugin-cc` candidate sets it to `true`, so it is excluded when repository policy denies transmission to an additional external provider.
 
-The planned optional Codex integration uses [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc), not a Rigor-owned Codex runtime. Normal review and adversarial review use the plugin's read-only flows. Consultation or rescue can use its subagent, but prompt-level read-only instructions are not an enforcement boundary. Rigor must compare tree hashes and changed paths before and after consultation and treat unexpected mutation as failure.
+The optional Codex integration uses [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc), not a Rigor-owned Codex runtime. Normal review and adversarial review use the plugin's read-only flows. Consultation or rescue can use its subagent, but prompt-level read-only instructions are not an enforcement boundary. Rigor compares content-sensitive tree hashes, HEAD, and changed paths before and after consultation and treats unexpected mutation as failure.
 
 External job, session, turn, model, effort, and usage identifiers are optional because the plugin exposes different metadata for review jobs and synchronous subagent consultations. Absolute paths in findings must be normalized to repository-relative paths before persistence.
 
@@ -55,9 +55,12 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 - `model-profiles.v1.schema.json` describes available candidates without asserting their real availability.
 - `routing-decision.v1.schema.json` describes dry-run output and exclusion reason codes.
 - `attempt.v1.schema.json` reserves the append-only execution-attempt format for the next phase.
-- `consultation.v1.schema.json` reserves the normalized consultation summary. It stores no raw transcript or chain of thought.
+- `consultation-request.v1.schema.json` bounds the decision sent to `codex-plugin-cc`.
+- `consultation-session.v1.schema.json` records the pre-consultation Git snapshot.
+- `consultation-result-input.v1.schema.json` accepts a minimal normalized result without raw transcript or chain of thought.
+- `consultation.v1.schema.json` links the session and result and records the post-consultation mutation check.
 
-Attempt and consultation persistence and automatic model invocation are not implemented in Phase 1.
+Attempt persistence and autonomous Codex implementation are not implemented in Phase 2. Claude execution remains a Claude Code Skill responsibility rather than a TypeScript CLI action.
 
 ## Example
 
@@ -69,3 +72,25 @@ rigor route --dry-run \
 ```
 
 The command exits `0` when it selects a candidate, `2` when policy, capability, purpose, or budget leaves the task unroutable, and `3` for malformed or mismatched inputs.
+
+## Consultation protocol
+
+Start a consultation before invoking Codex:
+
+```sh
+rigor consult-start \
+  --preflight .rigor/evidence/APP-123/preflight.json \
+  --input /tmp/consultation-request.json
+```
+
+`consult-start` rejects a stale policy hash, a changed HEAD, paths outside the preflight scope, or denied external transmission. If the implementation scope changed, create a fresh preflight before consultation.
+
+After `codex-plugin-cc` returns, normalize only its outcome, finding count, required actions, and available external IDs, then finish:
+
+```sh
+rigor consult-finish \
+  --session .rigor/evidence/APP-123/consultations/consultation-session_ID.json \
+  --input /tmp/consultation-result.json
+```
+
+Both the session and final result are append-only. Evidence files and the local event log are excluded from the before/after content hash so recording the session does not report itself as a mutation. Any other content change, changed path, or HEAD change makes `consult-finish` exit `2` with `status: "mutated-worktree"`.

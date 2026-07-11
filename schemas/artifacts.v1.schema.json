@@ -13,6 +13,7 @@
         "rigor.escalation.v1",
         "rigor.review.v1",
         "rigor.attempt.v1",
+        "rigor.consultation-session.v1",
         "rigor.consultation.v1"
       ]
     },
@@ -108,18 +109,41 @@
     {
       "if": {
         "properties": {
+          "schemaVersion": { "const": "rigor.consultation-session.v1" }
+        }
+      },
+      "then": {
+        "required": [
+          "preflightArtifactId",
+          "preflightHash",
+          "provider",
+          "mode",
+          "requestedDecision",
+          "transmissionDecision",
+          "beforeHead",
+          "beforeTreeHash",
+          "changedPathsBefore"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
           "schemaVersion": { "const": "rigor.consultation.v1" }
         }
       },
       "then": {
         "required": [
-          "sequence",
+          "sessionArtifactId",
+          "sessionHash",
           "provider",
           "mode",
           "requestedDecision",
           "transmissionDecision",
           "beforeTreeHash",
           "afterTreeHash",
+          "beforeHead",
+          "afterHead",
           "changedPathsBefore",
           "changedPathsAfter",
           "usageStatus",

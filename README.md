@@ -19,7 +19,7 @@ When used as documented, Rigor deterministically:
 - stores only command status, duration, exit code, and an output digest, not raw output;
 - has CI recompute base/head changes, compare base rules/checks, detect deleted tests, link evidence, and rerun checks.
 
-Rigor does not prove that policy or acceptance criteria are correct, detect every secret, prove test quality, attest the local executable, prevent local hook bypass, control production deployment, or prevent a GitHub administrator from bypassing controls. Its transmission result is a decision; Rigor itself uploads nothing. Secret scanning, DLP, sandboxing, identity, deployment approvals, branch protection, CODEOWNERS, and human judgment remain separate controls.
+Rigor does not prove that policy or acceptance criteria are correct, detect every secret, prove test quality, attest the local executable, prevent local hook bypass, control production deployment, or prevent a GitHub administrator from bypassing controls. Its transmission result is a decision; the deterministic CLI uploads no repository content. Explicitly invoked orchestration Skills may delegate bounded context through Claude Code or `codex-plugin-cc` only after the policy gate. Secret scanning, DLP, sandboxing, identity, deployment approvals, branch protection, CODEOWNERS, and human judgment remain separate controls.
 
 See [the product definition](docs/product.md), [threat model](docs/threat-model.md), and [architecture](docs/architecture.md) for the concise design basis.
 
@@ -143,11 +143,21 @@ rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input
 
 This command does not invoke a model or save evidence. `relativeCost` is a configured comparison weight, not an observed price. See [model routing and orchestration](docs/orchestration.md).
 
+An optional Codex consultation is bracketed by append-only snapshots:
+
+```sh
+rigor consult-start --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/consultation-request.json
+# consult through codex-plugin-cc
+rigor consult-finish --session .rigor/evidence/APP-123/consultations/consultation-session_ID.json --input /tmp/consultation-result.json
+```
+
+`consult-finish` fails if repository content, changed paths, or HEAD changed during a read-only consultation. It stores a normalized summary and available external IDs, never the raw model transcript.
+
 Commit the evidence with the change. CI ignores evidence files when deriving the code change but validates their linkage and independently reruns policy checks.
 
 ## Daily workflow
 
-The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:route`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. They are intentionally manual so an inferred skill invocation cannot silently establish a control.
+The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:route`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. `/rigor:consult` and `/rigor:orchestrate` are explicitly invoked model-using workflows; they remain bounded by the same CLI policy and verification commands. No Skill invocation silently establishes a control.
 
 Run the steps in this order: preflight and contract before any edit; then complete every change, including the rebuilt `dist/rigor.cjs`, before running `rigor verify`; then `rigor review`; then commit code and evidence together in one commit. Verification records the worktree's uncommitted changes, so verifying before the last edit (or after an intermediate commit) produces evidence that does not cover the pull request's full change set and CI will reject it. Artifacts are write-once: a task's `preflight.json`, `contract.json`, `verification.json`, and `review.json` are never overwritten, so when scope changes or a verification must be redone after saving, start a fresh task ID such as `APP-123-R2` and keep the earlier artifacts.
 

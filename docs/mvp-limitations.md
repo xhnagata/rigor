@@ -2,7 +2,7 @@
 
 Rigor 0.1.0 intentionally leaves these controls to follow-up work:
 
-- Automatic Claude model invocation, `codex-plugin-cc` consultation, append-only attempt persistence, and empirical routing calibration. `rigor route --dry-run` only previews a deterministic selection from explicit assessments and configured relative-cost profiles; it does not probe availability, invoke a model, or observe actual provider usage.
+- Append-only implementation-attempt persistence, autonomous Codex implementation, provider availability probing, and empirical routing calibration. `rigor route --dry-run` previews a deterministic selection from explicit assessments and configured relative-cost profiles. Claude orchestration and `codex-plugin-cc` consultation occur only through explicitly invoked Skills; the CLI itself does not invoke a model or observe actual provider usage.
 
 - [Windows-native launcher and path/case testing](https://github.com/xhnagata/rigor/issues/1). The runtime logic is portable, but plugin execution is currently a POSIX shell script.
 - [Cryptographic artifact signing, binary attestation, and SLSA provenance](https://github.com/xhnagata/rigor/issues/4). CI independently re-derives Git facts but does not attest who produced local evidence.

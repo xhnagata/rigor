@@ -38,7 +38,7 @@ var import_node_path8 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
 
 // src/artifacts.ts
-var import_promises2 = require("node:fs/promises");
+var import_promises3 = require("node:fs/promises");
 var import_node_path4 = __toESM(require("node:path"), 1);
 
 // src/errors.ts
@@ -103,6 +103,9 @@ function matches(pathname, globs) {
 
 // src/git.ts
 var import_node_child_process = require("node:child_process");
+var import_node_crypto = require("node:crypto");
+var import_node_fs = require("node:fs");
+var import_promises = require("node:fs/promises");
 var import_node_path2 = __toESM(require("node:path"), 1);
 async function run(command, args, cwd, timeoutMs = 3e4, outputLimit = 1e6) {
   const start = performance.now();
@@ -225,21 +228,54 @@ async function showFile(root, sha, file) {
   if (result.code !== 0) return null;
   return result.stdout.toString("utf8");
 }
-async function treeHash(root) {
-  const tracked = await git(root, ["ls-files", "-z"]);
-  const status = await git(root, [
-    "status",
-    "--porcelain=v1",
-    "-z",
-    "--untracked-files=all"
-  ]);
-  const { createHash: createHash2 } = await import("node:crypto");
-  return createHash2("sha256").update(tracked).update(status).digest("hex");
+async function treeHash(root, excludedPrefixes = []) {
+  const listed = nulPaths(
+    await git(root, [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ])
+  );
+  const files = [...new Set(listed)].filter(
+    (file) => !excludedPrefixes.some(
+      (prefix) => file === prefix || file.startsWith(prefix)
+    )
+  ).sort();
+  const digest = (0, import_node_crypto.createHash)("sha256");
+  for (const file of files) {
+    digest.update(`path\0${file}\0`);
+    const target = import_node_path2.default.join(root, file);
+    let info;
+    try {
+      info = await (0, import_promises.lstat)(target);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        digest.update("deleted\0");
+        continue;
+      }
+      throw error;
+    }
+    digest.update(`mode\0${info.mode}\0`);
+    if (info.isSymbolicLink()) {
+      digest.update(`symlink\0${await (0, import_promises.readlink)(target)}\0`);
+      continue;
+    }
+    if (!info.isFile())
+      throw new RigorError(
+        `Cannot hash non-file repository path: ${file}`,
+        EXIT.inputError
+      );
+    for await (const chunk of (0, import_node_fs.createReadStream)(target)) digest.update(chunk);
+    digest.update("\0");
+  }
+  return digest.digest("hex");
 }
 
 // src/util.ts
-var import_node_crypto = require("node:crypto");
-var import_promises = require("node:fs/promises");
+var import_node_crypto2 = require("node:crypto");
+var import_promises2 = require("node:fs/promises");
 var import_node_path3 = __toESM(require("node:path"), 1);
 function stable(value) {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
@@ -249,14 +285,14 @@ function stable(value) {
   return JSON.stringify(value);
 }
 function hash(value) {
-  return (0, import_node_crypto.createHash)("sha256").update(typeof value === "string" ? value : stable(value)).digest("hex");
+  return (0, import_node_crypto2.createHash)("sha256").update(typeof value === "string" ? value : stable(value)).digest("hex");
 }
 function artifactId(kind) {
-  return `${kind}_${(0, import_node_crypto.randomUUID)()}`;
+  return `${kind}_${(0, import_node_crypto2.randomUUID)()}`;
 }
 async function readJson(file) {
   try {
-    const text = await (0, import_promises.readFile)(file, "utf8");
+    const text = await (0, import_promises2.readFile)(file, "utf8");
     if (text.length > 2e6)
       throw new RigorError(`Input is too large: ${file}`, EXIT.inputError);
     return JSON.parse(text);
@@ -269,8 +305,8 @@ async function readJson(file) {
   }
 }
 async function writeJson(file, value) {
-  await (0, import_promises.mkdir)(import_node_path3.default.dirname(file), { recursive: true });
-  await (0, import_promises.writeFile)(file, `${JSON.stringify(value, null, 2)}
+  await (0, import_promises2.mkdir)(import_node_path3.default.dirname(file), { recursive: true });
+  await (0, import_promises2.writeFile)(file, `${JSON.stringify(value, null, 2)}
 `, {
     flag: "wx",
     mode: 384
@@ -315,9 +351,9 @@ async function assertContainedPath(root, target) {
   let cursor = target;
   while (cursor !== root) {
     try {
-      const stat = await (0, import_promises.lstat)(cursor);
+      const stat = await (0, import_promises2.lstat)(cursor);
       if (stat.isSymbolicLink()) {
-        const resolved = await (0, import_promises.realpath)(cursor);
+        const resolved = await (0, import_promises2.realpath)(cursor);
         const rel = import_node_path3.default.relative(root, resolved);
         if (rel.startsWith("..") || import_node_path3.default.isAbsolute(rel)) {
           throw new RigorError(
@@ -348,6 +384,10 @@ var REVIEW_SCHEMA = "rigor.review.v1";
 var ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1";
 var MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1";
 var ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1";
+var CONSULTATION_SCHEMA = "rigor.consultation.v1";
+var CONSULTATION_REQUEST_SCHEMA = "rigor.consultation-request.v1";
+var CONSULTATION_SESSION_SCHEMA = "rigor.consultation-session.v1";
+var CONSULTATION_RESULT_INPUT_SCHEMA = "rigor.consultation-result-input.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -563,7 +603,7 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     createdAt: now.toISOString(),
     policyHash: hash(policy),
     head,
-    treeHash: await treeHash(root),
+    treeHash: await treeHash(root, [".rigor/evidence/", ".rigor/events.jsonl"]),
     changedPaths,
     scopeViolations,
     checks,
@@ -657,10 +697,28 @@ async function saveArtifact(root, task, kind, value) {
   });
   return file;
 }
+async function saveCollectionArtifact(root, task, collection, kind, value) {
+  if (!/^[a-z][a-z0-9-]*$/u.test(collection))
+    throw new RigorError("Invalid artifact collection", EXIT.inputError);
+  const item = record(value, kind);
+  const id = textField(item.artifactId, `${kind}.artifactId`, 128);
+  if (!/^[A-Za-z0-9_-]+$/u.test(id))
+    throw new RigorError("Invalid artifact identifier", EXIT.inputError);
+  const directory = import_node_path4.default.join(root, ".rigor", "evidence", task, collection);
+  const file = import_node_path4.default.join(directory, `${id}.json`);
+  await writeJson(file, value);
+  await appendEvent(root, {
+    type: kind,
+    taskId: task,
+    artifactId: id,
+    at: (/* @__PURE__ */ new Date()).toISOString()
+  });
+  return file;
+}
 async function appendEvent(root, event) {
   const directory = import_node_path4.default.join(root, ".rigor");
-  await (0, import_promises2.mkdir)(directory, { recursive: true });
-  await (0, import_promises2.appendFile)(
+  await (0, import_promises3.mkdir)(directory, { recursive: true });
+  await (0, import_promises3.appendFile)(
     import_node_path4.default.join(directory, "events.jsonl"),
     `${JSON.stringify(event)}
 `,
@@ -670,7 +728,7 @@ async function appendEvent(root, event) {
 async function retrospect(root) {
   let content = "";
   try {
-    content = await (0, import_promises2.readFile)(import_node_path4.default.join(root, ".rigor", "events.jsonl"), "utf8");
+    content = await (0, import_promises3.readFile)(import_node_path4.default.join(root, ".rigor", "events.jsonl"), "utf8");
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -698,11 +756,11 @@ async function loadPolicy(root) {
 }
 
 // src/ci.ts
-var import_promises4 = require("node:fs/promises");
+var import_promises5 = require("node:fs/promises");
 var import_node_path6 = __toESM(require("node:path"), 1);
 
 // src/setup.ts
-var import_promises3 = require("node:fs/promises");
+var import_promises4 = require("node:fs/promises");
 var import_node_path5 = __toESM(require("node:path"), 1);
 function defaultPolicy(repositoryId) {
   return {
@@ -836,16 +894,16 @@ async function setup(root, bundlePath) {
     await assertContainedPath(root, target);
     let existing = null;
     try {
-      const stat = await (0, import_promises3.lstat)(target);
+      const stat = await (0, import_promises4.lstat)(target);
       if (stat.isSymbolicLink() || !stat.isFile()) {
         conflicts.push(candidate.relative);
         continue;
       }
-      existing = await (0, import_promises3.readFile)(target);
+      existing = await (0, import_promises4.readFile)(target);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
-    const desired = candidate.copyFrom ? await (0, import_promises3.readFile)(candidate.copyFrom) : Buffer.from(candidate.content ?? "");
+    const desired = candidate.copyFrom ? await (0, import_promises4.readFile)(candidate.copyFrom) : Buffer.from(candidate.content ?? "");
     if (existing !== null) {
       if (existing.equals(desired)) unchanged.push(candidate.relative);
       else conflicts.push(candidate.relative);
@@ -859,9 +917,9 @@ async function setup(root, bundlePath) {
       EXIT.policyViolation
     );
   for (const { candidate, target, desired } of pending) {
-    await (0, import_promises3.mkdir)(import_node_path5.default.dirname(target), { recursive: true });
-    await (0, import_promises3.writeFile)(target, desired, { flag: "wx" });
-    if (candidate.mode) await (0, import_promises3.chmod)(target, candidate.mode);
+    await (0, import_promises4.mkdir)(import_node_path5.default.dirname(target), { recursive: true });
+    await (0, import_promises4.writeFile)(target, desired, { flag: "wx" });
+    if (candidate.mode) await (0, import_promises4.chmod)(target, candidate.mode);
     created.push(candidate.relative);
   }
   return { created, unchanged };
@@ -890,7 +948,7 @@ async function evidenceFiles(root) {
   async function walk(dir) {
     let entries;
     try {
-      entries = await (0, import_promises4.readdir)(dir, { withFileTypes: true });
+      entries = await (0, import_promises5.readdir)(dir, { withFileTypes: true });
     } catch {
       return;
     }
@@ -1460,7 +1518,7 @@ async function governanceVerify(policy, options, read) {
 
 // src/hook.ts
 var import_node_path7 = __toESM(require("node:path"), 1);
-var import_promises5 = require("node:fs/promises");
+var import_promises6 = require("node:fs/promises");
 async function userPromptHook(input, cwd = process.cwd()) {
   if (input === null || typeof input !== "object" || Array.isArray(input))
     return {
@@ -1474,7 +1532,7 @@ async function userPromptHook(input, cwd = process.cwd()) {
     return null;
   }
   try {
-    await (0, import_promises5.access)(import_node_path7.default.join(root, ".rigor"));
+    await (0, import_promises6.access)(import_node_path7.default.join(root, ".rigor"));
   } catch {
     return null;
   }
@@ -1757,6 +1815,237 @@ function route(preflight, input, profiles) {
   };
 }
 
+// src/consultation.ts
+var ignoredEvidence = [".rigor/evidence/", ".rigor/events.jsonl"];
+var modes = [
+  "review",
+  "adversarial-review",
+  "consultation",
+  "rescue"
+];
+var outcomes = [
+  "accept",
+  "revise",
+  "reject",
+  "investigate",
+  "ask-human"
+];
+function oneOf2(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function optionalText(value, name) {
+  return value === void 0 ? void 0 : textField(value, name, 512);
+}
+function filteredChangedPaths(paths) {
+  return paths.filter(
+    (file) => !ignoredEvidence.some((prefix) => file.startsWith(prefix))
+  );
+}
+function parseConsultationRequest(value) {
+  const item = record(value, "consultation request");
+  if (item.schemaVersion !== CONSULTATION_REQUEST_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation request schema",
+      EXIT.inputError
+    );
+  if (item.provider !== "codex-plugin-cc")
+    throw new RigorError(
+      "Phase 2 consultations require codex-plugin-cc",
+      EXIT.inputError
+    );
+  return {
+    schemaVersion: CONSULTATION_REQUEST_SCHEMA,
+    taskId: taskId(item.taskId),
+    provider: "codex-plugin-cc",
+    mode: oneOf2(item.mode, modes, "mode"),
+    requestedDecision: textField(
+      item.requestedDecision,
+      "requestedDecision",
+      2e3
+    )
+  };
+}
+function parseConsultationSession(value) {
+  const item = record(value, "consultation session");
+  if (item.schemaVersion !== CONSULTATION_SESSION_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation session schema",
+      EXIT.inputError
+    );
+  if (item.provider !== "codex-plugin-cc" || item.transmissionDecision !== "allowed")
+    throw new RigorError("Invalid consultation session", EXIT.inputError);
+  const beforeHead = item.beforeHead;
+  if (beforeHead !== null && typeof beforeHead !== "string")
+    throw new RigorError("beforeHead is invalid", EXIT.inputError);
+  return {
+    schemaVersion: CONSULTATION_SESSION_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    taskId: taskId(item.taskId),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    preflightArtifactId: textField(
+      item.preflightArtifactId,
+      "preflightArtifactId",
+      128
+    ),
+    preflightHash: textField(item.preflightHash, "preflightHash", 128),
+    provider: "codex-plugin-cc",
+    mode: oneOf2(item.mode, modes, "mode"),
+    requestedDecision: textField(
+      item.requestedDecision,
+      "requestedDecision",
+      2e3
+    ),
+    transmissionDecision: "allowed",
+    beforeHead,
+    beforeTreeHash: textField(item.beforeTreeHash, "beforeTreeHash", 128),
+    changedPathsBefore: strings(item.changedPathsBefore, "changedPathsBefore")
+  };
+}
+function parseConsultationResultInput(value) {
+  const item = record(value, "consultation result input");
+  if (item.schemaVersion !== CONSULTATION_RESULT_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation result input schema",
+      EXIT.inputError
+    );
+  if (!Number.isInteger(item.findingCount) || item.findingCount < 0)
+    throw new RigorError("findingCount is invalid", EXIT.inputError);
+  const result = {
+    schemaVersion: CONSULTATION_RESULT_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    status: oneOf2(item.status, ["completed", "failed"], "status"),
+    outcome: oneOf2(item.outcome, outcomes, "outcome"),
+    findingCount: item.findingCount,
+    requiredActions: strings(item.requiredActions, "requiredActions", 100),
+    usageStatus: oneOf2(
+      item.usageStatus,
+      ["recorded", "unavailable"],
+      "usageStatus"
+    )
+  };
+  for (const [key, value2] of Object.entries({
+    externalJobId: optionalText(item.externalJobId, "externalJobId"),
+    externalSessionId: optionalText(
+      item.externalSessionId,
+      "externalSessionId"
+    ),
+    externalTurnId: optionalText(item.externalTurnId, "externalTurnId"),
+    model: optionalText(item.model, "model"),
+    reasoningEffort: optionalText(item.reasoningEffort, "reasoningEffort")
+  }))
+    if (value2 !== void 0) Object.assign(result, { [key]: value2 });
+  return result;
+}
+async function startConsultation(root, policy, preflight, request, now = /* @__PURE__ */ new Date()) {
+  if (request.taskId !== preflight.taskId)
+    throw new RigorError(
+      "Consultation taskId does not match preflight",
+      EXIT.inputError
+    );
+  if (preflight.policyHash !== hash(policy))
+    throw new RigorError(
+      "Consultation preflight does not match the current policy",
+      EXIT.policyViolation
+    );
+  if (preflight.externalTransmission !== "allowed")
+    throw new RigorError(
+      "Policy denies transmission to codex-plugin-cc",
+      EXIT.policyViolation
+    );
+  const facts = await gitFacts(root);
+  if (preflight.git.head !== facts.head)
+    throw new RigorError(
+      "Git HEAD changed after preflight; run preflight again",
+      EXIT.policyViolation
+    );
+  const changedPathsBefore = filteredChangedPaths(facts.changedPaths);
+  const unplanned = changedPathsBefore.filter(
+    (file) => !matches(file, preflight.plannedPaths)
+  );
+  if (unplanned.length > 0)
+    throw new RigorError(
+      `Changed paths are outside preflight scope: ${unplanned.join(", ")}`,
+      EXIT.policyViolation
+    );
+  const session = {
+    schemaVersion: CONSULTATION_SESSION_SCHEMA,
+    artifactId: artifactId("consultation-session"),
+    taskId: request.taskId,
+    createdAt: now.toISOString(),
+    preflightArtifactId: preflight.artifactId,
+    preflightHash: hash(preflight),
+    provider: "codex-plugin-cc",
+    mode: request.mode,
+    requestedDecision: request.requestedDecision,
+    transmissionDecision: "allowed",
+    beforeHead: facts.head,
+    beforeTreeHash: await treeHash(root, ignoredEvidence),
+    changedPathsBefore
+  };
+  const saved = await saveCollectionArtifact(
+    root,
+    request.taskId,
+    "consultations",
+    "consultation-session",
+    session
+  );
+  return { session, saved };
+}
+async function finishConsultation(root, session, input, now = /* @__PURE__ */ new Date()) {
+  if (input.taskId !== session.taskId)
+    throw new RigorError(
+      "Consultation result taskId does not match session",
+      EXIT.inputError
+    );
+  const facts = await gitFacts(root);
+  const afterTreeHash = await treeHash(root, ignoredEvidence);
+  const changedPathsAfter = filteredChangedPaths(facts.changedPaths);
+  const mutated = session.beforeHead !== facts.head || session.beforeTreeHash !== afterTreeHash || JSON.stringify(session.changedPathsBefore) !== JSON.stringify(changedPathsAfter);
+  const consultation = {
+    schemaVersion: CONSULTATION_SCHEMA,
+    artifactId: artifactId("consultation"),
+    taskId: session.taskId,
+    createdAt: now.toISOString(),
+    sessionArtifactId: session.artifactId,
+    sessionHash: hash(session),
+    provider: session.provider,
+    mode: session.mode,
+    requestedDecision: session.requestedDecision,
+    transmissionDecision: session.transmissionDecision,
+    beforeTreeHash: session.beforeTreeHash,
+    afterTreeHash,
+    beforeHead: session.beforeHead,
+    afterHead: facts.head,
+    changedPathsBefore: session.changedPathsBefore,
+    changedPathsAfter,
+    usageStatus: input.usageStatus,
+    status: mutated ? "mutated-worktree" : input.status,
+    outcome: input.outcome,
+    findingCount: input.findingCount,
+    requiredActions: input.requiredActions
+  };
+  for (const key of [
+    "externalJobId",
+    "externalSessionId",
+    "externalTurnId",
+    "model",
+    "reasoningEffort"
+  ]) {
+    const value = input[key];
+    if (value !== void 0) consultation[key] = value;
+  }
+  const saved = await saveCollectionArtifact(
+    root,
+    session.taskId,
+    "consultations",
+    "consultation",
+    consultation
+  );
+  return { consultation, saved };
+}
+
 // src/cli.ts
 function option(args, name, required = true) {
   const index = args.indexOf(name);
@@ -1789,7 +2078,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|verify|escalate|review|retrospect|governance|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|route|consult-start|consult-finish|verify|escalate|review|retrospect|governance|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
@@ -1840,6 +2129,28 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     const result = route(preflight, input, profiles);
     output(result);
     return result.status === "selected" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "consult-start") {
+    const preflight = parsePreflight(
+      await readJson(option(args, "--preflight"))
+    );
+    const request = parseConsultationRequest(
+      await readJson(option(args, "--input"))
+    );
+    const result = await startConsultation(root, policy, preflight, request);
+    output({ ...result.session, saved: result.saved });
+    return EXIT.success;
+  }
+  if (command === "consult-finish") {
+    const session = parseConsultationSession(
+      await readJson(option(args, "--session"))
+    );
+    const input = parseConsultationResultInput(
+      await readJson(option(args, "--input"))
+    );
+    const result = await finishConsultation(root, session, input);
+    output({ ...result.consultation, saved: result.saved });
+    return result.consultation.status === "completed" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "verify") {
     const contract = parseContract(await readJson(option(args, "--contract")));

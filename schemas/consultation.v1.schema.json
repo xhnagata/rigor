@@ -9,13 +9,16 @@
     "artifactId",
     "taskId",
     "createdAt",
-    "sequence",
+    "sessionArtifactId",
+    "sessionHash",
     "provider",
     "mode",
     "requestedDecision",
     "transmissionDecision",
     "beforeTreeHash",
     "afterTreeHash",
+    "beforeHead",
+    "afterHead",
     "changedPathsBefore",
     "changedPathsAfter",
     "usageStatus",
@@ -29,7 +32,8 @@
     "artifactId": { "type": "string", "minLength": 1 },
     "taskId": { "type": "string", "minLength": 1 },
     "createdAt": { "type": "string", "format": "date-time" },
-    "sequence": { "type": "integer", "minimum": 1 },
+    "sessionArtifactId": { "type": "string", "minLength": 1 },
+    "sessionHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "provider": { "type": "string", "minLength": 1 },
     "mode": {
       "enum": ["review", "adversarial-review", "consultation", "rescue"]
@@ -38,6 +42,12 @@
     "transmissionDecision": { "enum": ["allowed", "denied"] },
     "beforeTreeHash": { "type": "string", "minLength": 1 },
     "afterTreeHash": { "type": "string", "minLength": 1 },
+    "beforeHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "afterHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
     "changedPathsBefore": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }

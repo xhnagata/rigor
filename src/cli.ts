@@ -25,6 +25,13 @@ import {
 import { userPromptHook } from "./hook.js";
 import { evaluate } from "./policy.js";
 import { parseModelProfiles, parseRoutingInput, route } from "./routing.js";
+import {
+  finishConsultation,
+  parseConsultationRequest,
+  parseConsultationResultInput,
+  parseConsultationSession,
+  startConsultation,
+} from "./consultation.js";
 import { parseIntent } from "./schema.js";
 import { setup } from "./setup.js";
 import { readJson, record } from "./util.js";
@@ -70,7 +77,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|route|consult-start|consult-finish|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -123,6 +130,30 @@ export async function main(
     const result = route(preflight, input, profiles);
     output(result);
     return result.status === "selected" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "consult-start") {
+    const preflight = parsePreflight(
+      await readJson(option(args, "--preflight")!),
+    );
+    const request = parseConsultationRequest(
+      await readJson(option(args, "--input")!),
+    );
+    const result = await startConsultation(root, policy, preflight, request);
+    output({ ...result.session, saved: result.saved });
+    return EXIT.success;
+  }
+  if (command === "consult-finish") {
+    const session = parseConsultationSession(
+      await readJson(option(args, "--session")!),
+    );
+    const input = parseConsultationResultInput(
+      await readJson(option(args, "--input")!),
+    );
+    const result = await finishConsultation(root, session, input);
+    output({ ...result.consultation, saved: result.saved });
+    return result.consultation.status === "completed"
+      ? EXIT.success
+      : EXIT.policyViolation;
   }
   if (command === "verify") {
     const contract = parseContract(await readJson(option(args, "--contract")!));

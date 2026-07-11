@@ -151,6 +151,46 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
     (routing.selection as { candidateId: string }).candidateId,
     "claude-standard",
   );
+  const consultationRequest = path.join(parent, "consultation-request.json");
+  await writeFile(
+    consultationRequest,
+    JSON.stringify({
+      schemaVersion: "rigor.consultation-request.v1",
+      taskId: "TASK-1",
+      provider: "codex-plugin-cc",
+      mode: "consultation",
+      requestedDecision: "Check the proposed API boundary",
+    }),
+  );
+  const consultationSession = await rigor(root, [
+    "consult-start",
+    "--preflight",
+    String(preflight.saved),
+    "--input",
+    consultationRequest,
+  ]);
+  const consultationResult = path.join(parent, "consultation-result.json");
+  await writeFile(
+    consultationResult,
+    JSON.stringify({
+      schemaVersion: "rigor.consultation-result-input.v1",
+      taskId: "TASK-1",
+      status: "completed",
+      outcome: "accept",
+      findingCount: 0,
+      requiredActions: [],
+      externalSessionId: "session-1",
+      usageStatus: "unavailable",
+    }),
+  );
+  const consultation = await rigor(root, [
+    "consult-finish",
+    "--session",
+    String(consultationSession.saved),
+    "--input",
+    consultationResult,
+  ]);
+  assert.equal(consultation.status, "completed");
   const verification = await rigor(root, [
     "verify",
     "--contract",

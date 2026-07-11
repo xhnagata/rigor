@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { lstat, readlink } from "node:fs/promises";
 import path from "node:path";
 import { EXIT, RigorError } from "./errors.js";
 import { normalizeRepoPath } from "./paths.js";
@@ -160,14 +163,53 @@ export async function showFile(
   return result.stdout.toString("utf8");
 }
 
-export async function treeHash(root: string): Promise<string> {
-  const tracked = await git(root, ["ls-files", "-z"]);
-  const status = await git(root, [
-    "status",
-    "--porcelain=v1",
-    "-z",
-    "--untracked-files=all",
-  ]);
-  const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(tracked).update(status).digest("hex");
+export async function treeHash(
+  root: string,
+  excludedPrefixes: string[] = [],
+): Promise<string> {
+  const listed = nulPaths(
+    await git(root, [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+    ]),
+  );
+  const files = [...new Set(listed)]
+    .filter(
+      (file) =>
+        !excludedPrefixes.some(
+          (prefix) => file === prefix || file.startsWith(prefix),
+        ),
+    )
+    .sort();
+  const digest = createHash("sha256");
+  for (const file of files) {
+    digest.update(`path\0${file}\0`);
+    const target = path.join(root, file);
+    let info;
+    try {
+      info = await lstat(target);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        digest.update("deleted\0");
+        continue;
+      }
+      throw error;
+    }
+    digest.update(`mode\0${info.mode}\0`);
+    if (info.isSymbolicLink()) {
+      digest.update(`symlink\0${await readlink(target)}\0`);
+      continue;
+    }
+    if (!info.isFile())
+      throw new RigorError(
+        `Cannot hash non-file repository path: ${file}`,
+        EXIT.inputError,
+      );
+    for await (const chunk of createReadStream(target)) digest.update(chunk);
+    digest.update("\0");
+  }
+  return digest.digest("hex");
 }

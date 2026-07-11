@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/consultation-session.v1.schema.json",
+  "title": "Rigor consultation session v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "preflightArtifactId",
+    "preflightHash",
+    "provider",
+    "mode",
+    "requestedDecision",
+    "transmissionDecision",
+    "beforeHead",
+    "beforeTreeHash",
+    "changedPathsBefore"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.consultation-session.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "preflightArtifactId": { "type": "string", "minLength": 1 },
+    "preflightHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "provider": { "const": "codex-plugin-cc" },
+    "mode": {
+      "enum": ["review", "adversarial-review", "consultation", "rescue"]
+    },
+    "requestedDecision": { "type": "string", "minLength": 1 },
+    "transmissionDecision": { "const": "allowed" },
+    "beforeHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "beforeTreeHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "changedPathsBefore": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

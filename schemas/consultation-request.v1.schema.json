@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/consultation-request.v1.schema.json",
+  "title": "Rigor consultation request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "provider",
+    "mode",
+    "requestedDecision"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.consultation-request.v1" },
+    "taskId": { "type": "string", "minLength": 1 },
+    "provider": { "const": "codex-plugin-cc" },
+    "mode": {
+      "enum": ["review", "adversarial-review", "consultation", "rescue"]
+    },
+    "requestedDecision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  }
+}
