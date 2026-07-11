@@ -7,9 +7,9 @@
     {
       "name": "rigor",
       "source": "./",
-      "description": "Task contracts, deterministic verification, structured escalation, review evidence, and independent CI",
+      "description": "Task contracts, policy-constrained model routing, bounded attempts, deterministic verification, review evidence, and independent CI",
       "category": "development",
-      "tags": ["governance", "verification", "security"],
+      "tags": ["governance", "verification", "routing", "security"],
       "strict": true
     }
   ]
