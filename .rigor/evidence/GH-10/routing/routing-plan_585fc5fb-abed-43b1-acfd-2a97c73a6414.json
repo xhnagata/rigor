@@ -1,0 +1,44 @@
+{
+  "taskId": "GH-10",
+  "preflightArtifactId": "preflight_6f285b44-5f22-43ac-b8c2-96197c4593d8",
+  "preflightHash": "ee099f801d469c2017ad2f5d609150f1036fcdddf6fe7efc8fd8d309d637a6aa",
+  "routingInputHash": "d193dc3923cd0e82905a9d3a15764c0a286df2ca6e4ba4863ca884286e488075",
+  "modelProfilesHash": "d7fa42873a18830f071ff896c57b11125a8ab503bc2cc35cdf867bd834af1c24",
+  "purpose": "implementation",
+  "requiredCapabilityClass": "standard",
+  "eligibleCandidates": [
+    "claude-sonnet",
+    "claude-opus"
+  ],
+  "excludedCandidates": [
+    {
+      "candidateId": "claude-haiku",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    }
+  ],
+  "selection": {
+    "candidateId": "claude-sonnet",
+    "provider": "claude",
+    "model": "claude-sonnet-5",
+    "capabilityClass": "standard",
+    "relativeCost": 5
+  },
+  "controls": {
+    "externalTransmission": "allowed",
+    "requireHumanApproval": true,
+    "requireIndependentReview": true
+  },
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 3600000,
+    "maxRelativeCost": 100
+  },
+  "schemaVersion": "rigor.routing-plan.v1",
+  "artifactId": "routing-plan_585fc5fb-abed-43b1-acfd-2a97c73a6414",
+  "createdAt": "2026-07-11T14:21:23.423Z",
+  "contractArtifactId": "contract_fcb6a679-37ec-4752-90cc-306ef08be6e4",
+  "contractHash": "fad1be357205f0b97d615c9eddac91c3d8ebf05ef69d74f46ea628c2b19c8c66",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "plannedHead": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "status": "planned"
+}

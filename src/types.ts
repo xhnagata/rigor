@@ -8,6 +8,7 @@ export const ESCALATION_SCHEMA = "rigor.escalation.v1" as const;
 export const ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1" as const;
 export const REVIEW_SCHEMA = "rigor.review.v1" as const;
 export const ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1" as const;
+export const ROUTING_INPUT_V2_SCHEMA = "rigor.routing-input.v2" as const;
 export const MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1" as const;
 export const ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1" as const;
 export const ATTEMPT_SCHEMA = "rigor.attempt.v1" as const;
@@ -151,8 +152,23 @@ export interface EscalationInput {
   requestedDecision: string;
 }
 
+export type AssessmentConfidence = "low" | "medium" | "high";
+
+export interface AssessmentEvidence {
+  path: string; // repository-relative path anchoring the observation
+  observation: string; // what was observed at that path
+}
+
+export interface RoutingAssessment {
+  inputSchemaVersion:
+    | typeof ROUTING_INPUT_SCHEMA
+    | typeof ROUTING_INPUT_V2_SCHEMA;
+  confidence: AssessmentConfidence;
+  evidence: AssessmentEvidence[]; // [] for legacy v1
+}
+
 export interface RoutingInput {
-  schemaVersion: typeof ROUTING_INPUT_SCHEMA;
+  schemaVersion: typeof ROUTING_INPUT_SCHEMA | typeof ROUTING_INPUT_V2_SCHEMA;
   taskId: string;
   purpose: RoutingPurpose;
   signals: {
@@ -167,6 +183,7 @@ export interface RoutingInput {
     maxDurationMs: number;
     maxRelativeCost: number;
   };
+  assessment?: RoutingAssessment; // present only for v2 inputs
 }
 
 export interface ModelCandidate {
@@ -220,7 +237,14 @@ export interface RoutingDecision {
     requireIndependentReview: boolean;
   };
   budget: RoutingInput["budget"];
-  status: "selected" | "unroutable";
+  assessment: {
+    inputSchemaVersion:
+      | typeof ROUTING_INPUT_SCHEMA
+      | typeof ROUTING_INPUT_V2_SCHEMA;
+    confidence: AssessmentConfidence;
+    evidenceCount: number;
+  };
+  status: "selected" | "unroutable" | "requires-review";
 }
 
 export interface Attempt {

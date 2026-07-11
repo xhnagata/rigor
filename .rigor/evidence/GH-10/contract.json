@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_fcb6a679-37ec-4752-90cc-306ef08be6e4",
+  "taskId": "GH-10",
+  "createdAt": "2026-07-11T14:20:26.552Z",
+  "preflightArtifactId": "preflight_6f285b44-5f22-43ac-b8c2-96197c4593d8",
+  "preflightHash": "ee099f801d469c2017ad2f5d609150f1036fcdddf6fe7efc8fd8d309d637a6aa",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "Malformed, unsupported, contradictory, and evidence-free assessments fail closed at parse.",
+    "A low-confidence assessment produces an explicit review/escalation routing outcome instead of silently selecting the economy class.",
+    "Pure routing remains deterministic for identical inputs.",
+    "Existing v1 routing inputs and recorded plans remain compatible via an explicit migration path.",
+    "Risk from preflight stays separate from required capability.",
+    "Tests cover assessment boundary cases and v1 backward compatibility.",
+    "Orchestration documentation defines the trust treatment of assessment evidence."
+  ],
+  "allowedPaths": [
+    "src/types.ts",
+    "src/routing.ts",
+    "schemas/routing-input.v2.schema.json",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "docs/orchestration.md",
+    "test/routing.test.ts"
+  ],
+  "constraints": [
+    "Do not invoke any model from the deterministic CLI.",
+    "Do not let an assessor directly choose a candidate.",
+    "Do not claim confidence is a calibrated probability.",
+    "Do not weaken, skip, or delete existing tests.",
+    "Do not change protected paths, public CLI command surface, or security boundaries.",
+    "Confidence and evidence semantics must be deterministic and reviewable, not verified facts."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

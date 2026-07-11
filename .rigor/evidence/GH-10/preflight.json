@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_6f285b44-5f22-43ac-b8c2-96197c4593d8",
+  "taskId": "GH-10",
+  "createdAt": "2026-07-11T14:20:11.953Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "0cd8313a8363818988d758cd7d40e4fabb37a462a6bebb7e1a2c06a59da62560",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor/.claude/worktrees/issue-10-assessment-confidence",
+    "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "docs/orchestration.md",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-input.v2.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "src/routing.ts",
+    "src/types.ts",
+    "test/routing.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/routing.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/routing.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}
