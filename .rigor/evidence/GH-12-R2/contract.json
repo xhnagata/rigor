@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_a1caefda-6545-4b6c-ab6c-7576ca3ee819",
+  "taskId": "GH-12-R2",
+  "createdAt": "2026-07-11T15:18:06.431Z",
+  "preflightArtifactId": "preflight_f53be59d-9b45-4d59-8e42-395fc68eb156",
+  "preflightHash": "de9724dcbc8eabc6a14ff98f8b18ae99187378fe2a40b504381fca59529ae13a",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A provider that the Claude Code execution layer structurally cannot invoke derives incompatible even when probing is unsupported; probe health never erases static incompatibility.",
+    "Unknown still never excludes a candidate and unsupported probing still never derives available.",
+    "Availability reasons and documentation describe RIGOR_CODEX_PLUGIN_PRESENT/RIGOR_CODEX_PLUGIN_VERSION as orchestrator-declared channels, not direct plugin observations, in docs/orchestration.md, README.md, and README.ja.md.",
+    "The ANTHROPIC_MODEL bound applies to the trimmed value, consistent with boundedVersion.",
+    "Only tests introduced by GH-12 are adjusted to the corrected behavior; no pre-existing test is deleted, weakened, or skipped.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "skills/**",
+    "dist/**"
+  ],
+  "constraints": [
+    "Remediate only independent-review findings 5, 6, and 9; no other behavior change.",
+    "Keep schema files unchanged; the artifact format is not affected.",
+    "Preserve the unverified identity boundary and fail-safe unknown semantics.",
+    "Do not delete, weaken, or skip pre-existing tests."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

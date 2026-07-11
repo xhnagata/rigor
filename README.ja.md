@@ -143,6 +143,15 @@ rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input
 
 このcommandはモデルを呼び出さず、証跡も保存しません。`relativeCost`は設定された比較用weightであり、観測済み価格ではありません。詳細は[モデルルーティングとオーケストレーション](docs/orchestration.md)を参照してください。
 
+現在の環境が実際にどの候補を起動できるかを観測するには、versioned availability reportを生成し、ルーティング前にunavailable/incompatibleな候補を除外させます。
+
+```sh
+rigor availability --profiles /tmp/model-profiles.json > /tmp/availability.json
+rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/routing-input.json --profiles /tmp/model-profiles.json --availability /tmp/availability.json
+```
+
+`rigor availability`は各候補を`available`、`unavailable`、`unknown`、`incompatible`のいずれか一つに標識します。判定は文書化された限定的なローカルインターフェース（固定された環境変数の集合）のみを読み取り、インストール、認証、network送信は一切行いません。`codex-plugin-cc`のpresence変数はオーケストレーターが宣言するチャネルであり、pluginの直接観測ではありません。認識できない宣言や宣言の欠落は`unknown`のままです。availabilityはattestationではなく観測です。probingが未対応または失敗した場合は`available`ではなく`unknown`として記録し、unavailable/incompatibleな候補はattempt開始前に除外され、黙って別modelに差し替えられることはなく、設定上のmodel identityは`unverified`のままです。`codex-plugin-cc`が存在しない場合、それを必要とする候補のみを除外します。runtimeのmodel identity、reasoning effort、usage、costはunverified/unknownのままです。
+
 自律実装では選択planを保存し、委譲attemptの前後を記録します。
 
 ```sh

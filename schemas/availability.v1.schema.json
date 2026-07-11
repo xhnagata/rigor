@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/availability.v1.schema.json",
+  "title": "Rigor candidate availability v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "createdAt",
+    "modelProfilesHash",
+    "probeStatus",
+    "environment",
+    "candidates"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.availability.v1" },
+    "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "modelProfilesHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "probeStatus": { "enum": ["supported", "unsupported"] },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claudeCode", "configuredModel", "codexPlugin"],
+      "properties": {
+        "claudeCode": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present", "version"],
+          "properties": {
+            "present": { "type": "boolean" },
+            "version": {
+              "oneOf": [
+                { "type": "null" },
+                { "type": "string", "minLength": 1, "maxLength": 128 }
+              ]
+            }
+          }
+        },
+        "configuredModel": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["value", "attestation"],
+              "properties": {
+                "value": { "type": "string", "minLength": 1, "maxLength": 256 },
+                "attestation": { "const": "unverified" }
+              }
+            }
+          ]
+        },
+        "codexPlugin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["presence", "version"],
+          "properties": {
+            "presence": { "enum": ["present", "absent", "unknown"] },
+            "version": {
+              "oneOf": [
+                { "type": "null" },
+                { "type": "string", "minLength": 1, "maxLength": 128 }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidateId",
+          "provider",
+          "state",
+          "reason",
+          "observedAt",
+          "toolVersion"
+        ],
+        "properties": {
+          "candidateId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "provider": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "state": {
+            "enum": ["available", "unavailable", "unknown", "incompatible"]
+          },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "observedAt": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "toolVersion": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "minLength": 1, "maxLength": 128 }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

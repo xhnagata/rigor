@@ -61,7 +61,9 @@
               "PURPOSE_UNSUPPORTED",
               "EXTERNAL_TRANSMISSION_DENIED",
               "INSUFFICIENT_CAPABILITY",
-              "BUDGET_EXCEEDED"
+              "BUDGET_EXCEEDED",
+              "UNAVAILABLE",
+              "INCOMPATIBLE"
             ]
           }
         }
@@ -116,6 +118,7 @@
         }
       }
     },
+    "availabilityReportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "status": { "const": "planned" }
   },
   "$defs": {

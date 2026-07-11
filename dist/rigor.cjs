@@ -394,6 +394,7 @@ var ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1";
 var ATTEMPT_RESULT_INPUT_SCHEMA = "rigor.attempt-result-input.v1";
 var OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1";
 var OUTCOME_SCHEMA = "rigor.outcome.v1";
+var AVAILABILITY_SCHEMA = "rigor.availability.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -2197,8 +2198,11 @@ function requiredCapability(input) {
   const weaknessBump = input.signals.verificationStrength === "weak" ? 1 : 0;
   return capabilityClasses[Math.min(signalRank + weaknessBump, 3)];
 }
-function exclusionReason(candidate, input, preflight, required) {
+function exclusionReason(candidate, input, preflight, required, availability) {
   if (!candidate.enabled) return "DISABLED";
+  const state = availability.get(candidate.id);
+  if (state === "incompatible") return "INCOMPATIBLE";
+  if (state === "unavailable") return "UNAVAILABLE";
   if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
   if (preflight.externalTransmission === "denied" && candidate.requiresAdditionalExternalTransmission)
     return "EXTERNAL_TRANSMISSION_DENIED";
@@ -2208,17 +2212,33 @@ function exclusionReason(candidate, input, preflight, required) {
     return "BUDGET_EXCEEDED";
   return null;
 }
-function route(preflight, input, profiles) {
+function route(preflight, input, profiles, availability) {
   if (input.taskId !== preflight.taskId)
     throw new RigorError(
       "Routing taskId does not match preflight",
       EXIT.inputError
     );
+  const availabilityStates2 = /* @__PURE__ */ new Map();
+  if (availability !== void 0) {
+    if (availability.modelProfilesHash !== hash(profiles))
+      throw new RigorError(
+        "Availability report does not match the model profiles",
+        EXIT.inputError
+      );
+    for (const entry of availability.candidates)
+      availabilityStates2.set(entry.candidateId, entry.state);
+  }
   const required = requiredCapability(input);
   const eligible = [];
   const excluded = [];
   for (const candidate of profiles.candidates) {
-    const reasonCode = exclusionReason(candidate, input, preflight, required);
+    const reasonCode = exclusionReason(
+      candidate,
+      input,
+      preflight,
+      required,
+      availabilityStates2
+    );
     if (reasonCode) excluded.push({ candidateId: candidate.id, reasonCode });
     else eligible.push(candidate);
   }
@@ -2252,6 +2272,7 @@ function route(preflight, input, profiles) {
       requireIndependentReview: preflight.riskTier === "high" || preflight.riskTier === "critical" || preflight.protectedPaths.length > 0
     },
     budget: input.budget,
+    ...availability === void 0 ? {} : { availabilityReportHash: hash(availability) },
     status: selection ? "selected" : "unroutable"
   };
 }
@@ -2395,13 +2416,267 @@ function parseRoutingPlan(value) {
           "PURPOSE_UNSUPPORTED",
           "EXTERNAL_TRANSMISSION_DENIED",
           "INSUFFICIENT_CAPABILITY",
-          "BUDGET_EXCEEDED"
+          "BUDGET_EXCEEDED",
+          "UNAVAILABLE",
+          "INCOMPATIBLE"
         ],
         "reasonCode"
       )
     };
   });
+  if (item.availabilityReportHash !== void 0)
+    plan.availabilityReportHash = textField(
+      item.availabilityReportHash,
+      "availabilityReportHash",
+      128
+    );
   return plan;
+}
+
+// src/availability.ts
+var CLAUDE_PRESENCE_VARS = ["CLAUDE_PLUGIN_ROOT", "CLAUDE_CODE_ENTRYPOINT"];
+var TRUTHY = /* @__PURE__ */ new Set(["1", "true", "yes", "present"]);
+var FALSEY = /* @__PURE__ */ new Set(["0", "false", "no", "absent"]);
+function boundedVersion(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 128 || trimmed.includes("\0"))
+    return null;
+  return trimmed;
+}
+function codexPresence(value) {
+  if (typeof value !== "string") return "unknown";
+  const normalized = value.trim().toLowerCase();
+  if (TRUTHY.has(normalized)) return "present";
+  if (FALSEY.has(normalized)) return "absent";
+  return "unknown";
+}
+function probeEnvironment(env = process.env) {
+  try {
+    const claudeVersion = boundedVersion(env.CLAUDE_CODE_VERSION);
+    const configuredRaw = typeof env.ANTHROPIC_MODEL === "string" ? env.ANTHROPIC_MODEL.trim() : null;
+    const configuredModel = configuredRaw !== null && configuredRaw.length > 0 && configuredRaw.length <= 256 && !configuredRaw.includes("\0") ? configuredRaw : null;
+    return {
+      probeSupported: true,
+      claudeCode: {
+        present: CLAUDE_PRESENCE_VARS.some(
+          (name) => typeof env[name] === "string" && env[name].length > 0
+        ),
+        version: claudeVersion
+      },
+      configuredModel,
+      codexPlugin: {
+        presence: codexPresence(env.RIGOR_CODEX_PLUGIN_PRESENT),
+        version: boundedVersion(env.RIGOR_CODEX_PLUGIN_VERSION)
+      }
+    };
+  } catch {
+    return {
+      probeSupported: false,
+      claudeCode: { present: false, version: null },
+      configuredModel: null,
+      codexPlugin: { presence: "unknown", version: null }
+    };
+  }
+}
+function deriveState(candidate, observation) {
+  if (candidate.provider !== "claude" && candidate.provider !== "codex-plugin-cc")
+    return {
+      state: "incompatible",
+      reason: "Provider cannot be invoked by the Claude Code execution layer (only claude and codex-plugin-cc are supported).",
+      toolVersion: null
+    };
+  if (!observation.probeSupported)
+    return {
+      state: "unknown",
+      reason: "Environment probing is unsupported; availability is unknown.",
+      toolVersion: null
+    };
+  if (candidate.provider === "claude") {
+    if (observation.claudeCode.present)
+      return {
+        state: "available",
+        reason: "Claude Code execution environment observed; runtime model identity remains unverified.",
+        toolVersion: observation.claudeCode.version
+      };
+    return {
+      state: "unknown",
+      reason: "Claude Code environment not observable through documented variables; availability is unknown.",
+      toolVersion: observation.claudeCode.version
+    };
+  }
+  if (observation.codexPlugin.presence === "present")
+    return {
+      state: "available",
+      reason: "codex-plugin-cc declared present by the orchestrator.",
+      toolVersion: observation.codexPlugin.version
+    };
+  if (observation.codexPlugin.presence === "absent")
+    return {
+      state: "unavailable",
+      reason: "codex-plugin-cc declared absent by the orchestrator.",
+      toolVersion: observation.codexPlugin.version
+    };
+  return {
+    state: "unknown",
+    reason: "codex-plugin-cc presence not declared through documented variables; availability is unknown.",
+    toolVersion: observation.codexPlugin.version
+  };
+}
+function buildAvailabilityReport(profiles, observation, now = /* @__PURE__ */ new Date()) {
+  const observedAt = now.toISOString();
+  const candidates = profiles.candidates.map(
+    (candidate) => {
+      const derived = deriveState(candidate, observation);
+      return {
+        candidateId: candidate.id,
+        provider: candidate.provider,
+        state: derived.state,
+        reason: derived.reason,
+        observedAt,
+        toolVersion: derived.toolVersion
+      };
+    }
+  );
+  return {
+    schemaVersion: AVAILABILITY_SCHEMA,
+    artifactId: artifactId("availability"),
+    createdAt: observedAt,
+    modelProfilesHash: hash(profiles),
+    probeStatus: observation.probeSupported ? "supported" : "unsupported",
+    environment: {
+      claudeCode: {
+        present: observation.claudeCode.present,
+        version: observation.claudeCode.version
+      },
+      configuredModel: observation.configuredModel === null ? null : { value: observation.configuredModel, attestation: "unverified" },
+      codexPlugin: {
+        presence: observation.codexPlugin.presence,
+        version: observation.codexPlugin.version
+      }
+    },
+    candidates
+  };
+}
+var availabilityStates = [
+  "available",
+  "unavailable",
+  "unknown",
+  "incompatible"
+];
+var codexPresences = ["present", "absent", "unknown"];
+function oneOf2(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function optionalVersion(value, name) {
+  if (value === null) return null;
+  return textField(value, name, 128);
+}
+function parseAvailabilityReport(value) {
+  const item = record(value, "availability report");
+  if (item.schemaVersion !== AVAILABILITY_SCHEMA)
+    throw new RigorError(
+      "Unsupported availability report schema",
+      EXIT.inputError
+    );
+  const environment = record(item.environment, "environment");
+  const claudeCode = record(environment.claudeCode, "environment.claudeCode");
+  const codexPlugin = record(
+    environment.codexPlugin,
+    "environment.codexPlugin"
+  );
+  if (typeof claudeCode.present !== "boolean")
+    throw new RigorError(
+      "environment.claudeCode.present must be boolean",
+      EXIT.inputError
+    );
+  let configuredModel = null;
+  if (environment.configuredModel !== null) {
+    const configured = record(
+      environment.configuredModel,
+      "environment.configuredModel"
+    );
+    if (configured.attestation !== "unverified")
+      throw new RigorError(
+        "configuredModel.attestation must be unverified",
+        EXIT.inputError
+      );
+    configuredModel = {
+      value: textField(configured.value, "configuredModel.value", 256),
+      attestation: "unverified"
+    };
+  }
+  if (!Array.isArray(item.candidates))
+    throw new RigorError("candidates must be an array", EXIT.inputError);
+  const candidates = item.candidates.map((raw, index) => {
+    const candidate = record(raw, `candidates[${index}]`);
+    return {
+      candidateId: textField(
+        candidate.candidateId,
+        `candidates[${index}].candidateId`,
+        128
+      ),
+      provider: textField(
+        candidate.provider,
+        `candidates[${index}].provider`,
+        128
+      ),
+      state: oneOf2(
+        candidate.state,
+        availabilityStates,
+        `candidates[${index}].state`
+      ),
+      reason: textField(candidate.reason, `candidates[${index}].reason`, 1e3),
+      observedAt: textField(
+        candidate.observedAt,
+        `candidates[${index}].observedAt`,
+        128
+      ),
+      toolVersion: optionalVersion(
+        candidate.toolVersion,
+        `candidates[${index}].toolVersion`
+      )
+    };
+  });
+  return {
+    schemaVersion: AVAILABILITY_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    modelProfilesHash: textField(
+      item.modelProfilesHash,
+      "modelProfilesHash",
+      128
+    ),
+    probeStatus: oneOf2(
+      item.probeStatus,
+      ["supported", "unsupported"],
+      "probeStatus"
+    ),
+    environment: {
+      claudeCode: {
+        present: claudeCode.present,
+        version: optionalVersion(
+          claudeCode.version,
+          "environment.claudeCode.version"
+        )
+      },
+      configuredModel,
+      codexPlugin: {
+        presence: oneOf2(
+          codexPlugin.presence,
+          codexPresences,
+          "environment.codexPlugin.presence"
+        ),
+        version: optionalVersion(
+          codexPlugin.version,
+          "environment.codexPlugin.version"
+        )
+      }
+    },
+    candidates
+  };
 }
 
 // src/consultation.ts
@@ -2419,7 +2694,7 @@ var outcomes = [
   "investigate",
   "ask-human"
 ];
-function oneOf2(value, values, name) {
+function oneOf3(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -2448,7 +2723,7 @@ function parseConsultationRequest(value) {
     schemaVersion: CONSULTATION_REQUEST_SCHEMA,
     taskId: taskId(item.taskId),
     provider: "codex-plugin-cc",
-    mode: oneOf2(item.mode, modes, "mode"),
+    mode: oneOf3(item.mode, modes, "mode"),
     requestedDecision: textField(
       item.requestedDecision,
       "requestedDecision",
@@ -2480,7 +2755,7 @@ function parseConsultationSession(value) {
     ),
     preflightHash: textField(item.preflightHash, "preflightHash", 128),
     provider: "codex-plugin-cc",
-    mode: oneOf2(item.mode, modes, "mode"),
+    mode: oneOf3(item.mode, modes, "mode"),
     requestedDecision: textField(
       item.requestedDecision,
       "requestedDecision",
@@ -2504,11 +2779,11 @@ function parseConsultationResultInput(value) {
   const result = {
     schemaVersion: CONSULTATION_RESULT_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    status: oneOf2(item.status, ["completed", "failed"], "status"),
-    outcome: oneOf2(item.outcome, outcomes, "outcome"),
+    status: oneOf3(item.status, ["completed", "failed"], "status"),
+    outcome: oneOf3(item.outcome, outcomes, "outcome"),
     findingCount: item.findingCount,
     requiredActions: strings(item.requiredActions, "requiredActions", 100),
-    usageStatus: oneOf2(
+    usageStatus: oneOf3(
       item.usageStatus,
       ["recorded", "unavailable"],
       "usageStatus"
@@ -2652,7 +2927,7 @@ var purposes2 = [
   "adversarial-review",
   "rescue"
 ];
-function oneOf3(value, values, name) {
+function oneOf4(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -2730,12 +3005,12 @@ function parseAttemptSession(value) {
     ),
     contractHash: textField(item.contractHash, "contractHash", 128),
     provider: textField(selection.provider, "selection.provider", 128),
-    capabilityClass: oneOf3(
+    capabilityClass: oneOf4(
       selection.capabilityClass,
       capabilities,
       "selection.capabilityClass"
     ),
-    purpose: oneOf3(item.purpose, purposes2, "purpose"),
+    purpose: oneOf4(item.purpose, purposes2, "purpose"),
     budget: {
       maxAttempts: Number(budget.maxAttempts),
       maxDurationMs: Number(budget.maxDurationMs),
@@ -2771,7 +3046,7 @@ function parseAttempt(value) {
   textField(item.artifactId, "attempt.artifactId", 128);
   if (!Number.isInteger(item.sequence) || item.sequence < 1 || item.sequence > 20)
     throw new RigorError("attempt.sequence is invalid", EXIT.inputError);
-  oneOf3(
+  oneOf4(
     item.status,
     ["completed", "failed", "cancelled", "scope-violation", "budget-exceeded"],
     "attempt.status"
@@ -2779,7 +3054,7 @@ function parseAttempt(value) {
   if (!Number.isInteger(item.durationMs) || item.durationMs < 0)
     throw new RigorError("attempt.durationMs is invalid", EXIT.inputError);
   textField(item.provider, "attempt.provider", 128);
-  oneOf3(item.capabilityClass, capabilities, "attempt.capabilityClass");
+  oneOf4(item.capabilityClass, capabilities, "attempt.capabilityClass");
   if (item.executionIdentityStatus !== "unverified")
     throw new RigorError(
       "executionIdentityStatus must be unverified",
@@ -2804,7 +3079,7 @@ function parseAttemptResultInput(value) {
   const result = {
     schemaVersion: ATTEMPT_RESULT_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    status: oneOf3(item.status, ["completed", "failed", "cancelled"], "status")
+    status: oneOf4(item.status, ["completed", "failed", "cancelled"], "status")
   };
   for (const [key, value2] of Object.entries({
     failureClass: optionalText2(item.failureClass, "failureClass"),
@@ -2981,7 +3256,7 @@ async function finishAttempt(root, session, contract, input, verification, now =
 }
 
 // src/outcome.ts
-function oneOf4(value, values, name) {
+function oneOf5(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -3007,7 +3282,7 @@ function reject(message) {
 function parseUsageInput(value) {
   const item = record(value, "usage");
   const usage = {
-    status: oneOf4(
+    status: oneOf5(
       item.status,
       ["recorded", "unavailable", "unknown"],
       "usage.status"
@@ -3059,7 +3334,7 @@ function parseOutcomeInput(value) {
   const input = {
     schemaVersion: OUTCOME_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    decision: oneOf4(item.decision, ["accepted", "rejected"], "decision"),
+    decision: oneOf5(item.decision, ["accepted", "rejected"], "decision"),
     acceptedWithoutModelCodeChanges: boolean(
       item.acceptedWithoutModelCodeChanges,
       "acceptedWithoutModelCodeChanges"
@@ -3082,12 +3357,12 @@ function parseOutcomeInput(value) {
       medium: integer2(findings.medium, "reviewFindings.medium", 0, 1e4),
       low: integer2(findings.low, "reviewFindings.low", 0, 1e4)
     },
-    revertStatus: oneOf4(
+    revertStatus: oneOf5(
       item.revertStatus,
       ["none", "reverted"],
       "revertStatus"
     ),
-    escapedDefectStatus: oneOf4(
+    escapedDefectStatus: oneOf5(
       item.escapedDefectStatus,
       ["none", "suspected", "confirmed"],
       "escapedDefectStatus"
@@ -3263,7 +3538,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
@@ -3298,6 +3573,14 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output({ ...result, saved });
     return EXIT.success;
   }
+  if (command === "availability") {
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles"))
+    );
+    const report = buildAvailabilityReport(profiles, probeEnvironment());
+    output(report);
+    return EXIT.success;
+  }
   if (command === "route") {
     const dryRun = args.includes("--dry-run");
     const recordPlan = args.includes("--record");
@@ -3313,7 +3596,9 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     const profiles = parseModelProfiles(
       await readJson(option(args, "--profiles"))
     );
-    const result = route(preflight, input, profiles);
+    const availabilityPath = option(args, "--availability", false);
+    const availability = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
+    const result = route(preflight, input, profiles, availability);
     if (result.status !== "selected") {
       output(result);
       return EXIT.policyViolation;

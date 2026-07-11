@@ -143,6 +143,15 @@ rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input
 
 This command does not invoke a model or save evidence. `relativeCost` is a configured comparison weight, not an observed price. See [model routing and orchestration](docs/orchestration.md).
 
+To observe which configured candidates the current environment can actually invoke, produce a versioned availability report and let it filter unavailable or incompatible candidates before routing:
+
+```sh
+rigor availability --profiles /tmp/model-profiles.json > /tmp/availability.json
+rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/routing-input.json --profiles /tmp/model-profiles.json --availability /tmp/availability.json
+```
+
+`rigor availability` marks each candidate exactly one of `available`, `unavailable`, `unknown`, or `incompatible` by reading only documented, bounded local interfaces (a fixed set of environment variables); it performs no installation, authentication, or network transmission. The `codex-plugin-cc` presence variables are an orchestrator-declared channel, not a direct plugin observation; an unrecognized or missing declaration stays `unknown`. Availability is an observation, not attestation: unsupported or failed probing is recorded as `unknown` (never `available`), unavailable and incompatible candidates are excluded before attempt start instead of being silently substituted, and configured model identity stays `unverified`. Missing `codex-plugin-cc` excludes only candidates that require it. Runtime model identity, reasoning effort, usage, and cost remain unverified/unknown.
+
 For autonomous implementation, record the selected plan and bracket the delegated attempt:
 
 ```sh
