@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_9f218bb7-d367-4777-9650-e5c2ceeed070",
+  "taskId": "REL-0-3-0",
+  "createdAt": "2026-07-11T14:04:37.745Z",
+  "preflightArtifactId": "preflight_7ecd2f5c-f74b-4216-ab77-b6ab985a5bf8",
+  "preflightHash": "136ca69ac839be43898e93e6436c53c2b6b8342cb1e8f67f71abd11484c4961e",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.3.0.",
+    "CHANGELOG.md has a '## 0.3.0 - 2026-07-11' section (the former Unreleased content) and no remaining Unreleased heading with content.",
+    "dist/rigor.cjs is byte-identical to a fresh npm run build.",
+    "rigor release-check version-sync, changelog-entry, and bundle-built findings would pass for 0.3.0.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Only the version bump, changelog dating, and bundle rebuild; no source, schema, test, policy, or workflow change.",
+    "Do not alter changelog content other than renaming the Unreleased heading to the dated 0.3.0 heading.",
+    "No external transmission."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

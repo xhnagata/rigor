@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_7ecd2f5c-f74b-4216-ab77-b6ab985a5bf8",
+  "taskId": "REL-0-3-0",
+  "createdAt": "2026-07-11T14:04:09.345Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "fc88095817aeed5f60a34764af999149bda7951a2face54ed05eb8d13686dd57",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "b2d99c4219403654b735e2ad415961461e501d31",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "dist/rigor.cjs",
+    "package.json"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}
