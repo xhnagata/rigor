@@ -92,6 +92,8 @@ Commit the evidence with the change. CI ignores evidence files when deriving the
 
 The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. They are intentionally manual so an inferred skill invocation cannot silently establish a control.
 
+Run the steps in this order: preflight and contract before any edit; then complete every change, including the rebuilt `dist/rigor.cjs`, before running `rigor verify`; then `rigor review`; then commit code and evidence together in one commit. Verification records the worktree's uncommitted changes, so verifying before the last edit (or after an intermediate commit) produces evidence that does not cover the pull request's full change set and CI will reject it. Artifacts are write-once: a task's `preflight.json`, `contract.json`, `verification.json`, and `review.json` are never overwritten, so when scope changes or a verification must be redone after saving, start a fresh task ID such as `APP-123-R2` and keep the earlier artifacts.
+
 If verification remains unresolved, create an escalation input with schema `rigor.escalation-input.v1`. Keep `facts`, `attempts`, `disprovedHypotheses`, `speculation`, and `requestedDecision` separate; duplicate attempts are rejected. `rigor retrospect` aggregates redacted local event counts from the gitignored `.rigor/events.jsonl`.
 
 Stable CLI exit codes are `0` success, `2` policy/verification failure, `3` invalid input or repository state, and `4` unexpected internal failure. Error messages omit raw subprocess output.
@@ -139,7 +141,15 @@ For `main`, configure a ruleset or branch protection that:
 5. restricts force-pushes, deletion, and bypass; and
 6. applies the rules to administrators where organizational policy permits.
 
-Rigor cannot configure or verify these repository-host settings from the plugin. Treat a passing local command or model statement as insufficient.
+`rigor governance --repo owner/name` verifies these settings read-only against the GitHub API:
+
+```sh
+rigor governance --repo owner/name --branch main --required-check rigor
+```
+
+It reads active branch rules (rulesets), classic branch protection, CODEOWNERS (from `.github/CODEOWNERS`, `CODEOWNERS`, or `docs/CODEOWNERS`), and deployment environments, then reports one finding per requirement: pull requests required, at least one approval, stale-approval dismissal, code-owner review, last-push approval, the required `rigor` status check, force-push and deletion blocking, sampled CODEOWNERS coverage (an early-warning check, not proof of full coverage), and protection rules on every deployment environment. The command sends only GET requests to `api.github.com`, uses an optional least-privilege read token from `RIGOR_GITHUB_TOKEN`, `GITHUB_TOKEN`, or `GH_TOKEN`, refuses redirects, times out after ten seconds, discards oversized or undecodable responses as unverifiable, treats paginated responses with unfetched pages as unverifiable instead of deciding on partial data, and never writes configuration; changing these settings remains a separately authorized human action. It exits `0` only when every finding is satisfied and `2` when any requirement fails or cannot be read with the available credentials, so missing scopes fail closed instead of passing silently. The CODEOWNERS check tests one representative path per policy-protected glob: an uncovered sample is a proven gap, but a covered sample is an early warning only and does not prove the whole glob is covered. Matching implements the documented last-match-wins subset (anchoring, `*`, `**`, `?`, escaped spaces, ownerless entries removing coverage) with case-sensitive comparison; classic protection needs repository administration read scope, while rulesets, contents, and environments need only repository read access. The [threat model](docs/threat-model.md) documents this read-only GitHub API trust boundary.
+
+Rigor still cannot configure these repository-host settings, and a passing local command or model statement remains insufficient; the GitHub-side configuration and an independent human approval stay authoritative.
 
 ## Development and release
 
@@ -158,4 +168,4 @@ For release, update `CHANGELOG.md`, bump both `package.json` and `.claude-plugin
 
 Artifacts are intended for version control and therefore must never contain secrets. Rigor avoids persisting raw check output but cannot sanitize prose entered by a user. Keep intent, contract, and escalation summaries minimal. A malicious policy can execute a malicious check; protect policy changes with CODEOWNERS and review base/head diffs.
 
-MVP limitations and planned work are tracked in [MVP limitations](docs/mvp-limitations.md). In particular, Windows launch support, cryptographic provenance/attestation, semantic test-quality analysis, and GitHub-host configuration verification are out of scope for 0.1.0.
+MVP limitations and planned work are tracked in [MVP limitations](docs/mvp-limitations.md). In particular, Windows launch support, cryptographic provenance/attestation, semantic test-quality analysis, and any GitHub-host configuration writes are out of scope; `rigor governance` verifies host settings read-only but cannot change them.

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_80f65361-e2b9-4a6d-b210-ff47b4e95284",
+  "taskId": "GH-2",
+  "createdAt": "2026-07-10T12:33:48.519Z",
+  "preflightArtifactId": "preflight_429b972c-cbbc-4ccf-9d53-7c1127da6ee1",
+  "preflightHash": "72bbb9f18d9b840e6ce64bcb577ff203e471b4e599686b6f9a521fab1c600190",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "rigor governance exits 0 only when branch pull-request rules, the required rigor status check, approval count >= 1, stale-review dismissal, code-owner review, last-push approval, force-push and deletion blocking, CODEOWNERS coverage of policy-protected paths, and deployment environment protection all verify as satisfied",
+    "rigor governance exits 2 when any requirement fails or cannot be verified with the available read scope, and exit 3 is used for invalid inputs",
+    "the command performs only GET requests to api.github.com, sends credentials only there, and never performs a configuration write",
+    "CODEOWNERS coverage uses last-match-wins semantics where an entry without owners removes coverage",
+    "unit tests cover pass, fail, and unverifiable outcomes plus CODEOWNERS boundary cases including anchoring, escaped spaces, non-ASCII paths, negation lines, and empty-owner entries",
+    "npm run test:all passes including build, plugin validation, and link checks"
+  ],
+  "allowedPaths": [
+    "src/governance.ts",
+    "src/cli.ts",
+    "test/governance.test.ts",
+    "dist/rigor.cjs",
+    "README.md",
+    "README.ja.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "no new runtime dependency",
+    "no shell string execution",
+    "GET-only GitHub API access with token read from environment variables only",
+    "no raw HTTP response bodies or tokens persisted to Rigor evidence",
+    "no changes to .rigor policy, workflows, hooks, or CI verifier"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

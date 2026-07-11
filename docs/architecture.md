@@ -27,7 +27,7 @@ In CI, `rigor ci` receives GitHub-provided base/head SHAs, verifies that both ar
 - Globs are deliberately limited to segment-aware `*`, `?`, and `**`. Paths are normalized before matching. This keeps matching reviewable and consistent in local and CI execution.
 - Setup writes only absent, Rigor-owned files. Existing unequal content is reported as a conflict; upgrades never silently replace user changes.
 - Hook input is treated as untrusted JSON. Unconfigured repositories exit successfully; configured repositories with missing or invalid policy return a blocking `UserPromptSubmit` decision.
-- External transmission is a policy result, not an action. Rigor never calls a model or remote endpoint.
+- External transmission is a policy result, not an action. The workflow commands never call a model or remote endpoint; the single deliberate exception is `rigor governance`, which sends read-only GET requests to the GitHub API to verify branch rules, classic protection, sampled CODEOWNERS coverage, and deployment environments, and writes nothing. The [threat model](threat-model.md) documents this trust boundary (transmitted data, fixed host, token precedence, redirect refusal, timeout, response size limit, and error concealment).
 
 ## Official specification basis
 

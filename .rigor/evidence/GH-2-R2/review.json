@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_36b88bc8-324d-4ee6-b615-5b0feb89e493",
+  "taskId": "GH-2-R2",
+  "createdAt": "2026-07-10T13:27:34.780Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_13c60187-9dff-4629-bea2-cf13b259fba6",
+  "verificationArtifactId": "verification_faa25892-b3a1-4635-9d3a-32259a9e90fa",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/threat-model.md",
+    "src/cli.ts",
+    "src/governance.ts",
+    "test/governance.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "the CODEOWNERS finding is renamed to codeowners-sampled-coverage, its satisfied detail states it is a sampled early warning and not proof of full glob coverage, and the report field is renamed sampledPaths",
+    "the GitHub reader enforces a 10 second timeout, rejects redirects, treats unparseable or oversized (>1MB) response bodies as unverifiable rather than failed, and sends only GET requests to https://api.github.com with the token in the authorization header only",
+    "docs/threat-model.md documents the GitHub API as a trust boundary covering transmitted data, allowed host, token precedence, redirect refusal, timeout, response size limit, error concealment, and the GET-only mechanism",
+    "README documents the recommended execution order (edit everything including dist, then verify, then review, then one commit) and the write-once artifact behavior requiring a new task ID for revisions",
+    "unit tests cover the reader hardening (host, method, headers, oversize and unparseable bodies) and the renamed sampled finding",
+    "npm run test:all passes and the verification covers the full pull-request change set"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_f5eef83a-8a86-455d-990d-b6bec62554da",
+  "taskId": "GH-2-R3",
+  "createdAt": "2026-07-10T13:46:21.580Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "2c37d5cf191c23028622255be57c25dd53330779a0b9e1c31c303afb27ea2f98",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "234d4cf7ebe51199da7b4a8f5c33166c783ad786",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/threat-model.md",
+    "src/cli.ts",
+    "src/governance.ts",
+    "test/governance.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/architecture.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/mvp-limitations.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/governance.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/governance.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}

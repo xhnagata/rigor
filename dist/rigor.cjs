@@ -1009,6 +1009,452 @@ async function ciVerify(root, baseSha, headSha) {
   };
 }
 
+// src/governance.ts
+var GOVERNANCE_SCHEMA = "rigor.governance.v1";
+function parseRepository(value) {
+  const text = textField(value, "--repo", 200);
+  const match = /^([A-Za-z0-9](?:[A-Za-z0-9-]{0,38})?)\/([A-Za-z0-9._-]{1,100})$/u.exec(
+    text
+  );
+  const owner = match?.[1];
+  const repo = match?.[2];
+  if (!owner || !repo || repo === "." || repo === "..") {
+    throw new RigorError(
+      "--repo must be an owner/name repository reference",
+      EXIT.inputError
+    );
+  }
+  return { owner, repo };
+}
+function parseBranch(value) {
+  const text = textField(value, "--branch", 255);
+  if (/[\u0000-\u001f\u007f ~^:?*[\\]/u.test(text) || text.includes("..")) {
+    throw new RigorError(
+      "--branch contains unsupported characters",
+      EXIT.inputError
+    );
+  }
+  return text;
+}
+function githubReader(token, fetchImpl = fetch) {
+  if (token !== void 0 && !/^[!-~]{1,512}$/u.test(token)) {
+    throw new RigorError(
+      "GitHub token contains unsupported characters",
+      EXIT.inputError
+    );
+  }
+  return async (requestPath) => {
+    const headers = {
+      accept: "application/vnd.github+json",
+      "x-github-api-version": "2022-11-28",
+      "user-agent": "rigor-governance"
+    };
+    if (token) headers.authorization = `Bearer ${token}`;
+    try {
+      const response = await fetchImpl(`https://api.github.com${requestPath}`, {
+        method: "GET",
+        headers,
+        redirect: "error",
+        signal: AbortSignal.timeout(TIMEOUT_MS)
+      });
+      const link = response.headers.get("link");
+      if (link && /rel="next"/u.test(link)) return { status: 0, body: null };
+      const text = await response.text();
+      if (text.length > MAX_RESPONSE_BYTES) return { status: 0, body: null };
+      if (text.length === 0) {
+        if (response.status !== 200)
+          return { status: response.status, body: null };
+        return { status: 0, body: null };
+      }
+      return { status: response.status, body: JSON.parse(text) };
+    } catch {
+      return { status: 0, body: null };
+    }
+  };
+}
+var TIMEOUT_MS = 1e4;
+var MAX_RESPONSE_BYTES = 1e6;
+function splitCodeownersLine(line) {
+  const tokens = [];
+  let current = "";
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === "\\" && i + 1 < line.length) {
+      current += line[i + 1];
+      i += 1;
+    } else if (char === "#") {
+      break;
+    } else if (char === " " || char === "	") {
+      if (current) tokens.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+function parseCodeowners(text) {
+  const entries = [];
+  for (const rawLine of text.split(/\r?\n/u)) {
+    const tokens = splitCodeownersLine(rawLine);
+    const pattern = tokens[0];
+    if (!pattern) continue;
+    if (pattern.startsWith("!")) continue;
+    entries.push({ pattern, owners: tokens.slice(1) });
+  }
+  return entries;
+}
+function escapeRegex2(character) {
+  return /[\\^$.*+?()[\]{}|]/u.test(character) ? `\\${character}` : character;
+}
+function codeownersPatternToRegExp(pattern) {
+  let body = pattern;
+  let directoryOnly = false;
+  if (body.endsWith("/")) {
+    directoryOnly = true;
+    body = body.slice(0, -1);
+  }
+  let anchored = false;
+  if (body.startsWith("/")) {
+    anchored = true;
+    body = body.slice(1);
+  } else if (body.includes("/")) {
+    anchored = true;
+  }
+  let source = anchored ? "^" : "^(?:.*/)?";
+  for (let i = 0; i < body.length; i += 1) {
+    const char = body[i];
+    if (char === "*") {
+      if (body[i + 1] === "*") {
+        i += 1;
+        if (body[i + 1] === "/") {
+          i += 1;
+          source += "(?:.*/)?";
+        } else source += ".*";
+      } else source += "[^/]*";
+    } else if (char === "?") source += "[^/]";
+    else source += escapeRegex2(char);
+  }
+  const last = body[body.length - 1];
+  if (directoryOnly) source += "/.*";
+  else if (last !== "*" && last !== "?") source += "(?:/.*)?";
+  return new RegExp(`${source}$`, "u");
+}
+function codeownersOwners(entries, pathname) {
+  let owners = [];
+  for (const entry of entries) {
+    if (codeownersPatternToRegExp(entry.pattern).test(pathname)) {
+      owners = entry.owners;
+    }
+  }
+  return owners;
+}
+function representativePaths(policy) {
+  const paths = /* @__PURE__ */ new Set();
+  for (const rule of policy.rules) {
+    if (!rule.protected) continue;
+    for (const glob of rule.paths) {
+      paths.add(
+        glob.split("/").map(
+          (segment) => segment === "**" ? "governed" : segment.replaceAll("**", "governed").replaceAll("*", "governed").replaceAll("?", "x")
+        ).join("/")
+      );
+    }
+  }
+  return [...paths].sort();
+}
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function rulesetFacts(body) {
+  const facts = {
+    pullRequestRule: false,
+    approvals: 0,
+    dismissStale: false,
+    codeOwnerReview: false,
+    lastPushApproval: false,
+    contexts: [],
+    forcePushBlocked: false,
+    deletionBlocked: false
+  };
+  if (!Array.isArray(body)) return facts;
+  for (const item of body) {
+    if (!isRecord(item)) continue;
+    const parameters = isRecord(item.parameters) ? item.parameters : {};
+    if (item.type === "pull_request") {
+      facts.pullRequestRule = true;
+      const count = parameters.required_approving_review_count;
+      if (typeof count === "number" && count > facts.approvals)
+        facts.approvals = count;
+      if (parameters.dismiss_stale_reviews_on_push === true)
+        facts.dismissStale = true;
+      if (parameters.require_code_owner_review === true)
+        facts.codeOwnerReview = true;
+      if (parameters.require_last_push_approval === true)
+        facts.lastPushApproval = true;
+    } else if (item.type === "required_status_checks") {
+      const checks = parameters.required_status_checks;
+      if (Array.isArray(checks)) {
+        for (const check of checks) {
+          if (isRecord(check) && typeof check.context === "string")
+            facts.contexts.push(check.context);
+        }
+      }
+    } else if (item.type === "non_fast_forward") facts.forcePushBlocked = true;
+    else if (item.type === "deletion") facts.deletionBlocked = true;
+  }
+  return facts;
+}
+function classicFacts(body) {
+  const facts = {
+    pullRequestRule: false,
+    approvals: 0,
+    dismissStale: false,
+    codeOwnerReview: false,
+    lastPushApproval: false,
+    contexts: [],
+    forcePushBlocked: false,
+    deletionBlocked: false
+  };
+  if (!isRecord(body)) return facts;
+  const reviews = body.required_pull_request_reviews;
+  if (isRecord(reviews)) {
+    facts.pullRequestRule = true;
+    const count = reviews.required_approving_review_count;
+    if (typeof count === "number") facts.approvals = count;
+    if (reviews.dismiss_stale_reviews === true) facts.dismissStale = true;
+    if (reviews.require_code_owner_reviews === true)
+      facts.codeOwnerReview = true;
+    if (reviews.require_last_push_approval === true)
+      facts.lastPushApproval = true;
+  }
+  const checks = body.required_status_checks;
+  if (isRecord(checks)) {
+    if (Array.isArray(checks.contexts)) {
+      for (const context of checks.contexts) {
+        if (typeof context === "string") facts.contexts.push(context);
+      }
+    }
+    if (Array.isArray(checks.checks)) {
+      for (const check of checks.checks) {
+        if (isRecord(check) && typeof check.context === "string")
+          facts.contexts.push(check.context);
+      }
+    }
+  }
+  const forcePushes = body.allow_force_pushes;
+  if (isRecord(forcePushes) && forcePushes.enabled === false)
+    facts.forcePushBlocked = true;
+  const deletions = body.allow_deletions;
+  if (isRecord(deletions) && deletions.enabled === false)
+    facts.deletionBlocked = true;
+  return facts;
+}
+function evaluateGovernance(input) {
+  const findings = [];
+  const rulesKnown = input.rules.status === 200;
+  const classicKnown = input.protection.status === 200 || input.protection.status === 404;
+  const ruleset = rulesetFacts(rulesKnown ? input.rules.body : null);
+  const classic = classicFacts(
+    input.protection.status === 200 ? input.protection.body : null
+  );
+  const branchRequirement = (id, fromRuleset, fromClassic, requirement) => {
+    if (rulesKnown && fromRuleset || classicKnown && fromClassic) {
+      findings.push({ id, status: "satisfied", detail: requirement });
+    } else if (!rulesKnown && !classicKnown) {
+      findings.push({
+        id,
+        status: "unverifiable",
+        detail: `${requirement}: branch rules and classic protection could not be fully read with the available credentials`
+      });
+    } else if (!classicKnown) {
+      findings.push({
+        id,
+        status: "unverifiable",
+        detail: `${requirement}: not satisfied by rulesets, and classic protection could not be fully read with the available credentials`
+      });
+    } else {
+      findings.push({
+        id,
+        status: "failed",
+        detail: `${requirement}: not required by any active ruleset or classic protection on ${input.branch}`
+      });
+    }
+  };
+  branchRequirement(
+    "pull-request-required",
+    ruleset.pullRequestRule,
+    classic.pullRequestRule,
+    "pull requests are required before merging"
+  );
+  branchRequirement(
+    "approval-count",
+    ruleset.approvals >= 1,
+    classic.approvals >= 1,
+    "at least one approving review is required"
+  );
+  branchRequirement(
+    "stale-review-dismissal",
+    ruleset.dismissStale,
+    classic.dismissStale,
+    "stale approvals are dismissed on new commits"
+  );
+  branchRequirement(
+    "code-owner-review",
+    ruleset.codeOwnerReview,
+    classic.codeOwnerReview,
+    "review from code owners is required"
+  );
+  branchRequirement(
+    "last-push-approval",
+    ruleset.lastPushApproval,
+    classic.lastPushApproval,
+    "approval from someone other than the last pusher is required"
+  );
+  branchRequirement(
+    "required-check",
+    ruleset.contexts.includes(input.requiredCheckContext),
+    classic.contexts.includes(input.requiredCheckContext),
+    `the status check "${input.requiredCheckContext}" is required`
+  );
+  branchRequirement(
+    "force-push-blocked",
+    ruleset.forcePushBlocked,
+    classic.forcePushBlocked,
+    "force pushes are blocked"
+  );
+  branchRequirement(
+    "deletion-blocked",
+    ruleset.deletionBlocked,
+    classic.deletionBlocked,
+    "branch deletion is blocked"
+  );
+  if (input.codeowners.state === "unverifiable") {
+    findings.push({
+      id: "codeowners-sampled-coverage",
+      status: "unverifiable",
+      detail: "CODEOWNERS could not be fully read with the available credentials"
+    });
+  } else if (input.codeowners.state === "missing") {
+    findings.push({
+      id: "codeowners-sampled-coverage",
+      status: "failed",
+      detail: "no CODEOWNERS file exists at .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS"
+    });
+  } else {
+    const entries = parseCodeowners(input.codeowners.text);
+    const uncovered = input.sampledPaths.filter(
+      (pathname) => codeownersOwners(entries, pathname).length === 0
+    );
+    findings.push(
+      uncovered.length === 0 ? {
+        id: "codeowners-sampled-coverage",
+        status: "satisfied",
+        detail: `${input.codeowners.source} assigns owners to every sampled representative of the policy-protected globs; this sampled check is an early warning and does not prove full coverage of each glob`
+      } : {
+        id: "codeowners-sampled-coverage",
+        status: "failed",
+        detail: `${input.codeowners.source} leaves sampled policy-protected paths without owners: ${uncovered.join(", ")}`
+      }
+    );
+  }
+  if (input.environments.status === 200 && isRecord(input.environments.body)) {
+    const list = Array.isArray(input.environments.body.environments) ? input.environments.body.environments : [];
+    const unprotected = [];
+    for (const environment of list) {
+      if (!isRecord(environment)) continue;
+      const name = typeof environment.name === "string" ? environment.name : "unnamed";
+      const rules = environment.protection_rules;
+      if (!Array.isArray(rules) || rules.length === 0) unprotected.push(name);
+    }
+    if (list.length === 0) {
+      findings.push({
+        id: "deployment-environments",
+        status: "satisfied",
+        detail: "no deployment environments are configured"
+      });
+    } else if (unprotected.length === 0) {
+      findings.push({
+        id: "deployment-environments",
+        status: "satisfied",
+        detail: `all ${String(list.length)} deployment environments have protection rules`
+      });
+    } else {
+      findings.push({
+        id: "deployment-environments",
+        status: "failed",
+        detail: `deployment environments without protection rules: ${unprotected.join(", ")}`
+      });
+    }
+  } else {
+    findings.push({
+      id: "deployment-environments",
+      status: "unverifiable",
+      detail: "deployment environments could not be fully read with the available credentials"
+    });
+  }
+  return {
+    schemaVersion: GOVERNANCE_SCHEMA,
+    repository: input.repository,
+    branch: input.branch,
+    requiredCheckContext: input.requiredCheckContext,
+    sampledPaths: input.sampledPaths,
+    findings,
+    status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
+  };
+}
+var CODEOWNERS_LOCATIONS = [
+  ".github/CODEOWNERS",
+  "CODEOWNERS",
+  "docs/CODEOWNERS"
+];
+async function readCodeowners(read, base) {
+  let unverifiable = false;
+  for (const location of CODEOWNERS_LOCATIONS) {
+    const response = await read(
+      `${base}/contents/${location.split("/").map(encodeURIComponent).join("/")}`
+    );
+    if (response.status === 200 && isRecord(response.body)) {
+      const content = response.body.content;
+      if (typeof content === "string") {
+        try {
+          return {
+            state: "found",
+            source: location,
+            text: Buffer.from(content, "base64").toString("utf8")
+          };
+        } catch {
+          unverifiable = true;
+        }
+      }
+    } else if (response.status !== 404) unverifiable = true;
+  }
+  return {
+    state: unverifiable ? "unverifiable" : "missing",
+    source: "",
+    text: ""
+  };
+}
+async function governanceVerify(policy, options, read) {
+  const base = `/repos/${encodeURIComponent(options.owner)}/${encodeURIComponent(options.repo)}`;
+  const branch = encodeURIComponent(options.branch);
+  const rules = await read(`${base}/rules/branches/${branch}?per_page=100`);
+  const protection = await read(`${base}/branches/${branch}/protection`);
+  const codeowners = await readCodeowners(read, base);
+  const environments = await read(`${base}/environments?per_page=100`);
+  return evaluateGovernance({
+    repository: `${options.owner}/${options.repo}`,
+    branch: options.branch,
+    requiredCheckContext: options.requiredCheckContext,
+    sampledPaths: representativePaths(policy),
+    rules,
+    protection,
+    codeowners,
+    environments
+  });
+}
+
 // src/hook.ts
 var import_node_path7 = __toESM(require("node:path"), 1);
 var import_promises5 = require("node:fs/promises");
@@ -1135,7 +1581,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|verify|escalate|review|retrospect|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|verify|escalate|review|retrospect|governance|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
@@ -1213,6 +1659,19 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     const saved = await saveArtifact(root, contract.taskId, "review", result);
     output({ ...record(result, "review"), saved });
     return verification.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "governance") {
+    const repository = parseRepository(option(args, "--repo"));
+    const branch = parseBranch(option(args, "--branch", false) ?? "main");
+    const requiredCheckContext = option(args, "--required-check", false) ?? "rigor";
+    const token = import_node_process.default.env.RIGOR_GITHUB_TOKEN ?? import_node_process.default.env.GITHUB_TOKEN ?? import_node_process.default.env.GH_TOKEN;
+    const result = await governanceVerify(
+      policy,
+      { ...repository, branch, requiredCheckContext },
+      githubReader(token)
+    );
+    output(result);
+    return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "retrospect") {
     output(await retrospect(root));

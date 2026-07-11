@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_d6b66bac-e7b5-414a-8241-79fee4c18173",
+  "taskId": "GH-2",
+  "contractArtifactId": "contract_80f65361-e2b9-4a6d-b210-ff47b4e95284",
+  "createdAt": "2026-07-10T12:42:58.075Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "e14e183141274b43a6caa3da5f21737e061302be",
+  "treeHash": "ea3441d687d4bd0543c22d21ea081ddb61656dddd9bb20127fe1b1ea120c9404",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "src/cli.ts",
+    "src/governance.ts",
+    "test/governance.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 8,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}
