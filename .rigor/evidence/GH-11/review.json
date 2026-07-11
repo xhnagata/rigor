@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_ea403c8e-fe3a-450a-a28d-42efe6b8a7ad",
+  "taskId": "GH-11",
+  "createdAt": "2026-07-11T16:16:18.879Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_a0f82b81-3060-4624-b3b5-ea344f61befb",
+  "verificationArtifactId": "verification_673cd25a-1c9c-4001-8e30-60bd29d5fb9e",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/orchestration.md",
+    "scripts/validate-plugin.mjs",
+    "skills/assess/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "test/e2e.test.ts",
+    "test/routing.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "A clean-session smoke flow reaches preflight, contract, assessment, route, and attempt-start without a manually authored routing-input JSON, and the smoke run is documented as evidence.",
+    "A SPIKE-ROUTE-1-like low-complexity fixture assessment deterministically selects an eligible economy candidate through rigor route.",
+    "An ambiguous or low-confidence fixture stops with requires-review or escalates instead of silently selecting an economy candidate.",
+    "The /rigor:assess skill reports task characteristics (complexity, ambiguity, novelty, verification strength) with repository-path-anchored evidence and explicit confidence, and never names or selects a model; candidate selection remains a rigor route CLI decision.",
+    "The /rigor:assess skill runs deterministic validation (rigor route --dry-run with the generated rigor.routing-input.v2) before any routing plan is recorded, and documents the stop paths for low confidence, contradictory evidence, missing acceptance criteria, and required human decision.",
+    "The /rigor:orchestrate skill accepts an autonomous flow in which the routing input comes from /rigor:assess instead of a human-authored JSON argument, while still permitting an explicit human-provided routing input.",
+    "Skill and orchestration tests cover both the allowed (economy-selected) flow and the stopped (requires-review) flow using checked-in fixtures that exercise the built CLI.",
+    "Configured runtime identity remains recorded as unverified everywhere; nothing presents the assessment or the selection as runtime attestation.",
+    "node scripts/validate-plugin.mjs and claude plugin validate . --strict pass with the new skill registered."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

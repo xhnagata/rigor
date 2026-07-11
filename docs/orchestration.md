@@ -40,6 +40,12 @@ When parsing succeeds and `confidence` is `"low"`, `rigor route` never silently 
 
 **v1 migration path**: `rigor.routing-input.v1` inputs remain fully accepted, unchanged. A v1 input has no `assessment` field, so routing treats it as legacy `confidence: "medium"` with zero evidence — the same behavior as before this schema version existed. Routing plans recorded before this change carry no `assessment` summary at all; `parseRoutingPlan` synthesizes the same legacy default (`inputSchemaVersion: "rigor.routing-input.v1"`, `confidence: "medium"`, `evidenceCount: 0`) rather than rejecting an evidence file that was valid when it was written.
 
+### Producing `rigor.routing-input.v2` with `/rigor:assess`
+
+`/rigor:assess` lets an autonomous `/rigor:orchestrate` flow obtain a `rigor.routing-input.v2` without a human authoring it by hand. It reads only the task statement plus the repository files, tests, and schemas the task names, judges `signals` and `assessment.confidence` from what it read, and anchors every signal judgment to at least one repository-relative-path `evidence` entry. It reports task characteristics only: it never names or selects a model, and evidence observations must state facts (`"file X hard-codes Y"`), never conclusions like "use model Z" — `rigor route` remains the sole place a candidate is chosen.
+
+Before the produced input is ever passed to `rigor route --record`, `/rigor:assess` validates it with `rigor route --dry-run`, exactly like any other routing input: exit `3` (malformed, unsupported, evidence-free, or contradictory) is fixed only if the assessment itself contained a factual error, never by loosening signals or confidence; exit `2` (`requires-review` from low confidence, or `unroutable`) is a stop that hands the assessment to a human, not a retry with adjusted signals. The same fail-closed gates documented above — evidence-free, contradictory, and low-confidence — apply identically whether the input was authored by a human or produced by `/rigor:assess`.
+
 ## Capability derivation
 
 The selector maps `low`, `medium`, `high`, and `critical` assessment levels to `economy`, `standard`, `premium`, and `frontier`. It takes the maximum of complexity, ambiguity, and novelty. Weak deterministic verification raises the required class by one, capped at frontier.

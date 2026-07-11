@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c836816d-e01d-4ed4-91a3-f6d49cd7a0c9",
+  "taskId": "GH-11-R2",
+  "createdAt": "2026-07-11T16:16:53.790Z",
+  "preflightArtifactId": "preflight_bf7268ca-3f82-496b-8eeb-e89a42958dce",
+  "preflightHash": "996ea00f96b2a38906b404d551d0b826d931ce3bf09bba4fd76ff40d95adeb5b",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "skills/orchestrate/SKILL.md describes exit-3 dry-run results the same way as skills/assess/SKILL.md and docs/orchestration.md: correctable only for an actual factual error in the assessment, never by loosening signals or raising confidence; exit-2 requires-review/unroutable results, including low confidence, remain a hard stop handed to a human.",
+    "The stopped-flow e2e test additionally asserts that a requires-review rigor route --record persisted no routing-plan artifact.",
+    "No other behavior, prose guarantee, or test is changed or weakened; the full test suite, plugin validation, and link check pass."
+  ],
+  "allowedPaths": [
+    "skills/orchestrate/SKILL.md",
+    "test/e2e.test.ts"
+  ],
+  "constraints": [
+    "Change only the two findings from the GH-11 independent review; no scope expansion.",
+    "Do not delete, weaken, or skip existing tests; the new assertion may only strengthen the stopped-flow test.",
+    "Do not touch src/**, dist/**, schemas/**, or any path outside the two allowed files."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

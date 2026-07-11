@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_a0f82b81-3060-4624-b3b5-ea344f61befb",
+  "taskId": "GH-11",
+  "createdAt": "2026-07-11T15:57:36.288Z",
+  "preflightArtifactId": "preflight_e2b24bee-221d-4092-907a-fa467d52ca8d",
+  "preflightHash": "feb122a4f031ba8120776f28f8fed8fa4495434286971cd988248254f72d629e",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A clean-session smoke flow reaches preflight, contract, assessment, route, and attempt-start without a manually authored routing-input JSON, and the smoke run is documented as evidence.",
+    "A SPIKE-ROUTE-1-like low-complexity fixture assessment deterministically selects an eligible economy candidate through rigor route.",
+    "An ambiguous or low-confidence fixture stops with requires-review or escalates instead of silently selecting an economy candidate.",
+    "The /rigor:assess skill reports task characteristics (complexity, ambiguity, novelty, verification strength) with repository-path-anchored evidence and explicit confidence, and never names or selects a model; candidate selection remains a rigor route CLI decision.",
+    "The /rigor:assess skill runs deterministic validation (rigor route --dry-run with the generated rigor.routing-input.v2) before any routing plan is recorded, and documents the stop paths for low confidence, contradictory evidence, missing acceptance criteria, and required human decision.",
+    "The /rigor:orchestrate skill accepts an autonomous flow in which the routing input comes from /rigor:assess instead of a human-authored JSON argument, while still permitting an explicit human-provided routing input.",
+    "Skill and orchestration tests cover both the allowed (economy-selected) flow and the stopped (requires-review) flow using checked-in fixtures that exercise the built CLI.",
+    "Configured runtime identity remains recorded as unverified everywhere; nothing presents the assessment or the selection as runtime attestation.",
+    "node scripts/validate-plugin.mjs and claude plugin validate . --strict pass with the new skill registered."
+  ],
+  "allowedPaths": [
+    "skills/**",
+    "scripts/validate-plugin.mjs",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Implement only the Scope and Acceptance criteria of issue #11; do not add unrelated features.",
+    "Do not modify src/**, dist/**, schemas/**, bin/**, hooks/**, agents/**, .rigor/**, or .github/**; if a runtime, schema, or CLI change appears necessary, stop instead of expanding scope.",
+    "Do not delete, weaken, or skip existing tests; new tests may be added.",
+    "Keep policy enforcement in the deterministic CLI; the skill prose must not move enforcement into prompts.",
+    "Treat Claude's assessment as reviewable judgment, never as a deterministic fact; validation authority stays with rigor route.",
+    "The assess skill must instruct stopping for low confidence, contradictory evidence, missing acceptance criteria, or a required human decision.",
+    "This implementation must be driven by the existing manually-invoked /rigor:orchestrate flow; the new assess flow must not bootstrap its own unreviewed contract during this task."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

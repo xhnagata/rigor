@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_e548e895-de95-45e6-b52d-d4b8ad7135ff",
+  "taskId": "GH-11-R3",
+  "createdAt": "2026-07-11T16:19:14.626Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "189e38953a71550982084f40e60f37e0463b186096d5c9b18c13cd9f96cf2dfd",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-11",
+    "head": "6d5dc55b867c22fbd4744f31bf04c02819ccafdb",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-11-R2/contract.json",
+      ".rigor/evidence/GH-11-R2/preflight.json",
+      ".rigor/evidence/GH-11/attempts/attempt-session_1effd5dd-76f3-4b41-8b7d-50317bb014ee.json",
+      ".rigor/evidence/GH-11/attempts/attempt_06642036-2675-4b90-b716-8d03aa0d9a21.json",
+      ".rigor/evidence/GH-11/contract.json",
+      ".rigor/evidence/GH-11/preflight.json",
+      ".rigor/evidence/GH-11/review.json",
+      ".rigor/evidence/GH-11/routing/routing-plan_46cc4901-987f-4e23-bdbd-1e74f8561f45.json",
+      ".rigor/evidence/GH-11/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "docs/orchestration.md",
+      "scripts/validate-plugin.mjs",
+      "skills/assess/SKILL.md",
+      "skills/orchestrate/SKILL.md",
+      "test/e2e.test.ts",
+      "test/routing.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/orchestration.md",
+    "scripts/validate-plugin.mjs",
+    "skills/assess/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "test/e2e.test.ts",
+    "test/routing.test.ts"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/assess/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/orchestrate/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/e2e.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/routing.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}
