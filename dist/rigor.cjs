@@ -2753,7 +2753,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   throw new RigorError(`Unknown command: ${command}`, EXIT.inputError);
 }
 var entryName = import_node_process.default.argv[1] ? import_node_path9.default.basename(import_node_process.default.argv[1]) : "";
-var isEntry = entryName === "rigor.cjs" || entryName === "cli.ts";
+var isEntry = entryName === "rigor.cjs" || entryName === "rigor-ci.cjs" || entryName === "cli.ts";
 if (isEntry) {
   main().then((code) => {
     import_node_process.default.exitCode = code;

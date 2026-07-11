@@ -305,7 +305,10 @@ export async function main(
 }
 
 const entryName = process.argv[1] ? path.basename(process.argv[1]) : "";
-const isEntry = entryName === "rigor.cjs" || entryName === "cli.ts";
+const isEntry =
+  entryName === "rigor.cjs" ||
+  entryName === "rigor-ci.cjs" ||
+  entryName === "cli.ts";
 if (isEntry) {
   main()
     .then((code) => {

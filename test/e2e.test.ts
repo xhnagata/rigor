@@ -38,6 +38,31 @@ async function rigor(
   }
 }
 
+async function generatedCi(
+  root: string,
+  base: string,
+  head: string,
+): Promise<Record<string, unknown>> {
+  const result = await exec(
+    "node",
+    [
+      path.join(root, ".rigor", "rigor-ci.cjs"),
+      "ci",
+      "--base",
+      base,
+      "--head",
+      head,
+    ],
+    { cwd: root },
+  );
+  assert.notEqual(
+    result.stdout.trim(),
+    "",
+    "generated rigor-ci.cjs must execute the CLI entrypoint",
+  );
+  return JSON.parse(result.stdout) as Record<string, unknown>;
+}
+
 test("install-to-review smoke flow and independent CI work in an empty repository", async () => {
   const parent = await mkdtemp(path.join(tmpdir(), "rigor-e2e-"));
   const root = path.join(parent, "repo");
@@ -260,7 +285,7 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
   await git(root, ["add", "."]);
   await git(root, ["commit", "-q", "-m", "add answer with evidence"]);
   const head = await git(root, ["rev-parse", "HEAD"]);
-  const ci = await rigor(root, ["ci", "--base", base, "--head", head]);
+  const ci = await generatedCi(root, base, head);
   assert.equal(ci.status, "passed");
 
   await mkdir(path.join(root, "test"));
