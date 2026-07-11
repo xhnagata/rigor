@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/outcome-input.v1.schema.json",
+  "title": "Rigor outcome input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "decision",
+    "acceptedWithoutModelCodeChanges",
+    "humanCorrectionMinutes",
+    "escalationCount",
+    "reviewFindings",
+    "revertStatus",
+    "escapedDefectStatus",
+    "usage"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.outcome-input.v1" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "decision": { "enum": ["accepted", "rejected"] },
+    "acceptedWithoutModelCodeChanges": { "type": "boolean" },
+    "humanCorrectionMinutes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "escalationCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "reviewFindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical", "high", "medium", "low"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "high": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "medium": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "low": { "type": "integer", "minimum": 0, "maximum": 10000 }
+      }
+    },
+    "revertStatus": { "enum": ["none", "reverted"] },
+    "escapedDefectStatus": { "enum": ["none", "suspected", "confirmed"] },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["recorded", "unavailable", "unknown"] },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "totalTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "reasoningEffort": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "modelIdentity": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "providerCost": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["currency", "amount"],
+          "properties": {
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "amount": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000000
+            }
+          }
+        }
+      }
+    },
+    "retryCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+    "pullRequest": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "notes": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    }
+  }
+}

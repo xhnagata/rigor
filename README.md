@@ -164,6 +164,14 @@ rigor consult-finish --session .rigor/evidence/APP-123/consultations/consultatio
 
 `consult-finish` fails if repository content, changed paths, or HEAD changed during a read-only consultation. It stores a normalized summary and available external IDs, never the raw model transcript.
 
+After review, record the task's disposition and link it to its evidence:
+
+```sh
+rigor outcome --input /tmp/outcome-input.json --attempt .rigor/evidence/APP-123/attempts/attempt_ID.json --verification .rigor/evidence/APP-123/verification.json --review .rigor/evidence/APP-123/review.json
+```
+
+`outcome` copies provider, model, capability class, and the attempt, verification, and review identifiers from the linked artifacts rather than trusting the input. It fails closed on inconsistent claims: an `accepted` outcome requires a completed attempt and a linked passing verification; `reverted` and escaped-defect outcomes must be `accepted`; and `retryCount` must equal `attempt.sequence - 1` when an attempt is linked. Token counts, provider cost, reasoning effort, and model identity are stored as measured-or-unavailable; when `usage.status` is not `recorded` the numeric fields are persisted as `null`. Configured model identity is recorded with `attestation: "unverified"`, provider cost is a reported measurement rather than a Rigor-verified charge, and the routing `relativeCost` remains an abstract routing weight, not a provider invoice or measured money.
+
 Commit the evidence with the change. CI ignores evidence files when deriving the code change but validates their linkage and independently reruns policy checks.
 
 ## Daily workflow
@@ -174,7 +182,7 @@ Run the steps in this order: preflight, contract, recorded route, and attempt st
 
 Routing, attempt, and consultation records are currently local advisory evidence. CI does not yet require or attest their model/provider claims.
 
-If verification remains unresolved, create an escalation input with schema `rigor.escalation-input.v1`. Keep `facts`, `attempts`, `disprovedHypotheses`, `speculation`, and `requestedDecision` separate; duplicate attempts are rejected. `rigor retrospect` aggregates redacted local event counts from the gitignored `.rigor/events.jsonl`.
+If verification remains unresolved, create an escalation input with schema `rigor.escalation-input.v1`. Keep `facts`, `attempts`, `disprovedHypotheses`, `speculation`, and `requestedDecision` separate; duplicate attempts are rejected. `rigor retrospect` aggregates redacted local event counts from the gitignored `.rigor/events.jsonl` and, from each task's `outcome.json`, per-candidate success rates (with explicit numerator and denominator), retries, elapsed time, human-intervention minutes, and data-completeness counts. Every rate reports its denominator and every missing-data count so the metrics never hide unavailable measurements; malformed outcome files are tolerated and counted, not fatal. Reported cost is a measurement, and the routing `relativeCost` is an abstract routing weight, never a provider invoice or measured money.
 
 Stable CLI exit codes are `0` success, `2` policy/verification failure, `3` invalid input or repository state, and `4` unexpected internal failure. Error messages omit raw subprocess output.
 

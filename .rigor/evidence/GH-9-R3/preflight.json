@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_85d0138a-bbdb-4d5c-850c-8f8fb1a0e8f5",
+  "taskId": "GH-9-R3",
+  "createdAt": "2026-07-11T09:21:49.355Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "44a877e5a1647b6833b38fe64c709e173dcab15bef88d508feeaeb47b9c94536",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "0f5a3bd2398a7e0f5447156dcdcf5daaa61afa92",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-9-R2/contract.json",
+      ".rigor/evidence/GH-9-R2/preflight.json",
+      ".rigor/evidence/GH-9-R2/review.json",
+      ".rigor/evidence/GH-9-R2/verification.json",
+      ".rigor/evidence/GH-9/attempts/attempt-session_08a24154-957f-4e8b-882d-6b3468954914.json",
+      ".rigor/evidence/GH-9/attempts/attempt_dd5fbd6d-6a76-4e0d-9751-dd31093edbc6.json",
+      ".rigor/evidence/GH-9/contract.json",
+      ".rigor/evidence/GH-9/preflight.json",
+      ".rigor/evidence/GH-9/review.json",
+      ".rigor/evidence/GH-9/routing/routing-plan_bb192525-7e41-4fda-a902-55bb4dfa9786.json",
+      ".rigor/evidence/GH-9/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "docs/product.md",
+      "schemas/artifacts.v1.schema.json",
+      "schemas/outcome-input.v1.schema.json",
+      "schemas/outcome.v1.schema.json",
+      "skills/retrospect/SKILL.md",
+      "src/artifacts.ts",
+      "src/attempt.ts",
+      "src/cli.ts",
+      "src/outcome.ts",
+      "src/types.ts",
+      "test/e2e.test.ts",
+      "test/outcome.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "dist/rigor.cjs",
+    "test/outcome.test.ts"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/outcome.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

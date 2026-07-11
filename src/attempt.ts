@@ -165,6 +165,42 @@ export function parseAttemptSession(value: unknown): AttemptSession {
   return session;
 }
 
+export function parseAttempt(value: unknown): Attempt {
+  const item = record(value, "attempt");
+  if (item.schemaVersion !== ATTEMPT_SCHEMA)
+    throw new RigorError("Unsupported attempt schema", EXIT.inputError);
+  taskId(item.taskId);
+  textField(item.artifactId, "attempt.artifactId", 128);
+  if (
+    !Number.isInteger(item.sequence) ||
+    (item.sequence as number) < 1 ||
+    (item.sequence as number) > 20
+  )
+    throw new RigorError("attempt.sequence is invalid", EXIT.inputError);
+  oneOf(
+    item.status,
+    ["completed", "failed", "cancelled", "scope-violation", "budget-exceeded"],
+    "attempt.status",
+  );
+  if (!Number.isInteger(item.durationMs) || (item.durationMs as number) < 0)
+    throw new RigorError("attempt.durationMs is invalid", EXIT.inputError);
+  textField(item.provider, "attempt.provider", 128);
+  oneOf(item.capabilityClass, capabilities, "attempt.capabilityClass");
+  if (item.executionIdentityStatus !== "unverified")
+    throw new RigorError(
+      "executionIdentityStatus must be unverified",
+      EXIT.inputError,
+    );
+  if (item.model !== undefined) textField(item.model, "attempt.model", 256);
+  if (item.verificationArtifactId !== undefined)
+    textField(
+      item.verificationArtifactId,
+      "attempt.verificationArtifactId",
+      128,
+    );
+  return item as unknown as Attempt;
+}
+
 export function parseAttemptResultInput(value: unknown): AttemptResultInput {
   const item = record(value, "attempt result input");
   if (item.schemaVersion !== ATTEMPT_RESULT_INPUT_SCHEMA)

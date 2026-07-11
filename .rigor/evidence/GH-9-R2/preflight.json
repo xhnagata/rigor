@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_9cf9f18a-a4c3-4342-86c3-e4f9b73d4639",
+  "taskId": "GH-9-R2",
+  "createdAt": "2026-07-11T09:19:08.683Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "066dd4ceecb66d1e05a9da95f00cac93cb8f97c3cbd60146d871631f06d244ae",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "0f5a3bd2398a7e0f5447156dcdcf5daaa61afa92",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-9/attempts/attempt-session_08a24154-957f-4e8b-882d-6b3468954914.json",
+      ".rigor/evidence/GH-9/attempts/attempt_dd5fbd6d-6a76-4e0d-9751-dd31093edbc6.json",
+      ".rigor/evidence/GH-9/contract.json",
+      ".rigor/evidence/GH-9/preflight.json",
+      ".rigor/evidence/GH-9/review.json",
+      ".rigor/evidence/GH-9/routing/routing-plan_bb192525-7e41-4fda-a902-55bb4dfa9786.json",
+      ".rigor/evidence/GH-9/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "docs/product.md",
+      "schemas/artifacts.v1.schema.json",
+      "schemas/outcome-input.v1.schema.json",
+      "schemas/outcome.v1.schema.json",
+      "skills/retrospect/SKILL.md",
+      "src/artifacts.ts",
+      "src/attempt.ts",
+      "src/cli.ts",
+      "src/outcome.ts",
+      "src/types.ts",
+      "test/e2e.test.ts",
+      "test/outcome.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "dist/rigor.cjs",
+    "src/attempt.ts",
+    "src/outcome.ts",
+    "test/outcome.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "runtime-code",
+      "path": "src/attempt.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/outcome.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/outcome.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

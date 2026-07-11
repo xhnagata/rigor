@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_11e81401-dc24-4ade-b9a0-e9cdb57a4682",
+  "taskId": "GH-9",
+  "contractArtifactId": "contract_233a7695-e305-4b0f-b070-e18cffa3810f",
+  "createdAt": "2026-07-11T09:11:47.770Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "0f5a3bd2398a7e0f5447156dcdcf5daaa61afa92",
+  "treeHash": "8f3ec387cab41ffda382f66e6783c1dd3e1ab671289a7f1830bef50d9d5e6d5b",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/product.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/outcome-input.v1.schema.json",
+    "schemas/outcome.v1.schema.json",
+    "skills/retrospect/SKILL.md",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/cli.ts",
+    "src/outcome.ts",
+    "src/types.ts",
+    "test/e2e.test.ts",
+    "test/outcome.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 9,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}

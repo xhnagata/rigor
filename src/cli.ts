@@ -43,10 +43,16 @@ import {
 } from "./consultation.js";
 import {
   finishAttempt,
+  parseAttempt,
   parseAttemptResultInput,
   parseAttemptSession,
   startAttempt,
 } from "./attempt.js";
+import {
+  createOutcome,
+  parseOutcomeInput,
+  parseReviewArtifact,
+} from "./outcome.js";
 import { parseIntent } from "./schema.js";
 import { setup } from "./setup.js";
 import { readJson, record } from "./util.js";
@@ -92,7 +98,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|release-check|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -320,6 +326,25 @@ export async function main(
     );
     output(report);
     return report.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "outcome") {
+    const input = parseOutcomeInput(await readJson(option(args, "--input")!));
+    const attemptPath = option(args, "--attempt", false);
+    const verificationPath = option(args, "--verification", false);
+    const reviewPath = option(args, "--review", false);
+    const attempt = attemptPath
+      ? parseAttempt(await readJson(attemptPath))
+      : undefined;
+    const verification = verificationPath
+      ? parseVerification(await readJson(verificationPath))
+      : undefined;
+    const review = reviewPath
+      ? parseReviewArtifact(await readJson(reviewPath))
+      : undefined;
+    const outcome = createOutcome(input, { attempt, verification, review });
+    const saved = await saveArtifact(root, outcome.taskId, "outcome", outcome);
+    output({ ...outcome, saved });
+    return EXIT.success;
   }
   if (command === "retrospect") {
     output(await retrospect(root));

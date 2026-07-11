@@ -109,7 +109,7 @@ var import_promises = require("node:fs/promises");
 var import_node_path2 = __toESM(require("node:path"), 1);
 async function run(command, args, cwd, timeoutMs = 3e4, outputLimit = 1e6) {
   const start = performance.now();
-  return await new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject2) => {
     const child = (0, import_node_child_process.spawn)(command, args, {
       cwd,
       shell: false,
@@ -135,7 +135,7 @@ async function run(command, args, cwd, timeoutMs = 3e4, outputLimit = 1e6) {
     });
     child.on("error", (error) => {
       clearTimeout(timer);
-      reject(error);
+      reject2(error);
     });
     child.on("close", (code) => {
       clearTimeout(timer);
@@ -392,6 +392,8 @@ var CONSULTATION_RESULT_INPUT_SCHEMA = "rigor.consultation-result-input.v1";
 var ROUTING_PLAN_SCHEMA = "rigor.routing-plan.v1";
 var ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1";
 var ATTEMPT_RESULT_INPUT_SCHEMA = "rigor.attempt-result-input.v1";
+var OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1";
+var OUTCOME_SCHEMA = "rigor.outcome.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -760,12 +762,186 @@ async function retrospect(root) {
       counts.invalid = (counts.invalid ?? 0) + 1;
     }
   }
+  const { outcomeTotals, candidates } = await aggregateOutcomes(root);
   return {
     schemaVersion: "rigor.retrospective.v1",
     generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     taskCount: tasks.size,
-    eventCounts: counts
+    eventCounts: counts,
+    outcomeTotals,
+    candidates
   };
+}
+function optionalString(value) {
+  return typeof value === "string" ? value : null;
+}
+function optionalNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : void 0;
+}
+async function aggregateOutcomes(root) {
+  const evidence = import_node_path4.default.join(root, ".rigor", "evidence");
+  const totals = {
+    total: 0,
+    accepted: 0,
+    rejected: 0,
+    acceptedWithoutModelCodeChanges: 0,
+    reverted: 0,
+    escapedDefectSuspected: 0,
+    escapedDefectConfirmed: 0,
+    malformedOutcomes: 0,
+    dataCompleteness: {
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0,
+      modelIdentityAbsent: 0,
+      providerCostPresent: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      attemptLinked: 0,
+      attemptUnlinked: 0,
+      verificationLinked: 0
+    }
+  };
+  const candidateMap = /* @__PURE__ */ new Map();
+  let taskDirs = [];
+  try {
+    const entries = await (0, import_promises3.readdir)(evidence, { withFileTypes: true });
+    taskDirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  for (const task of taskDirs) {
+    let content;
+    try {
+      content = await (0, import_promises3.readFile)(
+        import_node_path4.default.join(evidence, task, "outcome.json"),
+        "utf8"
+      );
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      totals.malformedOutcomes += 1;
+      continue;
+    }
+    try {
+      const outcome = record(JSON.parse(content), "outcome");
+      if (outcome.schemaVersion !== OUTCOME_SCHEMA)
+        throw new RigorError("unexpected outcome schema", EXIT.inputError);
+      applyOutcome(totals, candidateMap, outcome);
+    } catch {
+      totals.malformedOutcomes += 1;
+    }
+  }
+  const candidates = [...candidateMap.values()].sort((a, b) => a.candidate.localeCompare(b.candidate)).map((entry) => ({
+    candidate: entry.candidate,
+    provider: entry.provider,
+    model: entry.model,
+    capabilityClass: entry.capabilityClass,
+    outcomes: entry.outcomes,
+    accepted: entry.accepted,
+    successRate: { numerator: entry.accepted, denominator: entry.outcomes },
+    retries: {
+      total: entry.retriesTotal,
+      perOutcome: entry.outcomes > 0 ? entry.retriesTotal / entry.outcomes : null
+    },
+    elapsedMs: {
+      total: entry.elapsedTotal,
+      average: entry.elapsedPresent > 0 ? entry.elapsedTotal / entry.elapsedPresent : null,
+      present: entry.elapsedPresent,
+      missing: entry.elapsedMissing
+    },
+    humanInterventionMinutes: {
+      total: entry.humanTotal,
+      outcomesWithIntervention: entry.humanOutcomes
+    },
+    dataCompleteness: {
+      usageRecorded: entry.usageRecorded,
+      usageUnavailable: entry.usageUnavailable,
+      usageUnknown: entry.usageUnknown,
+      modelIdentityPresent: entry.modelIdentityPresent
+    }
+  }));
+  return { outcomeTotals: totals, candidates };
+}
+function applyOutcome(totals, candidateMap, outcome) {
+  const completeness = totals.dataCompleteness;
+  totals.total += 1;
+  const decision = outcome.decision;
+  if (decision === "accepted") totals.accepted += 1;
+  else if (decision === "rejected") totals.rejected += 1;
+  if (outcome.acceptedWithoutModelCodeChanges === true)
+    totals.acceptedWithoutModelCodeChanges += 1;
+  if (outcome.revertStatus === "reverted") totals.reverted += 1;
+  if (outcome.escapedDefectStatus === "suspected")
+    totals.escapedDefectSuspected += 1;
+  if (outcome.escapedDefectStatus === "confirmed")
+    totals.escapedDefectConfirmed += 1;
+  const usage = typeof outcome.usage === "object" && outcome.usage !== null ? outcome.usage : {};
+  const usageStatus = usage.status;
+  if (usageStatus === "recorded") completeness.usageRecorded += 1;
+  else if (usageStatus === "unavailable") completeness.usageUnavailable += 1;
+  else if (usageStatus === "unknown") completeness.usageUnknown += 1;
+  const modelIdentityPresent = usage.modelIdentity !== null && usage.modelIdentity !== void 0;
+  if (modelIdentityPresent) completeness.modelIdentityPresent += 1;
+  else completeness.modelIdentityAbsent += 1;
+  if (usage.providerCost !== null && usage.providerCost !== void 0)
+    completeness.providerCostPresent += 1;
+  const elapsed = optionalNumber(outcome.attemptDurationMs);
+  if (elapsed !== void 0) completeness.elapsedPresent += 1;
+  else completeness.elapsedMissing += 1;
+  const attemptLinked = typeof outcome.attemptArtifactId === "string";
+  if (attemptLinked) completeness.attemptLinked += 1;
+  else completeness.attemptUnlinked += 1;
+  if (typeof outcome.verificationArtifactId === "string")
+    completeness.verificationLinked += 1;
+  let candidate = "unlinked";
+  let provider = null;
+  let model = null;
+  let capabilityClass = null;
+  if (attemptLinked) {
+    provider = optionalString(outcome.provider);
+    model = optionalString(outcome.model);
+    capabilityClass = optionalString(outcome.capabilityClass);
+    candidate = model ?? `${provider}/${capabilityClass}`;
+  }
+  let entry = candidateMap.get(candidate);
+  if (!entry) {
+    entry = {
+      candidate,
+      provider,
+      model,
+      capabilityClass,
+      outcomes: 0,
+      accepted: 0,
+      retriesTotal: 0,
+      elapsedTotal: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      humanTotal: 0,
+      humanOutcomes: 0,
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0
+    };
+    candidateMap.set(candidate, entry);
+  }
+  entry.outcomes += 1;
+  if (decision === "accepted") entry.accepted += 1;
+  entry.retriesTotal += optionalNumber(outcome.retryCount) ?? 0;
+  if (elapsed !== void 0) {
+    entry.elapsedTotal += elapsed;
+    entry.elapsedPresent += 1;
+  } else {
+    entry.elapsedMissing += 1;
+  }
+  const human = optionalNumber(outcome.humanCorrectionMinutes) ?? 0;
+  entry.humanTotal += human;
+  if (human > 0) entry.humanOutcomes += 1;
+  if (usageStatus === "recorded") entry.usageRecorded += 1;
+  else if (usageStatus === "unavailable") entry.usageUnavailable += 1;
+  else if (usageStatus === "unknown") entry.usageUnknown += 1;
+  if (modelIdentityPresent) entry.modelIdentityPresent += 1;
 }
 async function loadPolicy(root) {
   return parsePolicy(await readJson(import_node_path4.default.join(root, ".rigor", "policy.json")));
@@ -2587,6 +2763,37 @@ function parseAttemptSession(value) {
     session.model = textField(selection.model, "selection.model", 256);
   return session;
 }
+function parseAttempt(value) {
+  const item = record(value, "attempt");
+  if (item.schemaVersion !== ATTEMPT_SCHEMA)
+    throw new RigorError("Unsupported attempt schema", EXIT.inputError);
+  taskId(item.taskId);
+  textField(item.artifactId, "attempt.artifactId", 128);
+  if (!Number.isInteger(item.sequence) || item.sequence < 1 || item.sequence > 20)
+    throw new RigorError("attempt.sequence is invalid", EXIT.inputError);
+  oneOf3(
+    item.status,
+    ["completed", "failed", "cancelled", "scope-violation", "budget-exceeded"],
+    "attempt.status"
+  );
+  if (!Number.isInteger(item.durationMs) || item.durationMs < 0)
+    throw new RigorError("attempt.durationMs is invalid", EXIT.inputError);
+  textField(item.provider, "attempt.provider", 128);
+  oneOf3(item.capabilityClass, capabilities, "attempt.capabilityClass");
+  if (item.executionIdentityStatus !== "unverified")
+    throw new RigorError(
+      "executionIdentityStatus must be unverified",
+      EXIT.inputError
+    );
+  if (item.model !== void 0) textField(item.model, "attempt.model", 256);
+  if (item.verificationArtifactId !== void 0)
+    textField(
+      item.verificationArtifactId,
+      "attempt.verificationArtifactId",
+      128
+    );
+  return item;
+}
 function parseAttemptResultInput(value) {
   const item = record(value, "attempt result input");
   if (item.schemaVersion !== ATTEMPT_RESULT_INPUT_SCHEMA)
@@ -2773,6 +2980,257 @@ async function finishAttempt(root, session, contract, input, verification, now =
   return { attempt, saved };
 }
 
+// src/outcome.ts
+function oneOf4(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function boolean(value, name) {
+  if (typeof value !== "boolean")
+    throw new RigorError(`${name} must be a boolean`, EXIT.inputError);
+  return value;
+}
+function integer2(value, name, min, max) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function finite(value, name, min, max) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function reject(message) {
+  throw new RigorError(message, EXIT.policyViolation);
+}
+function parseUsageInput(value) {
+  const item = record(value, "usage");
+  const usage = {
+    status: oneOf4(
+      item.status,
+      ["recorded", "unavailable", "unknown"],
+      "usage.status"
+    )
+  };
+  if (item.inputTokens !== void 0)
+    usage.inputTokens = integer2(item.inputTokens, "usage.inputTokens", 0, 1e12);
+  if (item.outputTokens !== void 0)
+    usage.outputTokens = integer2(
+      item.outputTokens,
+      "usage.outputTokens",
+      0,
+      1e12
+    );
+  if (item.totalTokens !== void 0)
+    usage.totalTokens = integer2(item.totalTokens, "usage.totalTokens", 0, 1e12);
+  if (item.reasoningEffort !== void 0)
+    usage.reasoningEffort = textField(
+      item.reasoningEffort,
+      "usage.reasoningEffort",
+      128
+    );
+  if (item.modelIdentity !== void 0)
+    usage.modelIdentity = textField(
+      item.modelIdentity,
+      "usage.modelIdentity",
+      256
+    );
+  if (item.providerCost !== void 0) {
+    const cost = record(item.providerCost, "usage.providerCost");
+    const currency = textField(cost.currency, "usage.providerCost.currency", 3);
+    if (!/^[A-Z]{3}$/u.test(currency))
+      throw new RigorError(
+        "usage.providerCost.currency is invalid",
+        EXIT.inputError
+      );
+    usage.providerCost = {
+      currency,
+      amount: finite(cost.amount, "usage.providerCost.amount", 0, 1e12)
+    };
+  }
+  return usage;
+}
+function parseOutcomeInput(value) {
+  const item = record(value, "outcome input");
+  if (item.schemaVersion !== OUTCOME_INPUT_SCHEMA)
+    throw new RigorError("Unsupported outcome input schema", EXIT.inputError);
+  const findings = record(item.reviewFindings, "reviewFindings");
+  const input = {
+    schemaVersion: OUTCOME_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    decision: oneOf4(item.decision, ["accepted", "rejected"], "decision"),
+    acceptedWithoutModelCodeChanges: boolean(
+      item.acceptedWithoutModelCodeChanges,
+      "acceptedWithoutModelCodeChanges"
+    ),
+    humanCorrectionMinutes: integer2(
+      item.humanCorrectionMinutes,
+      "humanCorrectionMinutes",
+      0,
+      1e5
+    ),
+    escalationCount: integer2(item.escalationCount, "escalationCount", 0, 100),
+    reviewFindings: {
+      critical: integer2(
+        findings.critical,
+        "reviewFindings.critical",
+        0,
+        1e4
+      ),
+      high: integer2(findings.high, "reviewFindings.high", 0, 1e4),
+      medium: integer2(findings.medium, "reviewFindings.medium", 0, 1e4),
+      low: integer2(findings.low, "reviewFindings.low", 0, 1e4)
+    },
+    revertStatus: oneOf4(
+      item.revertStatus,
+      ["none", "reverted"],
+      "revertStatus"
+    ),
+    escapedDefectStatus: oneOf4(
+      item.escapedDefectStatus,
+      ["none", "suspected", "confirmed"],
+      "escapedDefectStatus"
+    ),
+    usage: parseUsageInput(item.usage)
+  };
+  if (item.retryCount !== void 0)
+    input.retryCount = integer2(item.retryCount, "retryCount", 0, 100);
+  if (item.commit !== void 0) {
+    const commit = textField(item.commit, "commit", 64);
+    if (!/^[0-9a-f]{7,64}$/u.test(commit))
+      throw new RigorError("commit is invalid", EXIT.inputError);
+    input.commit = commit;
+  }
+  if (item.pullRequest !== void 0)
+    input.pullRequest = textField(item.pullRequest, "pullRequest", 256);
+  if (item.notes !== void 0) {
+    if (!Array.isArray(item.notes) || item.notes.length > 100)
+      throw new RigorError("notes must be an array", EXIT.inputError);
+    input.notes = item.notes.map(
+      (note, index) => textField(note, `notes[${index}]`, 2e3)
+    );
+  }
+  return input;
+}
+function parseReviewArtifact(value) {
+  const item = record(value, "review");
+  if (item.schemaVersion !== REVIEW_SCHEMA)
+    throw new RigorError("Unsupported review schema", EXIT.inputError);
+  const review = {
+    taskId: taskId(item.taskId),
+    artifactId: textField(item.artifactId, "review.artifactId", 128)
+  };
+  if (item.verificationArtifactId !== void 0)
+    review.verificationArtifactId = textField(
+      item.verificationArtifactId,
+      "review.verificationArtifactId",
+      128
+    );
+  return review;
+}
+function createOutcome(input, links, now = /* @__PURE__ */ new Date()) {
+  const { attempt, verification, review } = links;
+  const task = input.taskId;
+  if (attempt && attempt.taskId !== task)
+    reject("Attempt taskId does not match the outcome");
+  if (verification && verification.taskId !== task)
+    reject("Verification taskId does not match the outcome");
+  if (review && review.taskId !== task)
+    reject("Review taskId does not match the outcome");
+  if (input.decision === "rejected" && input.acceptedWithoutModelCodeChanges)
+    reject("A rejected outcome cannot be accepted without model code changes");
+  if (input.revertStatus === "reverted" && input.decision !== "accepted")
+    reject("A reverted outcome must be accepted");
+  if (input.escapedDefectStatus !== "none" && input.decision !== "accepted")
+    reject("An escaped defect requires an accepted outcome");
+  const linkage = {};
+  let retryCount;
+  if (attempt) {
+    const derived = attempt.sequence - 1;
+    if (input.retryCount !== void 0 && input.retryCount !== derived)
+      reject("retryCount conflicts with the linked attempt");
+    retryCount = derived;
+    linkage.routingPlanArtifactId = attempt.routingPlanArtifactId;
+    linkage.attemptArtifactId = attempt.artifactId;
+    linkage.attemptSequence = attempt.sequence;
+    linkage.attemptStatus = attempt.status;
+    linkage.attemptDurationMs = attempt.durationMs;
+    linkage.provider = attempt.provider;
+    if (attempt.model !== void 0) linkage.model = attempt.model;
+    linkage.capabilityClass = attempt.capabilityClass;
+    if (input.decision === "accepted" && attempt.status !== "completed")
+      reject("An accepted outcome requires a completed attempt");
+  } else {
+    if (input.retryCount === void 0)
+      reject("retryCount is required without a linked attempt");
+    retryCount = input.retryCount;
+  }
+  if (verification) {
+    if (attempt && attempt.verificationArtifactId !== void 0 && verification.artifactId !== attempt.verificationArtifactId)
+      reject("Verification does not match the attempt's linked verification");
+    if (input.decision === "accepted" && verification.status !== "passed")
+      reject("An accepted outcome requires a linked passing verification");
+    linkage.verificationArtifactId = verification.artifactId;
+    linkage.verificationStatus = verification.status;
+  } else if (input.decision === "accepted") {
+    reject("an accepted outcome requires a linked passing verification");
+  }
+  if (review) {
+    linkage.reviewArtifactId = review.artifactId;
+    if (review.verificationArtifactId !== void 0 && verification && review.verificationArtifactId !== verification.artifactId)
+      reject("Review verification does not match the linked verification");
+  }
+  const u = input.usage;
+  const measured = u.inputTokens !== void 0 || u.outputTokens !== void 0 || u.totalTokens !== void 0 || u.providerCost !== void 0 || u.reasoningEffort !== void 0;
+  if (u.status !== "recorded") {
+    if (measured) reject("Usage measurements are not available");
+  } else if (u.inputTokens === void 0 && u.outputTokens === void 0 && u.providerCost === void 0) {
+    reject("recorded usage requires at least one measured value");
+  }
+  if (u.totalTokens !== void 0) {
+    if (u.inputTokens !== void 0 && u.totalTokens < u.inputTokens)
+      reject("token totals are inconsistent");
+    if (u.outputTokens !== void 0 && u.totalTokens < u.outputTokens)
+      reject("token totals are inconsistent");
+    if (u.inputTokens !== void 0 && u.outputTokens !== void 0 && u.totalTokens !== u.inputTokens + u.outputTokens)
+      reject("token totals are inconsistent");
+  }
+  if (input.commit !== void 0) linkage.commit = input.commit;
+  if (input.pullRequest !== void 0) linkage.pullRequest = input.pullRequest;
+  const findings = input.reviewFindings;
+  const outcome = {
+    schemaVersion: OUTCOME_SCHEMA,
+    artifactId: artifactId("outcome"),
+    taskId: task,
+    createdAt: now.toISOString(),
+    decision: input.decision,
+    acceptedWithoutModelCodeChanges: input.acceptedWithoutModelCodeChanges,
+    humanCorrectionMinutes: input.humanCorrectionMinutes,
+    escalationCount: input.escalationCount,
+    retryCount,
+    reviewFindings: {
+      ...findings,
+      total: findings.critical + findings.high + findings.medium + findings.low
+    },
+    revertStatus: input.revertStatus,
+    escapedDefectStatus: input.escapedDefectStatus,
+    executionIdentityStatus: "unverified",
+    ...linkage,
+    usage: {
+      status: u.status,
+      inputTokens: u.inputTokens ?? null,
+      outputTokens: u.outputTokens ?? null,
+      totalTokens: u.totalTokens ?? null,
+      reasoningEffort: u.reasoningEffort ?? null,
+      providerCost: u.providerCost ?? null,
+      modelIdentity: u.modelIdentity === void 0 ? null : { value: u.modelIdentity, attestation: "unverified" }
+    },
+    notes: input.notes ?? []
+  };
+  return outcome;
+}
+
 // src/cli.ts
 function option(args, name, required = true) {
   const index = args.indexOf(name);
@@ -2805,7 +3263,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
@@ -3009,6 +3467,19 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     );
     output(report);
     return report.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "outcome") {
+    const input = parseOutcomeInput(await readJson(option(args, "--input")));
+    const attemptPath = option(args, "--attempt", false);
+    const verificationPath = option(args, "--verification", false);
+    const reviewPath = option(args, "--review", false);
+    const attempt = attemptPath ? parseAttempt(await readJson(attemptPath)) : void 0;
+    const verification = verificationPath ? parseVerification(await readJson(verificationPath)) : void 0;
+    const review = reviewPath ? parseReviewArtifact(await readJson(reviewPath)) : void 0;
+    const outcome = createOutcome(input, { attempt, verification, review });
+    const saved = await saveArtifact(root, outcome.taskId, "outcome", outcome);
+    output({ ...outcome, saved });
+    return EXIT.success;
   }
   if (command === "retrospect") {
     output(await retrospect(root));

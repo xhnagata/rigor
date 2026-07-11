@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { EXIT, RigorError } from "./errors.js";
 import { matches } from "./paths.js";
@@ -19,6 +19,7 @@ import {
   CONTRACT_INPUT_SCHEMA,
   ESCALATION_SCHEMA,
   ESCALATION_INPUT_SCHEMA,
+  OUTCOME_SCHEMA,
   PREFLIGHT_SCHEMA,
   REVIEW_SCHEMA,
   VERIFY_SCHEMA,
@@ -343,12 +344,259 @@ export async function retrospect(root: string): Promise<unknown> {
       counts.invalid = (counts.invalid ?? 0) + 1;
     }
   }
+  const { outcomeTotals, candidates } = await aggregateOutcomes(root);
   return {
     schemaVersion: "rigor.retrospective.v1",
     generatedAt: new Date().toISOString(),
     taskCount: tasks.size,
     eventCounts: counts,
+    outcomeTotals,
+    candidates,
   };
+}
+
+interface DataCompleteness {
+  usageRecorded: number;
+  usageUnavailable: number;
+  usageUnknown: number;
+  modelIdentityPresent: number;
+  modelIdentityAbsent: number;
+  providerCostPresent: number;
+  elapsedPresent: number;
+  elapsedMissing: number;
+  attemptLinked: number;
+  attemptUnlinked: number;
+  verificationLinked: number;
+}
+
+interface OutcomeTotals {
+  total: number;
+  accepted: number;
+  rejected: number;
+  acceptedWithoutModelCodeChanges: number;
+  reverted: number;
+  escapedDefectSuspected: number;
+  escapedDefectConfirmed: number;
+  malformedOutcomes: number;
+  dataCompleteness: DataCompleteness;
+}
+
+interface CandidateAccumulator {
+  candidate: string;
+  provider: string | null;
+  model: string | null;
+  capabilityClass: string | null;
+  outcomes: number;
+  accepted: number;
+  retriesTotal: number;
+  elapsedTotal: number;
+  elapsedPresent: number;
+  elapsedMissing: number;
+  humanTotal: number;
+  humanOutcomes: number;
+  usageRecorded: number;
+  usageUnavailable: number;
+  usageUnknown: number;
+  modelIdentityPresent: number;
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+async function aggregateOutcomes(
+  root: string,
+): Promise<{ outcomeTotals: unknown; candidates: unknown[] }> {
+  const evidence = path.join(root, ".rigor", "evidence");
+  const totals: OutcomeTotals = {
+    total: 0,
+    accepted: 0,
+    rejected: 0,
+    acceptedWithoutModelCodeChanges: 0,
+    reverted: 0,
+    escapedDefectSuspected: 0,
+    escapedDefectConfirmed: 0,
+    malformedOutcomes: 0,
+    dataCompleteness: {
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0,
+      modelIdentityAbsent: 0,
+      providerCostPresent: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      attemptLinked: 0,
+      attemptUnlinked: 0,
+      verificationLinked: 0,
+    },
+  };
+  const candidateMap = new Map<string, CandidateAccumulator>();
+  let taskDirs: string[] = [];
+  try {
+    const entries = await readdir(evidence, { withFileTypes: true });
+    taskDirs = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  for (const task of taskDirs) {
+    let content: string;
+    try {
+      content = await readFile(
+        path.join(evidence, task, "outcome.json"),
+        "utf8",
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      totals.malformedOutcomes += 1;
+      continue;
+    }
+    try {
+      const outcome = record(JSON.parse(content) as unknown, "outcome");
+      if (outcome.schemaVersion !== OUTCOME_SCHEMA)
+        throw new RigorError("unexpected outcome schema", EXIT.inputError);
+      applyOutcome(totals, candidateMap, outcome);
+    } catch {
+      totals.malformedOutcomes += 1;
+    }
+  }
+  const candidates = [...candidateMap.values()]
+    .sort((a, b) => a.candidate.localeCompare(b.candidate))
+    .map((entry) => ({
+      candidate: entry.candidate,
+      provider: entry.provider,
+      model: entry.model,
+      capabilityClass: entry.capabilityClass,
+      outcomes: entry.outcomes,
+      accepted: entry.accepted,
+      successRate: { numerator: entry.accepted, denominator: entry.outcomes },
+      retries: {
+        total: entry.retriesTotal,
+        perOutcome:
+          entry.outcomes > 0 ? entry.retriesTotal / entry.outcomes : null,
+      },
+      elapsedMs: {
+        total: entry.elapsedTotal,
+        average:
+          entry.elapsedPresent > 0
+            ? entry.elapsedTotal / entry.elapsedPresent
+            : null,
+        present: entry.elapsedPresent,
+        missing: entry.elapsedMissing,
+      },
+      humanInterventionMinutes: {
+        total: entry.humanTotal,
+        outcomesWithIntervention: entry.humanOutcomes,
+      },
+      dataCompleteness: {
+        usageRecorded: entry.usageRecorded,
+        usageUnavailable: entry.usageUnavailable,
+        usageUnknown: entry.usageUnknown,
+        modelIdentityPresent: entry.modelIdentityPresent,
+      },
+    }));
+  return { outcomeTotals: totals, candidates };
+}
+
+function applyOutcome(
+  totals: OutcomeTotals,
+  candidateMap: Map<string, CandidateAccumulator>,
+  outcome: Record<string, unknown>,
+): void {
+  const completeness = totals.dataCompleteness;
+  totals.total += 1;
+  const decision = outcome.decision;
+  if (decision === "accepted") totals.accepted += 1;
+  else if (decision === "rejected") totals.rejected += 1;
+  if (outcome.acceptedWithoutModelCodeChanges === true)
+    totals.acceptedWithoutModelCodeChanges += 1;
+  if (outcome.revertStatus === "reverted") totals.reverted += 1;
+  if (outcome.escapedDefectStatus === "suspected")
+    totals.escapedDefectSuspected += 1;
+  if (outcome.escapedDefectStatus === "confirmed")
+    totals.escapedDefectConfirmed += 1;
+
+  const usage =
+    typeof outcome.usage === "object" && outcome.usage !== null
+      ? (outcome.usage as Record<string, unknown>)
+      : {};
+  const usageStatus = usage.status;
+  if (usageStatus === "recorded") completeness.usageRecorded += 1;
+  else if (usageStatus === "unavailable") completeness.usageUnavailable += 1;
+  else if (usageStatus === "unknown") completeness.usageUnknown += 1;
+  const modelIdentityPresent =
+    usage.modelIdentity !== null && usage.modelIdentity !== undefined;
+  if (modelIdentityPresent) completeness.modelIdentityPresent += 1;
+  else completeness.modelIdentityAbsent += 1;
+  if (usage.providerCost !== null && usage.providerCost !== undefined)
+    completeness.providerCostPresent += 1;
+
+  const elapsed = optionalNumber(outcome.attemptDurationMs);
+  if (elapsed !== undefined) completeness.elapsedPresent += 1;
+  else completeness.elapsedMissing += 1;
+
+  const attemptLinked = typeof outcome.attemptArtifactId === "string";
+  if (attemptLinked) completeness.attemptLinked += 1;
+  else completeness.attemptUnlinked += 1;
+  if (typeof outcome.verificationArtifactId === "string")
+    completeness.verificationLinked += 1;
+
+  let candidate = "unlinked";
+  let provider: string | null = null;
+  let model: string | null = null;
+  let capabilityClass: string | null = null;
+  if (attemptLinked) {
+    provider = optionalString(outcome.provider);
+    model = optionalString(outcome.model);
+    capabilityClass = optionalString(outcome.capabilityClass);
+    candidate = model ?? `${provider}/${capabilityClass}`;
+  }
+  let entry = candidateMap.get(candidate);
+  if (!entry) {
+    entry = {
+      candidate,
+      provider,
+      model,
+      capabilityClass,
+      outcomes: 0,
+      accepted: 0,
+      retriesTotal: 0,
+      elapsedTotal: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      humanTotal: 0,
+      humanOutcomes: 0,
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0,
+    };
+    candidateMap.set(candidate, entry);
+  }
+  entry.outcomes += 1;
+  if (decision === "accepted") entry.accepted += 1;
+  entry.retriesTotal += optionalNumber(outcome.retryCount) ?? 0;
+  if (elapsed !== undefined) {
+    entry.elapsedTotal += elapsed;
+    entry.elapsedPresent += 1;
+  } else {
+    entry.elapsedMissing += 1;
+  }
+  const human = optionalNumber(outcome.humanCorrectionMinutes) ?? 0;
+  entry.humanTotal += human;
+  if (human > 0) entry.humanOutcomes += 1;
+  if (usageStatus === "recorded") entry.usageRecorded += 1;
+  else if (usageStatus === "unavailable") entry.usageUnavailable += 1;
+  else if (usageStatus === "unknown") entry.usageUnknown += 1;
+  if (modelIdentityPresent) entry.modelIdentityPresent += 1;
 }
 
 export async function loadPolicy(root: string): Promise<Policy> {
