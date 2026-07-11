@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_233a7695-e305-4b0f-b070-e18cffa3810f",
+  "taskId": "GH-9",
+  "createdAt": "2026-07-11T08:56:23.372Z",
+  "preflightArtifactId": "preflight_076c69ec-b6f0-4472-95f3-1f70508065f4",
+  "preflightHash": "2bc013680161c1ae0da55cc0425a1ec530d2b5479b6db6fbc1d269fecceabf61",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A versioned outcome schema (rigor.outcome.v1) links task, routing plan, attempt, verification, review, and commit/PR when available.",
+    "Outcome records accepted/rejected status, accepted-without-model-code-changes, human correction minutes, retry/escalation count, review finding counts by severity, revert/escaped-defect status, and usage status.",
+    "Tokens, provider cost, model identity, and reasoning effort are represented as measured values or explicit unknown/unavailable values, never fabricated.",
+    "Schemas reject fabricated or internally inconsistent measurements.",
+    "Existing v0.2 artifacts remain readable (schema additions are backward compatible).",
+    "rigor retrospect reports per-candidate success rate, retry rate, elapsed time, human intervention, and data-completeness counts, with denominators and missing-data counts, not just totals.",
+    "Prose is redacted and secrets rejected consistently with existing artifact rules.",
+    "Tests cover accepted, rejected, reverted, and usage-unavailable outcomes.",
+    "Documentation states that relative cost is not a provider invoice."
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "skills/**",
+    "dist/**"
+  ],
+  "constraints": [
+    "Implement only the Scope and Acceptance criteria of issue #9; do not add unrelated features.",
+    "Do not add external transmission; no network calls.",
+    "Do not delete, weaken, or skip existing tests; new tests may be added.",
+    "Represent unavailable measurements explicitly as unknown/unavailable; never infer cost from a model display name.",
+    "Treat configured model identity as unverified; do not claim attestation.",
+    "Keep existing v0.2 artifacts readable; schema changes must be additive.",
+    "Bound and validate all prose with the existing textField/strings rules (non-empty, length-limited, no null bytes)."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

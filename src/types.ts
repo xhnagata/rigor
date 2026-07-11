@@ -22,6 +22,8 @@ export const ROUTING_PLAN_SCHEMA = "rigor.routing-plan.v1" as const;
 export const ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1" as const;
 export const ATTEMPT_RESULT_INPUT_SCHEMA =
   "rigor.attempt-result-input.v1" as const;
+export const OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1" as const;
+export const OUTCOME_SCHEMA = "rigor.outcome.v1" as const;
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
@@ -368,4 +370,79 @@ export interface ConsultationResultInput {
   model?: string;
   reasoningEffort?: string;
   usageStatus: "recorded" | "unavailable";
+}
+
+export interface OutcomeInput {
+  schemaVersion: typeof OUTCOME_INPUT_SCHEMA;
+  taskId: string;
+  decision: "accepted" | "rejected";
+  acceptedWithoutModelCodeChanges: boolean;
+  humanCorrectionMinutes: number;
+  escalationCount: number;
+  reviewFindings: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  revertStatus: "none" | "reverted";
+  escapedDefectStatus: "none" | "suspected" | "confirmed";
+  usage: {
+    status: "recorded" | "unavailable" | "unknown";
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    reasoningEffort?: string;
+    modelIdentity?: string;
+    providerCost?: { currency: string; amount: number };
+  };
+  retryCount?: number;
+  commit?: string;
+  pullRequest?: string;
+  notes?: string[];
+}
+
+export interface Outcome {
+  schemaVersion: typeof OUTCOME_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  decision: "accepted" | "rejected";
+  acceptedWithoutModelCodeChanges: boolean;
+  humanCorrectionMinutes: number;
+  escalationCount: number;
+  retryCount: number;
+  reviewFindings: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    total: number;
+  };
+  revertStatus: "none" | "reverted";
+  escapedDefectStatus: "none" | "suspected" | "confirmed";
+  executionIdentityStatus: "unverified";
+  routingPlanArtifactId?: string;
+  attemptArtifactId?: string;
+  attemptSequence?: number;
+  attemptStatus?: Attempt["status"];
+  attemptDurationMs?: number;
+  provider?: string;
+  model?: string;
+  capabilityClass?: CapabilityClass;
+  verificationArtifactId?: string;
+  verificationStatus?: Verification["status"];
+  reviewArtifactId?: string;
+  commit?: string;
+  pullRequest?: string;
+  usage: {
+    status: "recorded" | "unavailable" | "unknown";
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+    reasoningEffort: string | null;
+    providerCost: { currency: string; amount: number } | null;
+    modelIdentity: { value: string; attestation: "unverified" } | null;
+  };
+  notes: string[];
 }

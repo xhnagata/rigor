@@ -15,11 +15,12 @@ Rigor is for teams that use Claude Code in Git repositories and need evidence th
 7. `rigor review` re-runs preflight, checks scope, and creates a minimal local review bundle. Content is not marked exportable when policy forbids external transmission.
 8. On a pull request, the generated CI invokes the repository-contained verifier against base and head. It re-derives policy and Git facts rather than trusting evidence claims.
 9. Branch protection, CODEOWNERS, and an independent human approver remain the authoritative merge controls.
-10. `rigor retrospect` aggregates local redacted events for calibration.
+10. `rigor outcome` records the human-reported disposition of the task and links it to its attempt, verification, and review. Tokens, provider cost, and model identity are stored as measured-or-unavailable and never fabricated.
+11. `rigor retrospect` aggregates local redacted events and outcome artifacts for calibration, reporting per-candidate success rates and data-completeness counts.
 
 ## MVP
 
-The MVP provides a versioned JSON policy and artifacts; setup/upgrade; preflight; contract; deterministic routing preview and recorded plans; append-only bounded attempts and Codex consultations; deterministic verification; escalation; review preparation; retrospective aggregation; a lightweight hook; a read-only reviewer agent; skills for the workflow; and independent pull-request verification. It supports Git and Node.js on macOS/Linux.
+The MVP provides a versioned JSON policy and artifacts; setup/upgrade; preflight; contract; deterministic routing preview and recorded plans; append-only bounded attempts and Codex consultations; deterministic verification; escalation; review preparation; outcome recording with linked evidence; retrospective aggregation of events and outcome metrics; a lightweight hook; a read-only reviewer agent; skills for the workflow; and independent pull-request verification. It supports Git and Node.js on macOS/Linux.
 
 ## Non-goals
 

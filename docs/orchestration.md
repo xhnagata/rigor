@@ -62,6 +62,8 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 - `consultation-session.v1.schema.json` records the pre-consultation Git snapshot.
 - `consultation-result-input.v1.schema.json` accepts a minimal normalized result without raw transcript or chain of thought.
 - `consultation.v1.schema.json` links the session and result and records the post-consultation mutation check.
+- `outcome-input.v1.schema.json` bounds the human-reported disposition of a task.
+- `outcome.v1.schema.json` links the outcome to its attempt, verification, and review and normalizes usage as measured-or-unavailable.
 
 Model execution remains a Claude Code Skill responsibility rather than a TypeScript CLI action. Provider/model identity is recorded as `unverified`: configuration and an agent's report do not attest which runtime served the request.
 
@@ -129,3 +131,19 @@ rigor consult-finish \
 ```
 
 Both the session and final result are append-only. Evidence files and the local event log are excluded from the before/after content hash so recording the session does not report itself as a mutation. Any other content change, changed path, or HEAD change makes `consult-finish` exit `2` with `status: "mutated-worktree"`.
+
+## Outcome and retrospect metrics
+
+`rigor outcome` records the human-reported disposition of a completed task and links it to the evidence that supports it:
+
+```sh
+rigor outcome \
+  --input /tmp/outcome-input.json \
+  --attempt .rigor/evidence/APP-123/attempts/attempt_ID.json \
+  --verification .rigor/evidence/APP-123/verification.json \
+  --review .rigor/evidence/APP-123/review.json
+```
+
+The command copies provider, model, capability class, and the linked attempt, verification, and review identifiers rather than trusting the input to repeat them. It fails closed on inconsistent claims: an `accepted` outcome requires a completed attempt and a linked passing verification; a `reverted` or escaped-defect outcome must be `accepted`; a `rejected` outcome cannot be accepted without model code changes; `retryCount` must match `attempt.sequence - 1` when an attempt is linked and is required otherwise. Token counts, provider cost, reasoning effort, and model identity are stored as measured-or-unavailable: when `usage.status` is not `recorded` the numeric fields must be absent and are persisted as `null`. Configured model identity is independent of metering and is always recorded with `attestation: "unverified"`; provider cost is a reported measurement, not a Rigor-verified charge, and `relativeCost` from routing remains an abstract weight, never a provider invoice or measured money.
+
+`rigor retrospect` keeps its event counts and adds an aggregation read purely from each task's `outcome.json`. It never throws on a malformed outcome file; it counts those under `malformedOutcomes`. `outcomeTotals` reports accepted, rejected, reverted, escaped-defect, and data-completeness counts (usage status, model-identity presence, provider-cost presence, elapsed presence, attempt and verification linkage). `candidates` reports one entry per distinct candidate key (`model`, else `provider/capabilityClass` when attempt-linked, else `unlinked`), each with an explicit success-rate numerator and denominator, retries per outcome, average elapsed time over the outcomes that recorded it, human-intervention minutes, and its own data-completeness counts. Every rate exposes its denominator and every missing-data count is reported, so the metrics never hide unavailable measurements behind a bare total.

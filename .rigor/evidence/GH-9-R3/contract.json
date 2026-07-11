@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_1f0c303a-2a2f-4478-9e6c-a28468aa6ff2",
+  "taskId": "GH-9-R3",
+  "createdAt": "2026-07-11T09:21:49.405Z",
+  "preflightArtifactId": "preflight_85d0138a-bbdb-4d5c-850c-8f8fb1a0e8f5",
+  "preflightHash": "e02e0c85ee4539c1fdcfb8be84d1e37be727df09fe07e98d8fa55d22d222548f",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A unit test asserts that a recorded usage with totalTokens below a present outputTokens is rejected.",
+    "All existing GH-9 behavior and tests remain intact.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "skills/**",
+    "dist/**"
+  ],
+  "constraints": [
+    "Add only the symmetric coverage test; do not change runtime behavior.",
+    "Do not delete, weaken, or skip existing tests.",
+    "No external transmission."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

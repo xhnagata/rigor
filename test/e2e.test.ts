@@ -282,6 +282,50 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
   ]);
   assert.equal(review.verificationStatus, "passed");
 
+  const outcomeInput = path.join(parent, "outcome-input.json");
+  await writeFile(
+    outcomeInput,
+    JSON.stringify({
+      schemaVersion: "rigor.outcome-input.v1",
+      taskId: "TASK-1",
+      decision: "accepted",
+      acceptedWithoutModelCodeChanges: false,
+      humanCorrectionMinutes: 0,
+      escalationCount: 0,
+      reviewFindings: { critical: 0, high: 0, medium: 0, low: 0 },
+      revertStatus: "none",
+      escapedDefectStatus: "none",
+      usage: { status: "unavailable" },
+      pullRequest: "#1",
+    }),
+  );
+  const outcome = await rigor(root, [
+    "outcome",
+    "--input",
+    outcomeInput,
+    "--attempt",
+    String(attempt.saved),
+    "--verification",
+    String(verification.saved),
+    "--review",
+    String(review.saved),
+  ]);
+  assert.equal(outcome.decision, "accepted");
+  assert.equal(outcome.retryCount, 0);
+  const retrospective = await rigor(root, ["retrospect"]);
+  const outcomeTotals = retrospective.outcomeTotals as {
+    total: number;
+    accepted: number;
+  };
+  assert.ok(outcomeTotals.total >= 1);
+  assert.ok(outcomeTotals.accepted >= 1);
+  const candidates = retrospective.candidates as Array<{
+    successRate: { denominator: number };
+  }>;
+  assert.ok(
+    candidates.some((candidate) => candidate.successRate.denominator >= 1),
+  );
+
   await git(root, ["add", "."]);
   await git(root, ["commit", "-q", "-m", "add answer with evidence"]);
   const head = await git(root, ["rev-parse", "HEAD"]);

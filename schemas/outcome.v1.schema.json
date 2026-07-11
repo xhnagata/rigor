@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/outcome.v1.schema.json",
+  "title": "Rigor outcome v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "decision",
+    "acceptedWithoutModelCodeChanges",
+    "humanCorrectionMinutes",
+    "escalationCount",
+    "retryCount",
+    "reviewFindings",
+    "revertStatus",
+    "escapedDefectStatus",
+    "executionIdentityStatus",
+    "usage",
+    "notes"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.outcome.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "decision": { "enum": ["accepted", "rejected"] },
+    "acceptedWithoutModelCodeChanges": { "type": "boolean" },
+    "humanCorrectionMinutes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "escalationCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "retryCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "reviewFindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical", "high", "medium", "low", "total"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 },
+        "total": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "revertStatus": { "enum": ["none", "reverted"] },
+    "escapedDefectStatus": { "enum": ["none", "suspected", "confirmed"] },
+    "executionIdentityStatus": { "const": "unverified" },
+    "routingPlanArtifactId": { "type": "string", "minLength": 1 },
+    "attemptArtifactId": { "type": "string", "minLength": 1 },
+    "attemptSequence": { "type": "integer", "minimum": 1 },
+    "attemptStatus": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled",
+        "scope-violation",
+        "budget-exceeded"
+      ]
+    },
+    "attemptDurationMs": { "type": "integer", "minimum": 0 },
+    "provider": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "capabilityClass": {
+      "enum": ["economy", "standard", "premium", "frontier"]
+    },
+    "verificationArtifactId": { "type": "string", "minLength": 1 },
+    "verificationStatus": { "enum": ["passed", "failed"] },
+    "reviewArtifactId": { "type": "string", "minLength": 1 },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+    "pullRequest": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "inputTokens",
+        "outputTokens",
+        "totalTokens",
+        "reasoningEffort",
+        "providerCost",
+        "modelIdentity"
+      ],
+      "properties": {
+        "status": { "enum": ["recorded", "unavailable", "unknown"] },
+        "inputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "outputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "totalTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "reasoningEffort": { "type": ["string", "null"] },
+        "providerCost": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["currency", "amount"],
+              "properties": {
+                "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+                "amount": { "type": "number", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "modelIdentity": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["value", "attestation"],
+              "properties": {
+                "value": { "type": "string", "minLength": 1 },
+                "attestation": { "const": "unverified" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

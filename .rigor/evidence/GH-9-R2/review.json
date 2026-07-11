@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_2e2a53ff-ce01-42bb-98d0-849f5ff1aa13",
+  "taskId": "GH-9-R2",
+  "createdAt": "2026-07-11T09:19:17.344Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_0c6f1ed2-d061-4326-a122-0649ee9366da",
+  "verificationArtifactId": "verification_2e00b83c-0624-489b-85d1-6974f1bee706",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/product.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/outcome-input.v1.schema.json",
+    "schemas/outcome.v1.schema.json",
+    "skills/retrospect/SKILL.md",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/cli.ts",
+    "src/outcome.ts",
+    "src/types.ts",
+    "test/e2e.test.ts",
+    "test/outcome.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "A recorded usage whose totalTokens is less than a present inputTokens or outputTokens is rejected as internally inconsistent.",
+    "parseAttempt rejects an attempt sequence outside 1..20 so a derived retryCount stays within the outcome schema bound.",
+    "All existing GH-9 behavior and tests remain intact; a new rejection test covers the total-below-component case.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

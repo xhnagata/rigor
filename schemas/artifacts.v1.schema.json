@@ -16,7 +16,8 @@
         "rigor.attempt-session.v1",
         "rigor.attempt.v1",
         "rigor.consultation-session.v1",
-        "rigor.consultation.v1"
+        "rigor.consultation.v1",
+        "rigor.outcome.v1"
       ]
     },
     "artifactId": { "type": "string", "minLength": 1 },
@@ -211,6 +212,28 @@
           "outcome",
           "findingCount",
           "requiredActions"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": { "const": "rigor.outcome.v1" }
+        }
+      },
+      "then": {
+        "required": [
+          "decision",
+          "acceptedWithoutModelCodeChanges",
+          "humanCorrectionMinutes",
+          "escalationCount",
+          "retryCount",
+          "reviewFindings",
+          "revertStatus",
+          "escapedDefectStatus",
+          "executionIdentityStatus",
+          "usage",
+          "notes"
         ]
       }
     }

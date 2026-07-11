@@ -164,6 +164,14 @@ rigor consult-finish --session .rigor/evidence/APP-123/consultations/consultatio
 
 読み取り専用相談中にrepository content、changed path、HEADが変化した場合、`consult-finish`は失敗します。保存するのは正規化したsummaryと取得できた外部IDだけで、生のmodel transcriptは保存しません。
 
+reviewの後に、taskの処遇を記録し証跡へ関連付けます。
+
+```sh
+rigor outcome --input /tmp/outcome-input.json --attempt .rigor/evidence/APP-123/attempts/attempt_ID.json --verification .rigor/evidence/APP-123/verification.json --review .rigor/evidence/APP-123/review.json
+```
+
+`outcome`はprovider、model、capability class、attempt/verification/review識別子を入力任せにせずリンク先artifactから複写します。矛盾する主張にはfail closedします。`accepted`にはcompletedなattemptとリンクされた合格verificationが必要で、`reverted`やescaped-defectのoutcomeは`accepted`でなければならず、attemptがリンクされている場合`retryCount`は`attempt.sequence - 1`と一致しなければなりません。token数、provider cost、reasoning effort、model identityはmeasured-or-unavailableとして保存し、`usage.status`が`recorded`でない場合、数値fieldは`null`として永続化します。設定上のmodel identityは`attestation: "unverified"`で記録し、provider costはRigorが検証した請求額ではなく報告された測定値であり、ルーティングの`relativeCost`は抽象的なルーティング重みであってprovider invoiceでも実測の金額でもありません。
+
 変更と一緒に証跡をcommitします。CIはcode差分の再導出時には証跡ファイルを除外しますが、その関連付けとpolicy適合性を検証し、checkを独立に再実行します。
 
 ## 日常フロー
@@ -174,7 +182,7 @@ rigor consult-finish --session .rigor/evidence/APP-123/consultations/consultatio
 
 routing、attempt、consultation recordは現在ローカルのadvisory evidenceです。CIはまだmodel/provider claimを必須化またはattestしません。
 
-検証失敗を解消できない場合は `rigor.escalation-input.v1` の入力を作り、`facts`、`attempts`、`disprovedHypotheses`、`speculation`、`requestedDecision` を分離します。同一の試行は拒否されます。`rigor retrospect` はgitignoredの `.rigor/events.jsonl` から秘匿化された件数だけを集計します。
+検証失敗を解消できない場合は `rigor.escalation-input.v1` の入力を作り、`facts`、`attempts`、`disprovedHypotheses`、`speculation`、`requestedDecision` を分離します。同一の試行は拒否されます。`rigor retrospect` はgitignoredの `.rigor/events.jsonl` の秘匿化件数に加え、各taskの `outcome.json` から候補ごとの成功率（分子と分母を明示）、retry、経過時間、人手介入分、data-completeness件数を集計します。すべての率は分母を、欠損データは件数を報告するため、利用不能な測定値を隠しません。壊れたoutcomeファイルは致命的ではなく、件数として許容します。報告されるcostは測定値であり、ルーティングの`relativeCost`は抽象的なルーティング重みで、provider invoiceでも実測の金額でもありません。
 
 CLIの安定したexit codeは、`0`が成功、`2`がpolicy/検証違反、`3`が入力またはrepository stateの不正、`4`が予期しない内部エラーです。エラーにはsubprocessの生出力を含めません。
 

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_872b2750-1b13-4490-8433-20a8056b0888",
+  "taskId": "GH-9-R3",
+  "createdAt": "2026-07-11T09:21:49.650Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_1f0c303a-2a2f-4478-9e6c-a28468aa6ff2",
+  "verificationArtifactId": "verification_63b6d420-b7ae-4f11-ba0a-4ca4b80c0bcc",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/product.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/outcome-input.v1.schema.json",
+    "schemas/outcome.v1.schema.json",
+    "skills/retrospect/SKILL.md",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/cli.ts",
+    "src/outcome.ts",
+    "src/types.ts",
+    "test/e2e.test.ts",
+    "test/outcome.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "A unit test asserts that a recorded usage with totalTokens below a present outputTokens is rejected.",
+    "All existing GH-9 behavior and tests remain intact.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

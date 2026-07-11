@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_0c6f1ed2-d061-4326-a122-0649ee9366da",
+  "taskId": "GH-9-R2",
+  "createdAt": "2026-07-11T09:19:08.734Z",
+  "preflightArtifactId": "preflight_9cf9f18a-a4c3-4342-86c3-e4f9b73d4639",
+  "preflightHash": "34d13970fb7db40b873a265372fe0f4d729eab900d03b99e3fdf66341d6de6b0",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A recorded usage whose totalTokens is less than a present inputTokens or outputTokens is rejected as internally inconsistent.",
+    "parseAttempt rejects an attempt sequence outside 1..20 so a derived retryCount stays within the outcome schema bound.",
+    "All existing GH-9 behavior and tests remain intact; a new rejection test covers the total-below-component case.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "skills/**",
+    "dist/**"
+  ],
+  "constraints": [
+    "Only apply the two review-driven remediations; do not add unrelated features.",
+    "Do not delete, weaken, or skip existing tests.",
+    "No external transmission."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_542dc76d-920f-4ef0-bbd7-9e89644ba787",
+  "taskId": "GH-9",
+  "createdAt": "2026-07-11T09:12:07.862Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_233a7695-e305-4b0f-b070-e18cffa3810f",
+  "verificationArtifactId": "verification_11e81401-dc24-4ade-b9a0-e9cdb57a4682",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/product.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/outcome-input.v1.schema.json",
+    "schemas/outcome.v1.schema.json",
+    "skills/retrospect/SKILL.md",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/cli.ts",
+    "src/outcome.ts",
+    "src/types.ts",
+    "test/e2e.test.ts",
+    "test/outcome.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "A versioned outcome schema (rigor.outcome.v1) links task, routing plan, attempt, verification, review, and commit/PR when available.",
+    "Outcome records accepted/rejected status, accepted-without-model-code-changes, human correction minutes, retry/escalation count, review finding counts by severity, revert/escaped-defect status, and usage status.",
+    "Tokens, provider cost, model identity, and reasoning effort are represented as measured values or explicit unknown/unavailable values, never fabricated.",
+    "Schemas reject fabricated or internally inconsistent measurements.",
+    "Existing v0.2 artifacts remain readable (schema additions are backward compatible).",
+    "rigor retrospect reports per-candidate success rate, retry rate, elapsed time, human intervention, and data-completeness counts, with denominators and missing-data counts, not just totals.",
+    "Prose is redacted and secrets rejected consistently with existing artifact rules.",
+    "Tests cover accepted, rejected, reverted, and usage-unavailable outcomes.",
+    "Documentation states that relative cost is not a provider invoice."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
