@@ -47,6 +47,19 @@ export function parseContract(value: unknown): Contract {
   return item as unknown as Contract;
 }
 
+export function parseVerification(value: unknown): Verification {
+  const item = record(value, "verification");
+  if (item.schemaVersion !== VERIFY_SCHEMA)
+    throw new RigorError("Unsupported verification schema", EXIT.inputError);
+  taskId(item.taskId);
+  textField(item.artifactId, "verification.artifactId", 128);
+  textField(item.contractArtifactId, "verification.contractArtifactId", 128);
+  strings(item.changedPaths, "verification.changedPaths");
+  if (item.status !== "passed" && item.status !== "failed")
+    throw new RigorError("Invalid verification status", EXIT.inputError);
+  return item as unknown as Verification;
+}
+
 export function parseContractInput(value: unknown): ContractInput {
   const item = record(value, "contract input");
   if (item.schemaVersion !== CONTRACT_INPUT_SCHEMA)

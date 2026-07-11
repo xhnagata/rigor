@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  createRoutingPlan,
   parseModelProfiles,
+  parseRoutingPlan,
   parseRoutingInput,
   requiredCapability,
   route,
 } from "../src/routing.js";
+import { hash } from "../src/util.js";
 import type { ModelProfiles, Preflight, RoutingInput } from "../src/types.js";
 
 const preflight: Preflight = {
@@ -173,4 +176,31 @@ test("routing parsers reject malformed and duplicate profiles", () => {
   assert.throws(() =>
     route(preflight, { ...input, taskId: "OTHER" }, profiles),
   );
+});
+
+test("routing plan binds a selected decision to its contract", () => {
+  const contract = {
+    schemaVersion: "rigor.contract.v1" as const,
+    artifactId: "contract-1",
+    taskId: "TASK-1",
+    createdAt: new Date(0).toISOString(),
+    preflightArtifactId: preflight.artifactId,
+    preflightHash: hash(preflight),
+    riskTier: preflight.riskTier,
+    externalTransmission: preflight.externalTransmission,
+    acceptanceCriteria: ["works"],
+    allowedPaths: ["src/**"],
+    constraints: [],
+    requiredChecks: [],
+    stopConditions: [],
+  };
+  const plan = createRoutingPlan(
+    route(preflight, input, profiles),
+    preflight,
+    contract,
+    new Date(0),
+  );
+  assert.equal(plan.status, "planned");
+  assert.equal(plan.contractArtifactId, contract.artifactId);
+  assert.deepEqual(parseRoutingPlan(plan), plan);
 });

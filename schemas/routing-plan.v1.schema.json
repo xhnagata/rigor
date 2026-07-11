@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/routing-plan.v1.schema.json",
+  "title": "Rigor routing plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "createdAt",
+    "taskId",
+    "preflightArtifactId",
+    "preflightHash",
+    "routingInputHash",
+    "modelProfilesHash",
+    "contractArtifactId",
+    "contractHash",
+    "policyHash",
+    "plannedHead",
+    "purpose",
+    "requiredCapabilityClass",
+    "eligibleCandidates",
+    "excludedCandidates",
+    "selection",
+    "controls",
+    "budget",
+    "status"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.routing-plan.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "taskId": { "type": "string", "minLength": 1 },
+    "preflightArtifactId": { "type": "string", "minLength": 1 },
+    "preflightHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "routingInputHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "modelProfilesHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "contractArtifactId": { "type": "string", "minLength": 1 },
+    "contractHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "policyHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "plannedHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "purpose": { "$ref": "#/$defs/purpose" },
+    "requiredCapabilityClass": { "$ref": "#/$defs/capability" },
+    "eligibleCandidates": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "excludedCandidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidateId", "reasonCode"],
+        "properties": {
+          "candidateId": { "type": "string", "minLength": 1 },
+          "reasonCode": {
+            "enum": [
+              "DISABLED",
+              "PURPOSE_UNSUPPORTED",
+              "EXTERNAL_TRANSMISSION_DENIED",
+              "INSUFFICIENT_CAPABILITY",
+              "BUDGET_EXCEEDED"
+            ]
+          }
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "provider",
+        "capabilityClass",
+        "relativeCost"
+      ],
+      "properties": {
+        "candidateId": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "capabilityClass": { "$ref": "#/$defs/capability" },
+        "relativeCost": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "externalTransmission",
+        "requireHumanApproval",
+        "requireIndependentReview"
+      ],
+      "properties": {
+        "externalTransmission": { "enum": ["allowed", "denied"] },
+        "requireHumanApproval": { "type": "boolean" },
+        "requireIndependentReview": { "type": "boolean" }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAttempts", "maxDurationMs", "maxRelativeCost"],
+      "properties": {
+        "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "maxDurationMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 86400000
+        },
+        "maxRelativeCost": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      }
+    },
+    "status": { "const": "planned" }
+  },
+  "$defs": {
+    "capability": {
+      "enum": ["economy", "standard", "premium", "frontier"]
+    },
+    "purpose": {
+      "enum": [
+        "implementation",
+        "consultation",
+        "review",
+        "adversarial-review",
+        "rescue"
+      ]
+    }
+  }
+}

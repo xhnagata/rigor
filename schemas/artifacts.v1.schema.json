@@ -12,6 +12,8 @@
         "rigor.verification.v1",
         "rigor.escalation.v1",
         "rigor.review.v1",
+        "rigor.routing-plan.v1",
+        "rigor.attempt-session.v1",
         "rigor.attempt.v1",
         "rigor.consultation-session.v1",
         "rigor.consultation.v1"
@@ -91,18 +93,76 @@
     },
     {
       "if": {
+        "properties": { "schemaVersion": { "const": "rigor.routing-plan.v1" } }
+      },
+      "then": {
+        "required": [
+          "preflightArtifactId",
+          "preflightHash",
+          "routingInputHash",
+          "modelProfilesHash",
+          "contractArtifactId",
+          "contractHash",
+          "policyHash",
+          "plannedHead",
+          "selection",
+          "controls",
+          "budget",
+          "status"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": { "const": "rigor.attempt-session.v1" }
+        }
+      },
+      "then": {
+        "required": [
+          "sequence",
+          "routingPlanArtifactId",
+          "routingPlanHash",
+          "contractArtifactId",
+          "contractHash",
+          "selection",
+          "purpose",
+          "budget",
+          "executionIdentityStatus",
+          "beforeHead",
+          "beforeTreeHash",
+          "changedPathsBefore"
+        ]
+      }
+    },
+    {
+      "if": {
         "properties": { "schemaVersion": { "const": "rigor.attempt.v1" } }
       },
       "then": {
         "required": [
-          "routingDecisionArtifactId",
+          "sessionArtifactId",
+          "sessionHash",
+          "routingPlanArtifactId",
+          "routingPlanHash",
+          "contractArtifactId",
+          "contractHash",
           "sequence",
           "provider",
           "capabilityClass",
           "purpose",
           "startedAt",
+          "completedAt",
+          "durationMs",
+          "executionIdentityStatus",
           "status",
-          "changedPaths"
+          "beforeHead",
+          "afterHead",
+          "beforeTreeHash",
+          "afterTreeHash",
+          "changedPathsBefore",
+          "changedPaths",
+          "scopeViolations"
         ]
       }
     },

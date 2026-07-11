@@ -8,22 +8,41 @@
     "schemaVersion",
     "artifactId",
     "taskId",
-    "routingDecisionArtifactId",
     "createdAt",
+    "sessionArtifactId",
+    "sessionHash",
+    "routingPlanArtifactId",
+    "routingPlanHash",
+    "contractArtifactId",
+    "contractHash",
     "sequence",
     "provider",
     "capabilityClass",
     "purpose",
     "startedAt",
+    "completedAt",
+    "durationMs",
+    "executionIdentityStatus",
     "status",
-    "changedPaths"
+    "beforeHead",
+    "afterHead",
+    "beforeTreeHash",
+    "afterTreeHash",
+    "changedPathsBefore",
+    "changedPaths",
+    "scopeViolations"
   ],
   "properties": {
     "schemaVersion": { "const": "rigor.attempt.v1" },
     "artifactId": { "type": "string", "minLength": 1 },
     "taskId": { "type": "string", "minLength": 1 },
-    "routingDecisionArtifactId": { "type": "string", "minLength": 1 },
     "createdAt": { "type": "string", "format": "date-time" },
+    "sessionArtifactId": { "type": "string", "minLength": 1 },
+    "sessionHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "routingPlanArtifactId": { "type": "string", "minLength": 1 },
+    "routingPlanHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "contractArtifactId": { "type": "string", "minLength": 1 },
+    "contractHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "sequence": { "type": "integer", "minimum": 1 },
     "provider": { "type": "string", "minLength": 1 },
     "model": { "type": "string", "minLength": 1 },
@@ -41,12 +60,40 @@
     },
     "startedAt": { "type": "string", "format": "date-time" },
     "completedAt": { "type": "string", "format": "date-time" },
-    "status": { "enum": ["running", "completed", "failed", "cancelled"] },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "executionIdentityStatus": { "const": "unverified" },
+    "status": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled",
+        "scope-violation",
+        "budget-exceeded"
+      ]
+    },
+    "beforeHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "afterHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "beforeTreeHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "afterTreeHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "changedPathsBefore": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "changedPaths": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
+    "scopeViolations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "verificationArtifactId": { "type": "string", "minLength": 1 },
-    "failureClass": { "type": "string", "minLength": 1 }
+    "failureClass": { "type": "string", "minLength": 1 },
+    "externalSessionId": { "type": "string", "minLength": 1 },
+    "externalTurnId": { "type": "string", "minLength": 1 }
   }
 }

@@ -19,7 +19,7 @@ Rigor is for teams that use Claude Code in Git repositories and need evidence th
 
 ## MVP
 
-The MVP provides a versioned JSON policy and artifacts; setup/upgrade; preflight; contract; deterministic routing preview; deterministic verification; escalation; review preparation; retrospective aggregation; a lightweight hook; a read-only reviewer agent; skills for the workflow; and independent pull-request verification. It supports Git and Node.js on macOS/Linux.
+The MVP provides a versioned JSON policy and artifacts; setup/upgrade; preflight; contract; deterministic routing preview and recorded plans; append-only bounded attempts and Codex consultations; deterministic verification; escalation; review preparation; retrospective aggregation; a lightweight hook; a read-only reviewer agent; skills for the workflow; and independent pull-request verification. It supports Git and Node.js on macOS/Linux.
 
 ## Non-goals
 

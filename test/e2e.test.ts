@@ -151,6 +151,19 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
     (routing.selection as { candidateId: string }).candidateId,
     "claude-standard",
   );
+  const routingPlan = await rigor(root, [
+    "route",
+    "--record",
+    "--preflight",
+    String(preflight.saved),
+    "--contract",
+    String(contract.saved),
+    "--input",
+    routingInput,
+    "--profiles",
+    modelProfiles,
+  ]);
+  assert.equal(routingPlan.status, "planned");
   const consultationRequest = path.join(parent, "consultation-request.json");
   await writeFile(
     consultationRequest,
@@ -191,12 +204,48 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
     consultationResult,
   ]);
   assert.equal(consultation.status, "completed");
+  const attemptSession = await rigor(root, [
+    "attempt-start",
+    "--plan",
+    String(routingPlan.saved),
+    "--contract",
+    String(contract.saved),
+  ]);
+  const verificationPreview = await rigor(root, [
+    "verify",
+    "--dry-run",
+    "--contract",
+    String(contract.saved),
+  ]);
+  assert.equal(verificationPreview.status, "passed");
+  assert.equal(verificationPreview.saved, undefined);
   const verification = await rigor(root, [
     "verify",
     "--contract",
     String(contract.saved),
   ]);
   assert.equal(verification.status, "passed");
+  const attemptResult = path.join(parent, "attempt-result.json");
+  await writeFile(
+    attemptResult,
+    JSON.stringify({
+      schemaVersion: "rigor.attempt-result-input.v1",
+      taskId: "TASK-1",
+      status: "completed",
+    }),
+  );
+  const attempt = await rigor(root, [
+    "attempt-finish",
+    "--session",
+    String(attemptSession.saved),
+    "--contract",
+    String(contract.saved),
+    "--input",
+    attemptResult,
+    "--verification",
+    String(verification.saved),
+  ]);
+  assert.equal(attempt.status, "completed");
   const review = await rigor(root, [
     "review",
     "--contract",

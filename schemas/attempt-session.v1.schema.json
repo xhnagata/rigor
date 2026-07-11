@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/attempt-session.v1.schema.json",
+  "title": "Rigor attempt session v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "sequence",
+    "routingPlanArtifactId",
+    "routingPlanHash",
+    "contractArtifactId",
+    "contractHash",
+    "selection",
+    "purpose",
+    "budget",
+    "executionIdentityStatus",
+    "beforeHead",
+    "beforeTreeHash",
+    "changedPathsBefore"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.attempt-session.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "routingPlanArtifactId": { "type": "string", "minLength": 1 },
+    "routingPlanHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "contractArtifactId": { "type": "string", "minLength": 1 },
+    "contractHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "capabilityClass"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "capabilityClass": {
+          "enum": ["economy", "standard", "premium", "frontier"]
+        }
+      }
+    },
+    "purpose": {
+      "enum": [
+        "implementation",
+        "consultation",
+        "review",
+        "adversarial-review",
+        "rescue"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAttempts", "maxDurationMs", "maxRelativeCost"],
+      "properties": {
+        "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "maxDurationMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 86400000
+        },
+        "maxRelativeCost": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      }
+    },
+    "executionIdentityStatus": { "const": "unverified" },
+    "beforeHead": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "beforeTreeHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "changedPathsBefore": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

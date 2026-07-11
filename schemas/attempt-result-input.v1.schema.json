@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/attempt-result-input.v1.schema.json",
+  "title": "Rigor attempt result input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "status"],
+  "properties": {
+    "schemaVersion": { "const": "rigor.attempt-result-input.v1" },
+    "taskId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["completed", "failed", "cancelled"] },
+    "failureClass": { "type": "string", "minLength": 1 },
+    "externalSessionId": { "type": "string", "minLength": 1 },
+    "externalTurnId": { "type": "string", "minLength": 1 }
+  }
+}

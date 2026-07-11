@@ -3,6 +3,7 @@ import {
   MODEL_PROFILES_SCHEMA,
   ROUTING_INPUT_SCHEMA,
   ROUTING_DECISION_SCHEMA,
+  ROUTING_PLAN_SCHEMA,
   type CapabilityClass,
   type ModelCandidate,
   type ModelProfiles,
@@ -10,11 +11,20 @@ import {
   type RoutingDecision,
   type RoutingExclusionReason,
   type RoutingInput,
+  type RoutingPlan,
   type RoutingPurpose,
   type SignalLevel,
   type VerificationStrength,
 } from "./types.js";
-import { hash, record, strings, taskId, textField } from "./util.js";
+import type { Contract } from "./types.js";
+import {
+  artifactId,
+  hash,
+  record,
+  strings,
+  taskId,
+  textField,
+} from "./util.js";
 
 const signalLevels: SignalLevel[] = ["low", "medium", "high", "critical"];
 const verificationStrengths: VerificationStrength[] = [
@@ -267,4 +277,167 @@ export function route(
     budget: input.budget,
     status: selection ? "selected" : "unroutable",
   };
+}
+
+export function createRoutingPlan(
+  decision: RoutingDecision,
+  preflight: Preflight,
+  contract: Contract,
+  now = new Date(),
+): RoutingPlan {
+  if (
+    decision.status !== "selected" ||
+    decision.selection === null ||
+    decision.taskId !== contract.taskId ||
+    preflight.taskId !== contract.taskId
+  )
+    throw new RigorError(
+      "A selected, task-matched routing decision is required",
+      EXIT.policyViolation,
+    );
+  if (
+    contract.preflightArtifactId !== preflight.artifactId ||
+    contract.preflightHash !== hash(preflight)
+  )
+    throw new RigorError(
+      "Contract is not linked to the routing preflight",
+      EXIT.policyViolation,
+    );
+  const {
+    schemaVersion: _schemaVersion,
+    mode: _mode,
+    status: _status,
+    ...rest
+  } = decision;
+  void _schemaVersion;
+  void _mode;
+  void _status;
+  return {
+    ...rest,
+    schemaVersion: ROUTING_PLAN_SCHEMA,
+    artifactId: artifactId("routing-plan"),
+    createdAt: now.toISOString(),
+    contractArtifactId: contract.artifactId,
+    contractHash: hash(contract),
+    policyHash: preflight.policyHash,
+    plannedHead: preflight.git.head,
+    status: "planned",
+  };
+}
+
+export function parseRoutingPlan(value: unknown): RoutingPlan {
+  const item = record(value, "routing plan");
+  if (item.schemaVersion !== ROUTING_PLAN_SCHEMA)
+    throw new RigorError("Unsupported routing plan schema", EXIT.inputError);
+  const selection = record(item.selection, "selection");
+  const controls = record(item.controls, "controls");
+  const budget = record(item.budget, "budget");
+  const plannedHead = item.plannedHead;
+  if (plannedHead !== null && typeof plannedHead !== "string")
+    throw new RigorError("plannedHead is invalid", EXIT.inputError);
+  const plan: RoutingPlan = {
+    schemaVersion: ROUTING_PLAN_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    taskId: taskId(item.taskId),
+    preflightArtifactId: textField(
+      item.preflightArtifactId,
+      "preflightArtifactId",
+      128,
+    ),
+    preflightHash: textField(item.preflightHash, "preflightHash", 128),
+    routingInputHash: textField(item.routingInputHash, "routingInputHash", 128),
+    modelProfilesHash: textField(
+      item.modelProfilesHash,
+      "modelProfilesHash",
+      128,
+    ),
+    contractArtifactId: textField(
+      item.contractArtifactId,
+      "contractArtifactId",
+      128,
+    ),
+    contractHash: textField(item.contractHash, "contractHash", 128),
+    policyHash: textField(item.policyHash, "policyHash", 128),
+    plannedHead,
+    purpose: oneOf(item.purpose, purposes, "purpose"),
+    requiredCapabilityClass: oneOf(
+      item.requiredCapabilityClass,
+      capabilityClasses,
+      "requiredCapabilityClass",
+    ),
+    eligibleCandidates: strings(item.eligibleCandidates, "eligibleCandidates"),
+    excludedCandidates: [],
+    selection: {
+      candidateId: textField(selection.candidateId, "candidateId", 128),
+      provider: textField(selection.provider, "provider", 128),
+      capabilityClass: oneOf(
+        selection.capabilityClass,
+        capabilityClasses,
+        "selection.capabilityClass",
+      ),
+      relativeCost: integer(
+        selection.relativeCost,
+        "selection.relativeCost",
+        1,
+        1_000_000,
+      ),
+    },
+    controls: {
+      externalTransmission: oneOf(
+        controls.externalTransmission,
+        ["allowed", "denied"],
+        "externalTransmission",
+      ),
+      requireHumanApproval: bool(
+        controls.requireHumanApproval,
+        "requireHumanApproval",
+      ),
+      requireIndependentReview: bool(
+        controls.requireIndependentReview,
+        "requireIndependentReview",
+      ),
+    },
+    budget: {
+      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
+      maxDurationMs: integer(
+        budget.maxDurationMs,
+        "maxDurationMs",
+        1_000,
+        86_400_000,
+      ),
+      maxRelativeCost: integer(
+        budget.maxRelativeCost,
+        "maxRelativeCost",
+        1,
+        1_000_000,
+      ),
+    },
+    status: "planned",
+  };
+  if (selection.model !== undefined)
+    plan.selection!.model = textField(selection.model, "selection.model", 256);
+  if (!Array.isArray(item.excludedCandidates))
+    throw new RigorError(
+      "excludedCandidates must be an array",
+      EXIT.inputError,
+    );
+  plan.excludedCandidates = item.excludedCandidates.map((raw, index) => {
+    const excluded = record(raw, `excludedCandidates[${index}]`);
+    return {
+      candidateId: textField(excluded.candidateId, "candidateId", 128),
+      reasonCode: oneOf(
+        excluded.reasonCode,
+        [
+          "DISABLED",
+          "PURPOSE_UNSUPPORTED",
+          "EXTERNAL_TRANSMISSION_DENIED",
+          "INSUFFICIENT_CAPABILITY",
+          "BUDGET_EXCEEDED",
+        ],
+        "reasonCode",
+      ),
+    };
+  });
+  return plan;
 }

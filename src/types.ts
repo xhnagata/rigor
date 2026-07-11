@@ -18,6 +18,10 @@ export const CONSULTATION_SESSION_SCHEMA =
   "rigor.consultation-session.v1" as const;
 export const CONSULTATION_RESULT_INPUT_SCHEMA =
   "rigor.consultation-result-input.v1" as const;
+export const ROUTING_PLAN_SCHEMA = "rigor.routing-plan.v1" as const;
+export const ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1" as const;
+export const ATTEMPT_RESULT_INPUT_SCHEMA =
+  "rigor.attempt-result-input.v1" as const;
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
@@ -221,19 +225,81 @@ export interface Attempt {
   schemaVersion: typeof ATTEMPT_SCHEMA;
   artifactId: string;
   taskId: string;
-  routingDecisionArtifactId: string;
   createdAt: string;
+  sessionArtifactId: string;
+  sessionHash: string;
+  routingPlanArtifactId: string;
+  routingPlanHash: string;
+  contractArtifactId: string;
+  contractHash: string;
   sequence: number;
   provider: string;
   model?: string;
   capabilityClass: CapabilityClass;
   purpose: RoutingPurpose;
   startedAt: string;
-  completedAt?: string;
-  status: "running" | "completed" | "failed" | "cancelled";
+  completedAt: string;
+  durationMs: number;
+  executionIdentityStatus: "unverified";
+  status:
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "scope-violation"
+    | "budget-exceeded";
+  beforeHead: string | null;
+  afterHead: string | null;
+  beforeTreeHash: string;
+  afterTreeHash: string;
+  changedPathsBefore: string[];
   changedPaths: string[];
+  scopeViolations: string[];
   verificationArtifactId?: string;
   failureClass?: string;
+  externalSessionId?: string;
+  externalTurnId?: string;
+}
+
+export interface RoutingPlan
+  extends Omit<RoutingDecision, "schemaVersion" | "mode" | "status"> {
+  schemaVersion: typeof ROUTING_PLAN_SCHEMA;
+  artifactId: string;
+  createdAt: string;
+  contractArtifactId: string;
+  contractHash: string;
+  policyHash: string;
+  plannedHead: string | null;
+  status: "planned";
+}
+
+export interface AttemptSession {
+  schemaVersion: typeof ATTEMPT_SESSION_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  sequence: number;
+  routingPlanArtifactId: string;
+  routingPlanHash: string;
+  contractArtifactId: string;
+  contractHash: string;
+  provider: string;
+  model?: string;
+  capabilityClass: CapabilityClass;
+  purpose: RoutingPurpose;
+  budget: RoutingInput["budget"];
+  executionIdentityStatus: "unverified";
+  beforeHead: string | null;
+  beforeTreeHash: string;
+  changedPathsBefore: string[];
+}
+
+export interface AttemptResultInput {
+  schemaVersion: typeof ATTEMPT_RESULT_INPUT_SCHEMA;
+  taskId: string;
+  status: "completed" | "failed" | "cancelled";
+  failureClass?: string;
+  externalSessionId?: string;
+  externalTurnId?: string;
 }
 
 export interface Consultation {

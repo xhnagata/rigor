@@ -9,8 +9,10 @@ import {
   parseContractInput,
   parseEscalationInput,
   parsePreflight,
+  parseVerification,
   retrospect,
   saveArtifact,
+  saveCollectionArtifact,
   verify,
 } from "./artifacts.js";
 import { ciVerify } from "./ci.js";
@@ -24,7 +26,13 @@ import {
 } from "./governance.js";
 import { userPromptHook } from "./hook.js";
 import { evaluate } from "./policy.js";
-import { parseModelProfiles, parseRoutingInput, route } from "./routing.js";
+import {
+  createRoutingPlan,
+  parseModelProfiles,
+  parseRoutingInput,
+  parseRoutingPlan,
+  route,
+} from "./routing.js";
 import {
   finishConsultation,
   parseConsultationRequest,
@@ -32,6 +40,12 @@ import {
   parseConsultationSession,
   startConsultation,
 } from "./consultation.js";
+import {
+  finishAttempt,
+  parseAttemptResultInput,
+  parseAttemptSession,
+  startAttempt,
+} from "./attempt.js";
 import { parseIntent } from "./schema.js";
 import { setup } from "./setup.js";
 import { readJson, record } from "./util.js";
@@ -77,7 +91,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|consult-start|consult-finish|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -115,9 +129,11 @@ export async function main(
     return EXIT.success;
   }
   if (command === "route") {
-    if (!args.includes("--dry-run"))
+    const dryRun = args.includes("--dry-run");
+    const recordPlan = args.includes("--record");
+    if (dryRun === recordPlan)
       throw new RigorError(
-        "route currently requires --dry-run",
+        "route requires exactly one of --dry-run or --record",
         EXIT.inputError,
       );
     const preflight = parsePreflight(
@@ -128,8 +144,56 @@ export async function main(
       await readJson(option(args, "--profiles")!),
     );
     const result = route(preflight, input, profiles);
-    output(result);
-    return result.status === "selected" ? EXIT.success : EXIT.policyViolation;
+    if (result.status !== "selected") {
+      output(result);
+      return EXIT.policyViolation;
+    }
+    if (dryRun) {
+      output(result);
+      return EXIT.success;
+    }
+    const contract = parseContract(await readJson(option(args, "--contract")!));
+    const plan = createRoutingPlan(result, preflight, contract);
+    const saved = await saveCollectionArtifact(
+      root,
+      plan.taskId,
+      "routing",
+      "routing-plan",
+      plan,
+    );
+    output({ ...plan, saved });
+    return EXIT.success;
+  }
+  if (command === "attempt-start") {
+    const plan = parseRoutingPlan(await readJson(option(args, "--plan")!));
+    const contract = parseContract(await readJson(option(args, "--contract")!));
+    const result = await startAttempt(root, policy, plan, contract);
+    output({ ...result.session, saved: result.saved });
+    return EXIT.success;
+  }
+  if (command === "attempt-finish") {
+    const session = parseAttemptSession(
+      await readJson(option(args, "--session")!),
+    );
+    const contract = parseContract(await readJson(option(args, "--contract")!));
+    const input = parseAttemptResultInput(
+      await readJson(option(args, "--input")!),
+    );
+    const verificationPath = option(args, "--verification", false);
+    const verification = verificationPath
+      ? parseVerification(await readJson(verificationPath))
+      : undefined;
+    const result = await finishAttempt(
+      root,
+      session,
+      contract,
+      input,
+      verification,
+    );
+    output({ ...result.attempt, saved: result.saved });
+    return result.attempt.status === "completed"
+      ? EXIT.success
+      : EXIT.policyViolation;
   }
   if (command === "consult-start") {
     const preflight = parsePreflight(
@@ -169,6 +233,10 @@ export async function main(
       ),
       facts.head,
     );
+    if (args.includes("--dry-run")) {
+      output(result);
+      return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
+    }
     const saved = await saveArtifact(
       root,
       result.taskId,
