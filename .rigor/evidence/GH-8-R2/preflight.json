@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_8901fef5-d777-401d-9875-98905e444d95",
+  "taskId": "GH-8-R2",
+  "createdAt": "2026-07-11T08:18:12.197Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "3ec6b2148cd8256bf4926c5c9f61e3e066726a40b025a0bd3255dd6f6467223b",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "12d69312c99a1b30341375037d140d19a57691cb",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-8/attempts/attempt-session_438690e0-5c9b-4604-94aa-0981af9df038.json",
+      ".rigor/evidence/GH-8/attempts/attempt_41c68830-5597-4f42-b277-69979345a545.json",
+      ".rigor/evidence/GH-8/contract.json",
+      ".rigor/evidence/GH-8/preflight.json",
+      ".rigor/evidence/GH-8/review.json",
+      ".rigor/evidence/GH-8/routing/routing-plan_64431b12-aedb-4def-89ef-3009f1358016.json",
+      ".rigor/evidence/GH-8/routing/routing-plan_ef4a7d3a-9ec7-4830-a5ea-3cea5001573e.json",
+      ".rigor/evidence/GH-8/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/release.md",
+      "src/cli.ts",
+      "src/release.ts",
+      "test/release.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/release.md",
+    "src/cli.ts",
+    "src/release.ts",
+    "test/release.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/release.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/release.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/release.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_3ee6c2cd-9b80-4516-a6c3-fada59159caf",
+  "taskId": "GH-8",
+  "createdAt": "2026-07-11T08:11:13.253Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_c3cb997d-82cc-4826-8d23-472b23bbe71d",
+  "verificationArtifactId": "verification_d9b2c1c1-2a37-4ffe-acd4-b5c432020bc2",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/release.md",
+    "src/cli.ts",
+    "src/release.ts",
+    "test/release.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "A new `rigor release-check` command runs deterministic pre-tag findings: clean worktree, package.json and .claude-plugin/plugin.json versions matching the requested release version, a CHANGELOG.md section for that version, the committed dist/rigor.cjs byte-identical to a fresh build, HEAD on the expected branch (default main) and matching an optional expected SHA, and a successful exact-SHA GitHub CI result.",
+    "The overall release check cannot report `passed` when the target SHA lacks the required successful GitHub CI check; when the remote check is not explicitly requested that finding is unverifiable and the overall status fails closed.",
+    "A version mismatch, a dirty worktree, or a stale/hand-edited dist bundle each produces a failed finding and a non-passing overall status.",
+    "docs/release.md defines a release branch and pull-request workflow that reaches main only through a protected PR with required checks, records whether repository rules apply to administrators and any unavoidable admin bypass authority, and gives the exact tag/publish procedure; the release commit reaches main via PR, never a direct push.",
+    "README.md and README.ja.md describe the same release procedure and both link to docs/release.md.",
+    "test/release.test.ts covers success and failure cases for every finding and for CI success/failure/unverifiable using injected facts, without contacting GitHub unless the remote check is explicitly invoked.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict all pass, and the rebuilt dist/rigor.cjs is committed."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

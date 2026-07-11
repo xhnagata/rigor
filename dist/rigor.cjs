@@ -34,7 +34,7 @@ __export(cli_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(cli_exports);
-var import_node_path9 = __toESM(require("node:path"), 1);
+var import_node_path10 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
 
 // src/artifacts.ts
@@ -1626,6 +1626,255 @@ function evaluate(policy, intent, git2, now = /* @__PURE__ */ new Date()) {
   };
 }
 
+// src/release.ts
+var import_promises7 = require("node:fs/promises");
+var import_node_os = __toESM(require("node:os"), 1);
+var import_node_path8 = __toESM(require("node:path"), 1);
+var RELEASE_SCHEMA = "rigor.release.v1";
+function isRecord2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function evaluateRelease(facts) {
+  const findings = [];
+  findings.push(
+    facts.dirty ? {
+      id: "clean-tree",
+      status: "failed",
+      detail: "the worktree has uncommitted changes; a release must be cut from a clean tree"
+    } : {
+      id: "clean-tree",
+      status: "satisfied",
+      detail: "the worktree is clean"
+    }
+  );
+  if (facts.packageVersion === facts.version && facts.manifestVersion === facts.version) {
+    findings.push({
+      id: "version-sync",
+      status: "satisfied",
+      detail: `package.json and .claude-plugin/plugin.json both declare ${facts.version}`
+    });
+  } else {
+    findings.push({
+      id: "version-sync",
+      status: "failed",
+      detail: `version mismatch: package.json=${facts.packageVersion || "(unreadable)"}, .claude-plugin/plugin.json=${facts.manifestVersion || "(unreadable)"}, requested=${facts.version}`
+    });
+  }
+  findings.push(
+    facts.changelogVersions.includes(facts.version) ? {
+      id: "changelog-entry",
+      status: "satisfied",
+      detail: `CHANGELOG.md has a section for ${facts.version}`
+    } : {
+      id: "changelog-entry",
+      status: "failed",
+      detail: `CHANGELOG.md has no section for ${facts.version}`
+    }
+  );
+  findings.push(
+    facts.bundleMatches ? {
+      id: "bundle-built",
+      status: "satisfied",
+      detail: "dist/rigor.cjs matches a fresh build"
+    } : {
+      id: "bundle-built",
+      status: "failed",
+      detail: "committed dist/rigor.cjs differs from a fresh build; rebuild and commit it"
+    }
+  );
+  findings.push(
+    facts.branch === facts.expectedBranch ? {
+      id: "expected-branch",
+      status: "satisfied",
+      detail: `HEAD is on the expected branch ${facts.expectedBranch}`
+    } : {
+      id: "expected-branch",
+      status: "failed",
+      detail: `HEAD is on ${facts.branch || "(unknown)"}, not the expected branch ${facts.expectedBranch}`
+    }
+  );
+  if (facts.expectedSha === null) {
+    findings.push({
+      id: "expected-commit",
+      status: "satisfied",
+      detail: `HEAD is ${facts.head ?? "(none)"}; no expected SHA was pinned`
+    });
+  } else if (facts.head === facts.expectedSha) {
+    findings.push({
+      id: "expected-commit",
+      status: "satisfied",
+      detail: `HEAD is the expected commit ${facts.expectedSha}`
+    });
+  } else {
+    findings.push({
+      id: "expected-commit",
+      status: "failed",
+      detail: `HEAD is ${facts.head ?? "(none)"}, not the expected commit ${facts.expectedSha}`
+    });
+  }
+  if (facts.ci.state === "success") {
+    findings.push({
+      id: "ci-success",
+      status: "satisfied",
+      detail: facts.ci.detail
+    });
+  } else if (facts.ci.state === "failed") {
+    findings.push({
+      id: "ci-success",
+      status: "failed",
+      detail: facts.ci.detail
+    });
+  } else if (facts.ci.state === "unverifiable") {
+    findings.push({
+      id: "ci-success",
+      status: "unverifiable",
+      detail: facts.ci.detail
+    });
+  } else {
+    findings.push({
+      id: "ci-success",
+      status: "unverifiable",
+      detail: "GitHub CI was not checked; pass --repo to verify the required check(s) for the exact SHA"
+    });
+  }
+  return {
+    schemaVersion: RELEASE_SCHEMA,
+    version: facts.version,
+    branch: facts.branch,
+    head: facts.head,
+    requiredChecks: facts.requiredChecks,
+    findings,
+    status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
+  };
+}
+async function releaseCiFact(read, ref, sha, requiredChecks) {
+  if (!/^[0-9a-fA-F]{7,64}$/u.test(sha))
+    return { state: "unverifiable", detail: "invalid commit identifier" };
+  if (requiredChecks.length === 0)
+    return {
+      state: "unverifiable",
+      detail: "no required checks were specified to verify"
+    };
+  const base = `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}`;
+  const response = await read(
+    `${base}/commits/${encodeURIComponent(sha)}/check-runs?per_page=100`
+  );
+  if (response.status !== 200 || !isRecord2(response.body) || !Array.isArray(response.body.check_runs))
+    return {
+      state: "unverifiable",
+      detail: `check runs for ${sha} could not be read with the available credentials`
+    };
+  const runs = response.body.check_runs;
+  const satisfied = [];
+  const missing = [];
+  for (const check of requiredChecks) {
+    const ok = runs.some(
+      (item) => isRecord2(item) && item.name === check && item.status === "completed" && item.conclusion === "success"
+    );
+    if (ok) satisfied.push(check);
+    else missing.push(check);
+  }
+  if (missing.length === 0)
+    return {
+      state: "success",
+      detail: `all required checks succeeded for ${sha}: ${satisfied.join(", ")}`
+    };
+  return {
+    state: "failed",
+    detail: `required checks not successful for ${sha}: ${missing.join(", ")}`
+  };
+}
+async function readJsonVersion(file) {
+  try {
+    const parsed = JSON.parse(await (0, import_promises7.readFile)(file, "utf8"));
+    if (isRecord2(parsed) && typeof parsed.version === "string")
+      return parsed.version;
+  } catch {
+  }
+  return "";
+}
+async function readChangelogVersions(root) {
+  try {
+    const text = await (0, import_promises7.readFile)(import_node_path8.default.join(root, "CHANGELOG.md"), "utf8");
+    const versions = [];
+    for (const match of text.matchAll(/^##\s+(\d+\.\d+\.\d+)\b/gmu))
+      if (match[1]) versions.push(match[1]);
+    return versions;
+  } catch {
+    return [];
+  }
+}
+async function bundleMatchesFreshBuild(root) {
+  const temp = import_node_path8.default.join(
+    import_node_os.default.tmpdir(),
+    `rigor-release-bundle-${String(process.pid)}.cjs`
+  );
+  try {
+    const result = await run(
+      "npm",
+      ["run", "build", "--", `--outfile=${temp}`],
+      root,
+      12e4
+    );
+    if (result.code !== 0) return false;
+    const [fresh, committed] = await Promise.all([
+      (0, import_promises7.readFile)(temp),
+      (0, import_promises7.readFile)(import_node_path8.default.join(root, "dist", "rigor.cjs"))
+    ]);
+    return fresh.equals(committed);
+  } catch {
+    return false;
+  } finally {
+    await (0, import_promises7.rm)(temp, { force: true }).catch(() => void 0);
+  }
+}
+async function releaseVerify(root, options, read) {
+  const packageVersion = await readJsonVersion(import_node_path8.default.join(root, "package.json"));
+  const manifestVersion = await readJsonVersion(
+    import_node_path8.default.join(root, ".claude-plugin", "plugin.json")
+  );
+  const facts = await gitFacts(root);
+  const branchResult = await run(
+    "git",
+    ["rev-parse", "--abbrev-ref", "HEAD"],
+    root
+  );
+  const branch = branchResult.stdout.toString("utf8").trim();
+  const changelogVersions = await readChangelogVersions(root);
+  const bundleMatches = await bundleMatchesFreshBuild(root);
+  let ci;
+  if (options.repo && read) {
+    ci = facts.head === null ? {
+      state: "unverifiable",
+      detail: "there is no HEAD commit to check remote CI for"
+    } : await releaseCiFact(
+      read,
+      options.repo,
+      facts.head,
+      options.requiredChecks
+    );
+  } else {
+    ci = {
+      state: "not-requested",
+      detail: "the remote GitHub CI check was not requested (no --repo)"
+    };
+  }
+  return evaluateRelease({
+    version: options.version,
+    packageVersion,
+    manifestVersion,
+    branch,
+    expectedBranch: options.expectedBranch,
+    head: facts.head,
+    expectedSha: options.expectedSha,
+    dirty: facts.dirty,
+    changelogVersions,
+    bundleMatches,
+    requiredChecks: options.requiredChecks,
+    ci
+  });
+}
+
 // src/routing.ts
 var signalLevels = ["low", "medium", "high", "critical"];
 var verificationStrengths = [
@@ -2211,8 +2460,8 @@ async function finishConsultation(root, session, input, now = /* @__PURE__ */ ne
 }
 
 // src/attempt.ts
-var import_promises7 = require("node:fs/promises");
-var import_node_path8 = __toESM(require("node:path"), 1);
+var import_promises8 = require("node:fs/promises");
+var import_node_path9 = __toESM(require("node:path"), 1);
 var ignoredEvidence2 = [".rigor/evidence/", ".rigor/events.jsonl"];
 var capabilities = [
   "economy",
@@ -2241,10 +2490,10 @@ function filteredChangedPaths2(paths) {
   );
 }
 async function attemptState(root, task) {
-  const directory = import_node_path8.default.join(root, ".rigor", "evidence", task, "attempts");
+  const directory = import_node_path9.default.join(root, ".rigor", "evidence", task, "attempts");
   let names;
   try {
-    names = await (0, import_promises7.readdir)(directory);
+    names = await (0, import_promises8.readdir)(directory);
   } catch (error) {
     if (error.code === "ENOENT")
       return { count: 0, unfinished: [] };
@@ -2257,7 +2506,7 @@ async function attemptState(root, task) {
     try {
       item = record(
         JSON.parse(
-          await (0, import_promises7.readFile)(import_node_path8.default.join(directory, name), "utf8")
+          await (0, import_promises8.readFile)(import_node_path9.default.join(directory, name), "utf8")
         ),
         "attempt artifact"
       );
@@ -2556,13 +2805,13 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
   const root = await findGitRoot(cwd);
   if (command === "setup" || command === "upgrade") {
-    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path9.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
+    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path10.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
     output(await setup(root, bundle));
     return EXIT.success;
   }
@@ -2737,6 +2986,30 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output(result);
     return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
+  if (command === "release-check") {
+    const version = option(args, "--version");
+    if (!/^\d+\.\d+\.\d+$/u.test(version))
+      throw new RigorError(
+        "--version must be a semantic version like X.Y.Z",
+        EXIT.inputError
+      );
+    const expectedBranch = parseBranch(
+      option(args, "--branch", false) ?? "main"
+    );
+    const expectedSha = option(args, "--expected-sha", false) ?? null;
+    const repoArg = option(args, "--repo", false);
+    const requiredChecks = (option(args, "--required-check", false) ?? "quality").split(",").map((value) => value.trim()).filter(Boolean);
+    const repo = repoArg ? parseRepository(repoArg) : null;
+    const token = import_node_process.default.env.RIGOR_GITHUB_TOKEN ?? import_node_process.default.env.GITHUB_TOKEN ?? import_node_process.default.env.GH_TOKEN;
+    const read = repo ? githubReader(token) : null;
+    const report = await releaseVerify(
+      root,
+      { version, expectedBranch, expectedSha, repo, requiredChecks },
+      read
+    );
+    output(report);
+    return report.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
   if (command === "retrospect") {
     output(await retrospect(root));
     return EXIT.success;
@@ -2752,7 +3025,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   }
   throw new RigorError(`Unknown command: ${command}`, EXIT.inputError);
 }
-var entryName = import_node_process.default.argv[1] ? import_node_path9.default.basename(import_node_process.default.argv[1]) : "";
+var entryName = import_node_process.default.argv[1] ? import_node_path10.default.basename(import_node_process.default.argv[1]) : "";
 var isEntry = entryName === "rigor.cjs" || entryName === "rigor-ci.cjs" || entryName === "cli.ts";
 if (isEntry) {
   main().then((code) => {

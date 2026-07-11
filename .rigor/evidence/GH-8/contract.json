@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c3cb997d-82cc-4826-8d23-472b23bbe71d",
+  "taskId": "GH-8",
+  "createdAt": "2026-07-11T07:59:57.345Z",
+  "preflightArtifactId": "preflight_0dc8dbc4-58d9-4f5a-a769-752cbc61fcdb",
+  "preflightHash": "2708b1b9f68c2e71b986d1144a65cf5a21475d719204365463d7333d567d4a14",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A new `rigor release-check` command runs deterministic pre-tag findings: clean worktree, package.json and .claude-plugin/plugin.json versions matching the requested release version, a CHANGELOG.md section for that version, the committed dist/rigor.cjs byte-identical to a fresh build, HEAD on the expected branch (default main) and matching an optional expected SHA, and a successful exact-SHA GitHub CI result.",
+    "The overall release check cannot report `passed` when the target SHA lacks the required successful GitHub CI check; when the remote check is not explicitly requested that finding is unverifiable and the overall status fails closed.",
+    "A version mismatch, a dirty worktree, or a stale/hand-edited dist bundle each produces a failed finding and a non-passing overall status.",
+    "docs/release.md defines a release branch and pull-request workflow that reaches main only through a protected PR with required checks, records whether repository rules apply to administrators and any unavoidable admin bypass authority, and gives the exact tag/publish procedure; the release commit reaches main via PR, never a direct push.",
+    "README.md and README.ja.md describe the same release procedure and both link to docs/release.md.",
+    "test/release.test.ts covers success and failure cases for every finding and for CI success/failure/unverifiable using injected facts, without contacting GitHub unless the remote check is explicitly invoked.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict all pass, and the rebuilt dist/rigor.cjs is committed."
+  ],
+  "allowedPaths": [
+    "src/release.ts",
+    "src/cli.ts",
+    "test/release.test.ts",
+    "docs/release.md",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "No changes to .rigor/policy.json, .github/workflows/**, CODEOWNERS, or any other protected/critical path; if such a change appears necessary, stop and escalate.",
+    "GitHub access is read-only (GET only) and must reuse the existing governance githubReader; the command performs no GitHub writes and never tags or publishes.",
+    "The remote CI check must be separable from local checks so unit tests exercise all findings via injected facts without any network access.",
+    "dist/rigor.cjs must be produced only by the repository's npm run build; never hand-edit the bundle.",
+    "The implementation agent must not create branches, commit, tag, push, or approve its own work; the orchestrator runs verification and the human authorizes merge, tag, and publish."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

@@ -242,7 +242,7 @@ claude plugin validate . --strict
 
 `test:all` はformat check、ESLint、strict TypeScript、unit/integration/E2E、bundle再生成、plugin構造、local linkを検証します。E2Eは空の一時Gitリポジトリでsetupから独立CIまでを実行し、policy check改変と既存test削除の検出も確認します。Hook benchmarkのp95回帰上限は250 msです。
 
-release時は `CHANGELOG.md` を更新し、`package.json` と `.claude-plugin/plugin.json` を同じversionへ上げ、`dist/rigor.cjs` を再生成してcommitします。全gateと公式validation後、`vX.Y.Z` tagをpublishします。manifest versionがClaude Codeのcache versionになるため、更新配布にはversion bumpが必要です。
+releaseは[リリース手順書](docs/release.md)に従います。release commitは必須check（`rigor` と `quality`）がgreenな保護されたpull request経由でのみ `main` に到達し（直接pushは禁止）、その後に決定的な `rigor release-check` の pre-tag gateを通過して初めて、人がtagとpublishを行います。gateはclean tree、`package.json` と `.claude-plugin/plugin.json` の同期されたversion、`CHANGELOG.md` の該当セクション、fresh buildとbyte一致する `dist/rigor.cjs`、期待するbranchとcommit、そして厳密なSHAに対するGitHub CIの成功を確認します。`--repo` を省くとCIはunverifiableとなり、gateはfail closedします。manifest versionがClaude Codeのcache versionになるため、更新配布にはversion bumpが必要です。
 
 ## セキュリティ前提と既知の限界
 
