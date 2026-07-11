@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_6e7c4686-4c07-46a1-83fe-8526edba1690",
+  "taskId": "GH-6",
+  "createdAt": "2026-07-11T04:36:18.494Z",
+  "preflightArtifactId": "preflight_753b0b15-8499-4b42-ac15-c426792cef9c",
+  "preflightHash": "6847d2d5835517ed8ff0b01ec63f1bd4aa50b399ea08715439a46e608aec4bd5",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "a root CODEOWNERS file exists whose entries all name at least one owner, covering every path via a catch-all rule and explicitly naming the policy-protected governance paths",
+    "after merge, the rigor governance codeowners-sampled-coverage finding is satisfied for xhnagata/rigor main",
+    "the pull request passes the independent rigor CI check with critical-tier linked evidence",
+    "npm run test:all still passes"
+  ],
+  "allowedPaths": [
+    "CODEOWNERS"
+  ],
+  "constraints": [
+    "no code or policy changes",
+    "owner assignments limited to the repository owner xhnagata",
+    "merge performed only under the repository owner's explicit session authorization"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

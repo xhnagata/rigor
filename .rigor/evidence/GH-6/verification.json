@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_4567dd98-74af-41fc-8b65-1523712b6399",
+  "taskId": "GH-6",
+  "contractArtifactId": "contract_6e7c4686-4c07-46a1-83fe-8526edba1690",
+  "createdAt": "2026-07-11T04:36:38.597Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "ffa3b6a0b3c4ae01432a6a8046e745446178cb4e",
+  "treeHash": "8485450962c68ef172a63bca9158a4bf50bfc1b8fbc3c076e6becfa95c17ecdf",
+  "changedPaths": [
+    "CODEOWNERS"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 8,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}
