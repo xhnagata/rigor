@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_e0bb10ed-e384-490c-a25f-bfd7d54baf0c",
+  "taskId": "OPS-CI-BUNDLE",
+  "contractArtifactId": "contract_8034668c-fae1-4f8c-b74b-e75935122691",
+  "createdAt": "2026-07-11T14:00:48.031Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "2c9804199dccd65fd833cd512e7069b079fbbdb4",
+  "treeHash": "421c0563f71c59bc296e4991d51e0b914af032e8a473d437ed916f99fe63c20c",
+  "changedPaths": [
+    ".rigor/rigor-ci.cjs"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 8,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}
