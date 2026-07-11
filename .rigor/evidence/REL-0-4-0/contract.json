@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_f4a107e1-c176-4984-b4bb-5cdd50002703",
+  "taskId": "REL-0-4-0",
+  "createdAt": "2026-07-11T14:53:37.588Z",
+  "preflightArtifactId": "preflight_a9d5a4de-b078-4fae-9855-d2f30412e4bd",
+  "preflightHash": "08aebbb119443e616e110380a213dbadec46cb228a61d52efecb312a22eacd85",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.4.0.",
+    "CHANGELOG.md has a dated 0.4.0 section describing the assessment-confidence change.",
+    "The committed dist/rigor.cjs is byte-identical to a fresh build.",
+    "No source, schema, test, or policy behavior changes in the release commit."
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Only bump versions and edit the changelog; do not change runtime behavior.",
+    "Do not weaken, skip, or delete tests.",
+    "Do not modify protected paths or the CI bundle in this release commit.",
+    "dist/rigor.cjs must remain byte-identical to a fresh build of the merged source."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

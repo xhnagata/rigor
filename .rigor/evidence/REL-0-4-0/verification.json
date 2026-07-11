@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_b1422031-d7e6-45fa-a49b-625c67975d13",
+  "taskId": "REL-0-4-0",
+  "contractArtifactId": "contract_f4a107e1-c176-4984-b4bb-5cdd50002703",
+  "createdAt": "2026-07-11T14:54:09.596Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "5baf8a765f155140ac1abcf15ba119390dad91aa",
+  "treeHash": "4a59f8c10dd8db9ede793d4697855332589ae7a3c27b2e67c3b2276d911bcc4b",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 8,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}
