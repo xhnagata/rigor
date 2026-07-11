@@ -30,6 +30,11 @@ In CI, `rigor ci` receives GitHub-provided base/head SHAs, verifies that both ar
 - Setup writes only absent, Rigor-owned files. Existing unequal content is reported as a conflict; upgrades never silently replace user changes.
 - Hook input is treated as untrusted JSON. Unconfigured repositories exit successfully; configured repositories with missing or invalid policy return a blocking `UserPromptSubmit` decision.
 - External transmission is a policy result, not an action by the deterministic CLI. The CLI never calls a model; `rigor governance` is its single remote command and sends read-only GET requests to the GitHub API. When explicitly invoked, the orchestration/consult Skills may delegate minimal context to Claude Code agents or an installed `codex-plugin-cc` only after policy permits it. The [threat model](threat-model.md) documents these trust boundaries.
+- Release provenance is a separate producer/consumer protocol. The current
+  architecture has producer-side reproducibility and CI checks but no
+  pre-execution verifier for the downloaded plugin. [ADR 0001](adr/0001-provenance-trust-model.md)
+  recommends subject-bound GitHub Artifact Attestations and makes consumer
+  enforcement a prerequisite for any distribution-integrity guarantee.
 
 ## Official specification basis
 

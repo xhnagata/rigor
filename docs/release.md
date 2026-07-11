@@ -6,6 +6,13 @@ deterministic `rigor release-check` gate passes. Rigor itself never tags,
 pushes, or changes any GitHub setting; every step below is a human-authorized
 action.
 
+This gate is a producer-side release control, not consumer-verifiable
+provenance. It does not sign or attest `dist/rigor.cjs`, authenticate a plugin
+cache, or prove to a downloader that the bytes it received came from the checked
+workflow and source commit. [ADR 0001](adr/0001-provenance-trust-model.md)
+defines the proposed provenance design and treats the missing pre-execution
+consumer verifier as a blocker for an end-to-end distribution guarantee.
+
 ## The protected path
 
 Cut a release only from a `main` commit that reached `main` through a protected
@@ -96,6 +103,18 @@ All steps are human-authorized; Rigor performs none of them.
    git tag vX.Y.Z <merged-main-sha>
    git push origin vX.Y.Z
    ```
+
+Until issues #25 and #26 implement and validate ADR 0001, do not describe this
+procedure as producing an attested release. A tag, release page, CI success, or
+checksum placed beside the same artifact is not independent proof. The current
+release may be described only as a bundle reproducibly checked before tagging.
+
+When provenance is implemented, release documentation must additionally identify
+the attested bundle and complete-plugin subject digests, source commit equal to
+the tag target, signer workflow identity, attestation bundles, withdrawal/deny
+procedure, and the exact consumer command or promotion boundary that fails
+closed before execution. Those future steps supplement rather than replace this
+pre-tag gate.
 
 See the [threat model](threat-model.md) for the read-only GitHub API trust
 boundary that `rigor governance` and `rigor release-check` rely on.
