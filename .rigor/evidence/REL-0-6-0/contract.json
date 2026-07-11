@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_3582ce93-313f-48e2-9251-f660a1ac2f6c",
+  "taskId": "REL-0-6-0",
+  "createdAt": "2026-07-11T16:29:11.141Z",
+  "preflightArtifactId": "preflight_8c5e47e4-0a62-4319-a5a4-bc9eff0c30f8",
+  "preflightHash": "805ded6be15d5a295b6284d7274736d23243ea7cdd06c801d3326fbc8ca302dd",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "CHANGELOG.md has a 0.6.0 section containing the #11 /rigor:assess entry and no Unreleased section remains.",
+    "package.json and .claude-plugin/plugin.json both declare version 0.6.0.",
+    "The committed dist/rigor.cjs is byte-identical to a fresh build and .rigor/rigor-ci.cjs is byte-identical to dist/rigor.cjs.",
+    "npm run test:all, npm run bench, claude plugin validate . --strict, and git diff --check pass.",
+    "rigor release-check --version 0.6.0 passes on the merged main commit before any tag is created."
+  ],
+  "allowedPaths": [
+    "CHANGELOG.md",
+    "package.json",
+    ".claude-plugin/plugin.json"
+  ],
+  "constraints": [
+    "No source, schema, skill, or test changes in this release commit.",
+    "The release commit reaches main only through a protected pull request with required checks green; never a direct push.",
+    "Tag and publish only after rigor release-check reports overall passed on the merged main SHA."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
