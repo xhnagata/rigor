@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_03e2118d-1fb4-4e85-9e44-da5179cd2c2e",
+  "taskId": "GH-8-R2",
+  "createdAt": "2026-07-11T08:18:29.233Z",
+  "preflightArtifactId": "preflight_8901fef5-d777-401d-9875-98905e444d95",
+  "preflightHash": "b7c87e8f921b867185fb5420c7cb7604b046de9f7f63e3bd8c7304661e6021db",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "releaseCiFact returns an `unverifiable` (fail-closed) result when the required-check set is empty, instead of vacuously reporting success, and a unit test covers this without contacting GitHub.",
+    "docs/release.md clarifies that on a merged main commit only the quality check runs for the push, so the pre-tag gate uses --required-check quality and requiring the PR-only rigor check on the main SHA would fail closed unpassably.",
+    "All original GH-8 acceptance criteria still hold; npm run test:all, npm run bench, and claude plugin validate . --strict all pass with the rebuilt dist/rigor.cjs.",
+    "The full change set stays within the eight allowed paths and re-verifies with no scope violations."
+  ],
+  "allowedPaths": [
+    "src/release.ts",
+    "src/cli.ts",
+    "test/release.test.ts",
+    "docs/release.md",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "No changes to .rigor/policy.json, .github/workflows/**, CODEOWNERS, package.json, or .claude-plugin/plugin.json.",
+    "GitHub access stays read-only (GET only) via the existing governance githubReader; no GitHub writes, tags, or publishes.",
+    "The remediation must strengthen, not weaken, the fail-closed behavior; the human owner authorizes merge, tag, and publish."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `rigor release-check`, a deterministic pre-tag gate that verifies a clean worktree, synchronized `package.json` and `.claude-plugin/plugin.json` versions, a `CHANGELOG.md` entry for the requested version, a committed `dist/rigor.cjs` byte-identical to a fresh build, HEAD on the expected branch and optional pinned SHA, and a successful exact-SHA GitHub CI result via the read-only `githubReader`; the remote check is separable so unit tests exercise every finding with injected facts and no network, and the gate fails closed when CI is unverified. Document the protected-PR release path (release commits reach `main` only through a protected pull request with required checks, never a direct push) in [docs/release.md](docs/release.md) and both READMEs ([#8](https://github.com/xhnagata/rigor/issues/8)).
+
 ## 0.2.0 - 2026-07-11
 
 - Fix the generated `.rigor/rigor-ci.cjs` entrypoint so direct GitHub workflow execution runs the verifier instead of exiting successfully without output. E2E now executes the generated bundle by its installed filename and requires parseable verifier output.

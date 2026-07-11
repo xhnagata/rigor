@@ -26,6 +26,7 @@ import {
 } from "./governance.js";
 import { userPromptHook } from "./hook.js";
 import { evaluate } from "./policy.js";
+import { releaseVerify } from "./release.js";
 import {
   createRoutingPlan,
   parseModelProfiles,
@@ -91,7 +92,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|retrospect|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -287,6 +288,38 @@ export async function main(
     );
     output(result);
     return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
+  }
+  if (command === "release-check") {
+    const version = option(args, "--version")!;
+    if (!/^\d+\.\d+\.\d+$/u.test(version))
+      throw new RigorError(
+        "--version must be a semantic version like X.Y.Z",
+        EXIT.inputError,
+      );
+    const expectedBranch = parseBranch(
+      option(args, "--branch", false) ?? "main",
+    );
+    const expectedSha = option(args, "--expected-sha", false) ?? null;
+    const repoArg = option(args, "--repo", false);
+    const requiredChecks = (
+      option(args, "--required-check", false) ?? "quality"
+    )
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const repo = repoArg ? parseRepository(repoArg) : null;
+    const token =
+      process.env.RIGOR_GITHUB_TOKEN ??
+      process.env.GITHUB_TOKEN ??
+      process.env.GH_TOKEN;
+    const read = repo ? githubReader(token) : null;
+    const report = await releaseVerify(
+      root,
+      { version, expectedBranch, expectedSha, repo, requiredChecks },
+      read,
+    );
+    output(report);
+    return report.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "retrospect") {
     output(await retrospect(root));

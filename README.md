@@ -242,7 +242,7 @@ claude plugin validate . --strict
 
 `test:all` runs formatting, ESLint, strict TypeScript, unit/integration/E2E tests, a fresh bundle, plugin structure validation, and local-link checks. The E2E test creates an empty temporary Git repository and covers setup through independent CI, including policy-check mutation and test deletion. Hook p95 must remain below 250 ms on the documented local benchmark.
 
-For release, update `CHANGELOG.md`, bump both `package.json` and `.claude-plugin/plugin.json`, rebuild and commit `dist/rigor.cjs`, run all gates and official validation, tag `vX.Y.Z`, and publish the Git tag. The manifest version is the Claude Code cache version, so it must change for users to receive an update.
+Releases follow the [release runbook](docs/release.md): the release commit reaches `main` only through a protected pull request with the required `rigor` and `quality` checks green (never a direct push), then the deterministic `rigor release-check` pre-tag gate must pass, and only then does a human tag and publish. The gate confirms a clean tree, synchronized `package.json` and `.claude-plugin/plugin.json` versions, a matching `CHANGELOG.md` entry, a `dist/rigor.cjs` byte-identical to a fresh build, the expected branch and commit, and a successful exact-SHA GitHub CI result; omitting `--repo` leaves CI unverified and the gate fails closed. The manifest version is the Claude Code cache version, so it must change for users to receive an update.
 
 ## Security and known limitations
 
