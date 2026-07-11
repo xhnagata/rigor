@@ -16,6 +16,7 @@ for (const file of [
   "skills/attempt/SKILL.md",
   "skills/consult/SKILL.md",
   "skills/orchestrate/SKILL.md",
+  "skills/assess/SKILL.md",
   "skills/route/SKILL.md",
   "skills/verify/SKILL.md",
   "skills/escalate/SKILL.md",

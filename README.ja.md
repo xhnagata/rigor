@@ -185,7 +185,7 @@ rigor outcome --input /tmp/outcome-input.json --attempt .rigor/evidence/APP-123/
 
 ## 日常フロー
 
-手動Skillの `/rigor:preflight`、`/rigor:contract`、`/rigor:route`、`/rigor:attempt`、`/rigor:verify`、`/rigor:escalate`、`/rigor:review`、`/rigor:retrospect` が同じCLIフローを案内します。`/rigor:consult`と`/rigor:orchestrate`は、明示的に起動するmodel利用workflowであり、同じCLI policyと検証commandに制約されます。Skillの実行だけで統制が暗黙に成立することはありません。
+手動Skillの `/rigor:preflight`、`/rigor:contract`、`/rigor:route`、`/rigor:attempt`、`/rigor:verify`、`/rigor:escalate`、`/rigor:review`、`/rigor:retrospect` が同じCLIフローを案内します。`/rigor:consult`と`/rigor:orchestrate`は、明示的に起動するmodel利用workflowであり、同じCLI policyと検証commandに制約されます。`/rigor:assess`は、human-authoredのrouting inputがない場合に`/rigor:orchestrate`がrouteするための検証済み `rigor.routing-input.v2`（task characteristics、evidence、confidence）を生成しますが、model自体を指名・選択することはありません。Skillの実行だけで統制が暗黙に成立することはありません。
 
 実行順序は、委譲編集前にpreflight、contract、recorded route、attempt startを行い、全編集（再buildした `dist/rigor.cjs` を含む）の完了後に `rigor verify`とattempt finish、次に `rigor review`、最後にcodeとevidenceを1つのcommitにまとめる、の順を推奨します。verificationはworktreeの未commit変更を記録するため、最後の編集より前にverifyしたり途中でcommitを挟むと、pull request全体の変更を覆わないevidenceになりCIが拒否します。core artifactはwrite-onceで、taskの `preflight.json`、`contract.json`、`verification.json`、`review.json` は上書きされません。routing、attempt、consultation artifactはappend-only collectionです。scopeが変わった場合や保存後に再verifyが必要な場合は、`APP-123-R2` のような新しいtask IDで始め、以前のartifactは残してください。
 

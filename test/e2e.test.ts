@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -409,4 +409,225 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
       item.includes("base check changed"),
     ),
   );
+});
+
+// GH-11: /rigor:assess produces a rigor.routing-input.v2 whose validation is
+// `rigor route --dry-run`. These fixtures exercise the CLI directly for both
+// the allowed (economy-selected) and stopped (requires-review) flows.
+
+async function setupSpikeRepo(): Promise<{
+  parent: string;
+  root: string;
+  preflight: Record<string, unknown>;
+  contract: Record<string, unknown>;
+  modelProfiles: string;
+}> {
+  const parent = await mkdtemp(path.join(tmpdir(), "rigor-e2e-assess-"));
+  const root = path.join(parent, "repo");
+  await mkdir(root);
+  await git(root, ["init", "-q", "-b", "main"]);
+  await git(root, ["config", "user.email", "rigor@example.invalid"]);
+  await git(root, ["config", "user.name", "Rigor Test"]);
+  await rigor(root, ["setup"]);
+  await git(root, ["add", "."]);
+  await git(root, ["commit", "-q", "-m", "configure rigor"]);
+
+  await mkdir(path.join(root, "src"));
+  await writeFile(
+    path.join(root, "src", "greeting.ts"),
+    'export const greeting = "hi";\n',
+  );
+  const intentFile = path.join(parent, "intent.json");
+  await writeFile(
+    intentFile,
+    JSON.stringify({
+      schemaVersion: "rigor.intent.v1",
+      taskId: "SPIKE-ROUTE-1",
+      summary: "add a trivial constant export",
+      plannedPaths: ["src/greeting.ts"],
+    }),
+  );
+  const preflight = await rigor(root, ["preflight", "--intent", intentFile]);
+  const contractInput = path.join(parent, "contract.json");
+  await writeFile(
+    contractInput,
+    JSON.stringify({
+      schemaVersion: "rigor.contract-input.v1",
+      taskId: "SPIKE-ROUTE-1",
+      acceptanceCriteria: ["greeting constant exists"],
+      allowedPaths: ["src/**"],
+      constraints: ["no external writes"],
+    }),
+  );
+  const contract = await rigor(root, [
+    "contract",
+    "--preflight",
+    String(preflight.saved),
+    "--input",
+    contractInput,
+  ]);
+
+  const modelProfiles = path.join(parent, "model-profiles.json");
+  await writeFile(
+    modelProfiles,
+    JSON.stringify({
+      schemaVersion: "rigor.model-profiles.v1",
+      candidates: [
+        {
+          id: "claude-economy",
+          provider: "claude",
+          capabilityClass: "economy",
+          purposes: ["implementation"],
+          relativeCost: 5,
+          requiresAdditionalExternalTransmission: false,
+          enabled: true,
+        },
+        {
+          id: "claude-standard",
+          provider: "claude",
+          capabilityClass: "standard",
+          purposes: ["implementation"],
+          relativeCost: 20,
+          requiresAdditionalExternalTransmission: false,
+          enabled: true,
+        },
+      ],
+    }),
+  );
+  return { parent, root, preflight, contract, modelProfiles };
+}
+
+function spikeRoutingInput(
+  confidence: "low" | "medium",
+): Record<string, unknown> {
+  return {
+    schemaVersion: "rigor.routing-input.v2",
+    taskId: "SPIKE-ROUTE-1",
+    purpose: "implementation",
+    signals: {
+      complexity: "low",
+      ambiguity: "low",
+      novelty: "low",
+      verificationStrength: "strong",
+    },
+    budget: {
+      maxAttempts: 2,
+      maxDurationMs: 60000,
+      maxRelativeCost: 100,
+    },
+    assessment: {
+      confidence,
+      evidence: [
+        {
+          path: "src/greeting.ts",
+          observation:
+            "The file defines a single constant export with no branching logic.",
+        },
+      ],
+    },
+  };
+}
+
+test("SPIKE-ROUTE-1-like low-complexity assessment deterministically selects an eligible economy candidate through rigor route", async () => {
+  const { parent, root, preflight, contract, modelProfiles } =
+    await setupSpikeRepo();
+  const routingInput = path.join(parent, "routing-input.json");
+  await writeFile(routingInput, JSON.stringify(spikeRoutingInput("medium")));
+
+  const routing = await rigor(root, [
+    "route",
+    "--dry-run",
+    "--preflight",
+    String(preflight.saved),
+    "--input",
+    routingInput,
+    "--profiles",
+    modelProfiles,
+  ]);
+  assert.equal(routing.status, "selected");
+  assert.equal(routing.requiredCapabilityClass, "economy");
+  assert.equal(
+    (routing.selection as { candidateId: string }).candidateId,
+    "claude-economy",
+  );
+
+  const routingPlan = await rigor(root, [
+    "route",
+    "--record",
+    "--preflight",
+    String(preflight.saved),
+    "--contract",
+    String(contract.saved),
+    "--input",
+    routingInput,
+    "--profiles",
+    modelProfiles,
+  ]);
+  assert.equal(routingPlan.status, "planned");
+  assert.equal(
+    (routingPlan.selection as { candidateId: string }).candidateId,
+    "claude-economy",
+  );
+});
+
+test("SPIKE-ROUTE-1-like low-confidence assessment stops with requires-review instead of silently selecting an economy candidate", async () => {
+  const { parent, root, preflight, contract, modelProfiles } =
+    await setupSpikeRepo();
+  const routingInput = path.join(parent, "routing-input.json");
+  await writeFile(routingInput, JSON.stringify(spikeRoutingInput("low")));
+
+  const routing = await rigor(
+    root,
+    [
+      "route",
+      "--dry-run",
+      "--preflight",
+      String(preflight.saved),
+      "--input",
+      routingInput,
+      "--profiles",
+      modelProfiles,
+    ],
+    2,
+  );
+  assert.equal(routing.status, "requires-review");
+  assert.equal(routing.selection, null);
+  assert.deepEqual(routing.eligibleCandidates, [
+    "claude-economy",
+    "claude-standard",
+  ]);
+
+  const routingPlan = await rigor(
+    root,
+    [
+      "route",
+      "--record",
+      "--preflight",
+      String(preflight.saved),
+      "--contract",
+      String(contract.saved),
+      "--input",
+      routingInput,
+      "--profiles",
+      modelProfiles,
+    ],
+    2,
+  );
+  assert.equal(routingPlan.status, "requires-review");
+  assert.equal(routingPlan.selection, null);
+
+  const routingDir = path.join(
+    root,
+    ".rigor",
+    "evidence",
+    "SPIKE-ROUTE-1",
+    "routing",
+  );
+  const persisted = await readdir(routingDir).catch(
+    (error: NodeJS.ErrnoException) => {
+      assert.equal(error.code, "ENOENT");
+      return [];
+    },
+  );
+  assert.deepEqual(persisted, []);
 });

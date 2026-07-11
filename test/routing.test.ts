@@ -435,3 +435,122 @@ test("valid high-confidence non-contradictory v2 assessment selects successfully
     parsed.assessment?.evidence.length,
   );
 });
+
+// GH-11: an /rigor:assess-shaped fixture (all-low signals, path-anchored
+// evidence) must deterministically select an eligible economy candidate, and
+// the same shape with low confidence must stop instead of silently falling
+// back to that economy candidate.
+
+const spikePreflight: Preflight = {
+  ...preflight,
+  taskId: "SPIKE-ROUTE-1",
+};
+
+const economyProfiles: ModelProfiles = {
+  schemaVersion: "rigor.model-profiles.v1",
+  candidates: [
+    {
+      id: "claude-economy",
+      provider: "claude",
+      capabilityClass: "economy",
+      purposes: ["implementation"],
+      relativeCost: 5,
+      requiresAdditionalExternalTransmission: false,
+      enabled: true,
+    },
+    {
+      id: "claude-standard",
+      provider: "claude",
+      capabilityClass: "standard",
+      purposes: ["implementation"],
+      relativeCost: 20,
+      requiresAdditionalExternalTransmission: false,
+      enabled: true,
+    },
+  ],
+};
+
+function makeSpikeContract() {
+  return {
+    schemaVersion: "rigor.contract.v1" as const,
+    artifactId: "spike-contract-1",
+    taskId: "SPIKE-ROUTE-1",
+    createdAt: new Date(0).toISOString(),
+    preflightArtifactId: spikePreflight.artifactId,
+    preflightHash: hash(spikePreflight),
+    riskTier: spikePreflight.riskTier,
+    externalTransmission: spikePreflight.externalTransmission,
+    acceptanceCriteria: ["greeting constant exists"],
+    allowedPaths: ["src/**"],
+    constraints: [],
+    requiredChecks: [],
+    stopConditions: [],
+  };
+}
+
+function makeSpikeInput(confidence: "low" | "medium" | "high"): unknown {
+  return {
+    schemaVersion: "rigor.routing-input.v2",
+    taskId: "SPIKE-ROUTE-1",
+    purpose: "implementation",
+    signals: {
+      complexity: "low",
+      ambiguity: "low",
+      novelty: "low",
+      verificationStrength: "strong",
+    },
+    budget: {
+      maxAttempts: 2,
+      maxDurationMs: 60_000,
+      maxRelativeCost: 100,
+    },
+    assessment: {
+      confidence,
+      evidence: [
+        {
+          path: "src/greeting.ts",
+          observation:
+            "The file defines a single constant export with no branching logic and an existing deterministic test.",
+        },
+      ],
+    },
+  };
+}
+
+test("SPIKE-ROUTE-1-like all-low-signal assessment deterministically selects an eligible economy candidate", () => {
+  const parsed = parseRoutingInput(makeSpikeInput("medium"));
+  const decision = route(spikePreflight, parsed, economyProfiles);
+  assert.equal(decision.status, "selected");
+  assert.equal(decision.requiredCapabilityClass, "economy");
+  assert.equal(decision.selection?.candidateId, "claude-economy");
+  assert.equal(decision.selection?.capabilityClass, "economy");
+  const plan = createRoutingPlan(
+    decision,
+    spikePreflight,
+    makeSpikeContract(),
+    new Date(0),
+  );
+  assert.equal(plan.status, "planned");
+  assert.equal(plan.selection?.candidateId, "claude-economy");
+});
+
+test("SPIKE-ROUTE-1-like low-confidence assessment requires review instead of silently selecting the economy candidate", () => {
+  const parsed = parseRoutingInput(makeSpikeInput("low"));
+  const decision = route(spikePreflight, parsed, economyProfiles);
+  assert.equal(decision.status, "requires-review");
+  assert.equal(decision.selection, null);
+  // The economy candidate remains eligible under deterministic filtering;
+  // low confidence alone is what stops selection, not exclusion.
+  assert.deepEqual(decision.eligibleCandidates, [
+    "claude-economy",
+    "claude-standard",
+  ]);
+  assert.throws(() =>
+    createRoutingPlan(
+      decision,
+      spikePreflight,
+      makeSpikeContract(),
+      new Date(0),
+    ),
+  );
+});
