@@ -1,10 +1,10 @@
 {
   "schemaVersion": "rigor.contract.v1",
-  "artifactId": "contract_fcb6a679-37ec-4752-90cc-306ef08be6e4",
+  "artifactId": "contract_33d334d7-3d96-40c9-9518-759df04c29e6",
   "taskId": "GH-10",
-  "createdAt": "2026-07-11T14:20:26.552Z",
-  "preflightArtifactId": "preflight_6f285b44-5f22-43ac-b8c2-96197c4593d8",
-  "preflightHash": "ee099f801d469c2017ad2f5d609150f1036fcdddf6fe7efc8fd8d309d637a6aa",
+  "createdAt": "2026-07-11T14:48:35.270Z",
+  "preflightArtifactId": "preflight_63bc7603-9902-4b4a-ac60-87a41e0e9e82",
+  "preflightHash": "3aa34ab3e149a0c0aa6f1009ef2e12044281d80ce4d32ef31bb4353040e1a46a",
   "riskTier": "high",
   "externalTransmission": "allowed",
   "acceptanceCriteria": [
@@ -23,7 +23,8 @@
     "schemas/routing-decision.v1.schema.json",
     "schemas/routing-plan.v1.schema.json",
     "docs/orchestration.md",
-    "test/routing.test.ts"
+    "test/routing.test.ts",
+    "dist/rigor.cjs"
   ],
   "constraints": [
     "Do not invoke any model from the deterministic CLI.",
@@ -31,6 +32,7 @@
     "Do not claim confidence is a calibrated probability.",
     "Do not weaken, skip, or delete existing tests.",
     "Do not change protected paths, public CLI command surface, or security boundaries.",
+    "dist/rigor.cjs is a generated build artifact rebuilt from the allowed source; it is not hand-edited.",
     "Confidence and evidence semantics must be deterministic and reviewable, not verified facts."
   ],
   "requiredChecks": [

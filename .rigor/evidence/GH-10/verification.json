@@ -1,13 +1,14 @@
 {
   "schemaVersion": "rigor.verification.v1",
-  "artifactId": "verification_53500598-58e1-4520-a845-c97ef51595f5",
+  "artifactId": "verification_7c77deac-355c-4530-a810-67e34b1e0e54",
   "taskId": "GH-10",
-  "contractArtifactId": "contract_fcb6a679-37ec-4752-90cc-306ef08be6e4",
-  "createdAt": "2026-07-11T14:34:31.618Z",
+  "contractArtifactId": "contract_33d334d7-3d96-40c9-9518-759df04c29e6",
+  "createdAt": "2026-07-11T14:48:53.517Z",
   "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
   "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
-  "treeHash": "c5c5e2bd09a995f1b1f7e35a202858cb013f0b1621144b9a42acd57b20b6f7fe",
+  "treeHash": "c99172764b56bd5fd115f293601cfd7f807000af2512527933e543666055acf7",
   "changedPaths": [
+    "dist/rigor.cjs",
     "docs/orchestration.md",
     "schemas/routing-decision.v1.schema.json",
     "schemas/routing-input.v2.schema.json",
@@ -22,7 +23,7 @@
       "id": "git-diff-check",
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 8,
+      "durationMs": 12,
       "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
