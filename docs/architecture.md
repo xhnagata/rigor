@@ -2,20 +2,22 @@
 
 ## Responsibilities
 
-| Component              | Responsibility                                                                                                    | Authority                                             |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Plugin manifest        | Discovery and versioned packaging                                                                                 | None                                                  |
-| Skills                 | Tell Claude when and how to invoke deterministic workflow steps                                                   | Advisory                                              |
-| Reviewer agent         | Read-only synthesis of already prepared review material                                                           | Advisory                                              |
-| Hook                   | Fast preflight reminder/check on prompt submission; no-op when Rigor is absent                                    | Bypassable early feedback                             |
-| TypeScript library/CLI | Parse schemas, normalize paths, evaluate policy, inspect Git, run configured checks, and write redacted artifacts | Deterministic local result                            |
-| Generated policy       | Repository-specific classification, risk, scope, and verification rules                                           | Reviewed input                                        |
-| Generated CI           | Check base/head, policy evolution, protected changes, evidence linkage, and run deterministic checks              | Authoritative required check when protected by GitHub |
-| GitHub/human review    | Protect branch, require CI/CODEOWNERS/independent approval                                                        | Authoritative merge control                           |
+| Component              | Responsibility                                                                                                                                 | Authority                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Plugin manifest        | Discovery and versioned packaging                                                                                                              | None                                                  |
+| Skills                 | Tell Claude when and how to invoke deterministic workflow steps                                                                                | Advisory                                              |
+| Reviewer agent         | Read-only synthesis of already prepared review material                                                                                        | Advisory                                              |
+| Hook                   | Fast preflight reminder/check on prompt submission; no-op when Rigor is absent                                                                 | Bypassable early feedback                             |
+| TypeScript library/CLI | Parse schemas, normalize paths, evaluate policy, preview constrained routing, inspect Git, run configured checks, and write redacted artifacts | Deterministic local result                            |
+| Generated policy       | Repository-specific classification, risk, scope, and verification rules                                                                        | Reviewed input                                        |
+| Generated CI           | Check base/head, policy evolution, protected changes, evidence linkage, and run deterministic checks                                           | Authoritative required check when protected by GitHub |
+| GitHub/human review    | Protect branch, require CI/CODEOWNERS/independent approval                                                                                     | Authoritative merge control                           |
 
 ## Data flow
 
 The CLI reads `.rigor/policy.json`, an intent JSON file, and Git facts. Pure policy evaluation produces a preflight artifact. Contract creation consumes that artifact and explicit acceptance criteria. Verification rechecks scope and executes configured commands directly (no shell), storing only status, duration, and a digest. Escalation and review consume the linked artifacts. Retrospective reads redacted JSONL events.
+
+Optional routing preview consumes a preflight artifact, an explicit assessment, and model profiles. A pure selector excludes candidates by enabled state, purpose, additional-transmission policy, capability, and relative-cost budget. It invokes no model and persists no evidence in Phase 1. The [orchestration design](orchestration.md) defines the boundary for later Claude Code and `codex-plugin-cc` integration.
 
 In CI, `rigor ci` receives GitHub-provided base/head SHAs, verifies that both are commits, reads policy and evidence directly from each Git object, computes `git diff`, rejects policy weakening or unmatched evidence, and runs the head policy's checks. The verifier does not accept contributor-provided changed-path or pass claims as facts.
 

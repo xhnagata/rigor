@@ -24,6 +24,7 @@ import {
 } from "./governance.js";
 import { userPromptHook } from "./hook.js";
 import { evaluate } from "./policy.js";
+import { parseModelProfiles, parseRoutingInput, route } from "./routing.js";
 import { parseIntent } from "./schema.js";
 import { setup } from "./setup.js";
 import { readJson, record } from "./util.js";
@@ -69,7 +70,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|route|verify|escalate|review|retrospect|governance|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -105,6 +106,23 @@ export async function main(
     const saved = await saveArtifact(root, result.taskId, "contract", result);
     output({ ...result, saved });
     return EXIT.success;
+  }
+  if (command === "route") {
+    if (!args.includes("--dry-run"))
+      throw new RigorError(
+        "route currently requires --dry-run",
+        EXIT.inputError,
+      );
+    const preflight = parsePreflight(
+      await readJson(option(args, "--preflight")!),
+    );
+    const input = parseRoutingInput(await readJson(option(args, "--input")!));
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles")!),
+    );
+    const result = route(preflight, input, profiles);
+    output(result);
+    return result.status === "selected" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "verify") {
     const contract = parseContract(await readJson(option(args, "--contract")!));

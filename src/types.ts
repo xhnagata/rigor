@@ -7,9 +7,23 @@ export const VERIFY_SCHEMA = "rigor.verification.v1" as const;
 export const ESCALATION_SCHEMA = "rigor.escalation.v1" as const;
 export const ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1" as const;
 export const REVIEW_SCHEMA = "rigor.review.v1" as const;
+export const ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1" as const;
+export const MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1" as const;
+export const ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1" as const;
+export const ATTEMPT_SCHEMA = "rigor.attempt.v1" as const;
+export const CONSULTATION_SCHEMA = "rigor.consultation.v1" as const;
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
+export type SignalLevel = "low" | "medium" | "high" | "critical";
+export type VerificationStrength = "weak" | "moderate" | "strong";
+export type CapabilityClass = "economy" | "standard" | "premium" | "frontier";
+export type RoutingPurpose =
+  | "implementation"
+  | "consultation"
+  | "review"
+  | "adversarial-review"
+  | "rescue";
 
 export interface Rule {
   id: string;
@@ -123,4 +137,121 @@ export interface EscalationInput {
   disprovedHypotheses: string[];
   speculation: string[];
   requestedDecision: string;
+}
+
+export interface RoutingInput {
+  schemaVersion: typeof ROUTING_INPUT_SCHEMA;
+  taskId: string;
+  purpose: RoutingPurpose;
+  signals: {
+    complexity: SignalLevel;
+    ambiguity: SignalLevel;
+    novelty: SignalLevel;
+    verificationStrength: VerificationStrength;
+  };
+  assessmentReasons: string[];
+  budget: {
+    maxAttempts: number;
+    maxDurationMs: number;
+    maxRelativeCost: number;
+  };
+}
+
+export interface ModelCandidate {
+  id: string;
+  provider: string;
+  model?: string;
+  capabilityClass: CapabilityClass;
+  purposes: RoutingPurpose[];
+  relativeCost: number;
+  requiresAdditionalExternalTransmission: boolean;
+  enabled: boolean;
+}
+
+export interface ModelProfiles {
+  schemaVersion: typeof MODEL_PROFILES_SCHEMA;
+  candidates: ModelCandidate[];
+}
+
+export type RoutingExclusionReason =
+  | "DISABLED"
+  | "PURPOSE_UNSUPPORTED"
+  | "EXTERNAL_TRANSMISSION_DENIED"
+  | "INSUFFICIENT_CAPABILITY"
+  | "BUDGET_EXCEEDED";
+
+export interface RoutingDecision {
+  schemaVersion: typeof ROUTING_DECISION_SCHEMA;
+  mode: "dry-run";
+  taskId: string;
+  preflightArtifactId: string;
+  preflightHash: string;
+  routingInputHash: string;
+  modelProfilesHash: string;
+  purpose: RoutingPurpose;
+  requiredCapabilityClass: CapabilityClass;
+  eligibleCandidates: string[];
+  excludedCandidates: Array<{
+    candidateId: string;
+    reasonCode: RoutingExclusionReason;
+  }>;
+  selection: {
+    candidateId: string;
+    provider: string;
+    model?: string;
+    capabilityClass: CapabilityClass;
+    relativeCost: number;
+  } | null;
+  controls: {
+    externalTransmission: Transmission;
+    requireHumanApproval: boolean;
+    requireIndependentReview: boolean;
+  };
+  budget: RoutingInput["budget"];
+  status: "selected" | "unroutable";
+}
+
+export interface Attempt {
+  schemaVersion: typeof ATTEMPT_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  routingDecisionArtifactId: string;
+  createdAt: string;
+  sequence: number;
+  provider: string;
+  model?: string;
+  capabilityClass: CapabilityClass;
+  purpose: RoutingPurpose;
+  startedAt: string;
+  completedAt?: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  changedPaths: string[];
+  verificationArtifactId?: string;
+  failureClass?: string;
+}
+
+export interface Consultation {
+  schemaVersion: typeof CONSULTATION_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  sequence: number;
+  provider: string;
+  mode: "review" | "adversarial-review" | "consultation" | "rescue";
+  requestedDecision: string;
+  transmissionDecision: Transmission;
+  beforeTreeHash: string;
+  afterTreeHash: string;
+  changedPathsBefore: string[];
+  changedPathsAfter: string[];
+  externalJobId?: string;
+  externalSessionId?: string;
+  externalTurnId?: string;
+  model?: string;
+  reasoningEffort?: string;
+  usageStatus: "recorded" | "unavailable";
+  status: "completed" | "failed" | "mutated-worktree";
+  outcome: "accept" | "revise" | "reject" | "investigate" | "ask-human";
+  findingCount: number;
+  requiredActions: string[];
 }

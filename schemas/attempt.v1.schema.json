@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/attempt.v1.schema.json",
+  "title": "Rigor attempt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "routingDecisionArtifactId",
+    "createdAt",
+    "sequence",
+    "provider",
+    "capabilityClass",
+    "purpose",
+    "startedAt",
+    "status",
+    "changedPaths"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.attempt.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "routingDecisionArtifactId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "capabilityClass": {
+      "enum": ["economy", "standard", "premium", "frontier"]
+    },
+    "purpose": {
+      "enum": [
+        "implementation",
+        "consultation",
+        "review",
+        "adversarial-review",
+        "rescue"
+      ]
+    },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["running", "completed", "failed", "cancelled"] },
+    "changedPaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "verificationArtifactId": { "type": "string", "minLength": 1 },
+    "failureClass": { "type": "string", "minLength": 1 }
+  }
+}

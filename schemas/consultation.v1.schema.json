@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/consultation.v1.schema.json",
+  "title": "Rigor consultation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "sequence",
+    "provider",
+    "mode",
+    "requestedDecision",
+    "transmissionDecision",
+    "beforeTreeHash",
+    "afterTreeHash",
+    "changedPathsBefore",
+    "changedPathsAfter",
+    "usageStatus",
+    "status",
+    "outcome",
+    "findingCount",
+    "requiredActions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.consultation.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "mode": {
+      "enum": ["review", "adversarial-review", "consultation", "rescue"]
+    },
+    "requestedDecision": { "type": "string", "minLength": 1 },
+    "transmissionDecision": { "enum": ["allowed", "denied"] },
+    "beforeTreeHash": { "type": "string", "minLength": 1 },
+    "afterTreeHash": { "type": "string", "minLength": 1 },
+    "changedPathsBefore": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "changedPathsAfter": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "externalJobId": { "type": "string", "minLength": 1 },
+    "externalSessionId": { "type": "string", "minLength": 1 },
+    "externalTurnId": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "reasoningEffort": { "type": "string", "minLength": 1 },
+    "usageStatus": { "enum": ["recorded", "unavailable"] },
+    "status": { "enum": ["completed", "failed", "mutated-worktree"] },
+    "outcome": {
+      "enum": ["accept", "revise", "reject", "investigate", "ask-human"]
+    },
+    "findingCount": { "type": "integer", "minimum": 0 },
+    "requiredActions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

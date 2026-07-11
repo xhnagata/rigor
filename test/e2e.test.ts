@@ -86,6 +86,71 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
     "--input",
     contractInput,
   ]);
+  const routingInput = path.join(parent, "routing.json");
+  await writeFile(
+    routingInput,
+    JSON.stringify({
+      schemaVersion: "rigor.routing-input.v1",
+      taskId: "TASK-1",
+      purpose: "implementation",
+      signals: {
+        complexity: "medium",
+        ambiguity: "low",
+        novelty: "low",
+        verificationStrength: "strong",
+      },
+      assessmentReasons: [
+        "The change is bounded and follows an existing module pattern.",
+      ],
+      budget: {
+        maxAttempts: 2,
+        maxDurationMs: 300000,
+        maxRelativeCost: 100,
+      },
+    }),
+  );
+  const modelProfiles = path.join(parent, "model-profiles.json");
+  await writeFile(
+    modelProfiles,
+    JSON.stringify({
+      schemaVersion: "rigor.model-profiles.v1",
+      candidates: [
+        {
+          id: "claude-standard",
+          provider: "claude",
+          capabilityClass: "standard",
+          purposes: ["implementation"],
+          relativeCost: 20,
+          requiresAdditionalExternalTransmission: false,
+          enabled: true,
+        },
+        {
+          id: "codex-consult",
+          provider: "codex-plugin-cc",
+          capabilityClass: "frontier",
+          purposes: ["consultation", "adversarial-review", "rescue"],
+          relativeCost: 50,
+          requiresAdditionalExternalTransmission: true,
+          enabled: true,
+        },
+      ],
+    }),
+  );
+  const routing = await rigor(root, [
+    "route",
+    "--dry-run",
+    "--preflight",
+    String(preflight.saved),
+    "--input",
+    routingInput,
+    "--profiles",
+    modelProfiles,
+  ]);
+  assert.equal(routing.status, "selected");
+  assert.equal(
+    (routing.selection as { candidateId: string }).candidateId,
+    "claude-standard",
+  );
   const verification = await rigor(root, [
     "verify",
     "--contract",

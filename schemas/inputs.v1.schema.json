@@ -61,6 +61,57 @@
         "speculation": { "$ref": "#/$defs/strings" },
         "requestedDecision": { "type": "string", "minLength": 1 }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "taskId",
+        "purpose",
+        "signals",
+        "assessmentReasons",
+        "budget"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "rigor.routing-input.v1" },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "purpose": {
+          "enum": [
+            "implementation",
+            "consultation",
+            "review",
+            "adversarial-review",
+            "rescue"
+          ]
+        },
+        "signals": {
+          "type": "object",
+          "required": [
+            "complexity",
+            "ambiguity",
+            "novelty",
+            "verificationStrength"
+          ],
+          "properties": {
+            "complexity": { "$ref": "#/$defs/level" },
+            "ambiguity": { "$ref": "#/$defs/level" },
+            "novelty": { "$ref": "#/$defs/level" },
+            "verificationStrength": {
+              "enum": ["weak", "moderate", "strong"]
+            }
+          }
+        },
+        "assessmentReasons": { "$ref": "#/$defs/strings" },
+        "budget": {
+          "type": "object",
+          "required": ["maxAttempts", "maxDurationMs", "maxRelativeCost"],
+          "properties": {
+            "maxAttempts": { "type": "integer", "minimum": 1 },
+            "maxDurationMs": { "type": "integer", "minimum": 1000 },
+            "maxRelativeCost": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -68,6 +119,7 @@
     "strings": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
-    }
+    },
+    "level": { "enum": ["low", "medium", "high", "critical"] }
   }
 }

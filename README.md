@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md) | English
 
-Rigor is a Claude Code plugin that makes AI-assisted software changes reviewable and proportionally controlled. It turns an intended change into a risk assessment, a bounded task contract, deterministic verification evidence, a structured escalation or review bundle, and an independent pull-request check.
+Rigor is a Claude Code plugin that makes AI-assisted software changes reviewable and proportionally controlled. It turns an intended change into a risk assessment, a bounded task contract, an optional policy-constrained model-routing preview, deterministic verification evidence, a structured escalation or review bundle, and an independent pull-request check.
 
 Rigor is deliberately not an LLM judge. Lint, types, tests, build commands, Git diffs, policy comparison, and evidence linkage are evaluated by the TypeScript CLI. The plugin's skills and reviewer agent organize work; the local hook gives early feedback; GitHub CI plus an independent human approval form the authoritative merge boundary.
 
@@ -15,6 +15,7 @@ When used as documented, Rigor deterministically:
 - rejects unsafe/traversing paths and setup symlink escapes;
 - refuses to overwrite unequal repository-owned setup files;
 - checks changed paths against a contract and runs configured commands without a shell;
+- previews a model candidate by explicit capability, purpose, additional-transmission, and relative-cost constraints without invoking a model;
 - stores only command status, duration, exit code, and an output digest, not raw output;
 - has CI recompute base/head changes, compare base rules/checks, detect deleted tests, link evidence, and rerun checks.
 
@@ -86,11 +87,67 @@ rigor verify --contract .rigor/evidence/APP-123/contract.json
 rigor review --contract .rigor/evidence/APP-123/contract.json --preflight .rigor/evidence/APP-123/preflight.json --verification .rigor/evidence/APP-123/verification.json
 ```
 
+To preview routing before implementation, create explicit assessment and profile files and run:
+
+```json
+{
+  "schemaVersion": "rigor.routing-input.v1",
+  "taskId": "APP-123",
+  "purpose": "implementation",
+  "signals": {
+    "complexity": "medium",
+    "ambiguity": "low",
+    "novelty": "low",
+    "verificationStrength": "strong"
+  },
+  "assessmentReasons": [
+    "The change follows an existing pattern and has deterministic tests."
+  ],
+  "budget": {
+    "maxAttempts": 2,
+    "maxDurationMs": 600000,
+    "maxRelativeCost": 100
+  }
+}
+```
+
+```json
+{
+  "schemaVersion": "rigor.model-profiles.v1",
+  "candidates": [
+    {
+      "id": "claude-standard",
+      "provider": "claude",
+      "capabilityClass": "standard",
+      "purposes": ["implementation", "review"],
+      "relativeCost": 20,
+      "requiresAdditionalExternalTransmission": false,
+      "enabled": true
+    },
+    {
+      "id": "codex-consult",
+      "provider": "codex-plugin-cc",
+      "capabilityClass": "frontier",
+      "purposes": ["consultation", "adversarial-review", "rescue"],
+      "relativeCost": 50,
+      "requiresAdditionalExternalTransmission": true,
+      "enabled": true
+    }
+  ]
+}
+```
+
+```sh
+rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/routing-input.json --profiles /tmp/model-profiles.json
+```
+
+This command does not invoke a model or save evidence. `relativeCost` is a configured comparison weight, not an observed price. See [model routing and orchestration](docs/orchestration.md).
+
 Commit the evidence with the change. CI ignores evidence files when deriving the code change but validates their linkage and independently reruns policy checks.
 
 ## Daily workflow
 
-The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. They are intentionally manual so an inferred skill invocation cannot silently establish a control.
+The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:route`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. They are intentionally manual so an inferred skill invocation cannot silently establish a control.
 
 Run the steps in this order: preflight and contract before any edit; then complete every change, including the rebuilt `dist/rigor.cjs`, before running `rigor verify`; then `rigor review`; then commit code and evidence together in one commit. Verification records the worktree's uncommitted changes, so verifying before the last edit (or after an intermediate commit) produces evidence that does not cover the pull request's full change set and CI will reject it. Artifacts are write-once: a task's `preflight.json`, `contract.json`, `verification.json`, and `review.json` are never overwritten, so when scope changes or a verification must be redone after saving, start a fresh task ID such as `APP-123-R2` and keep the earlier artifacts.
 

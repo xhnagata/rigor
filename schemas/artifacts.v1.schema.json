@@ -11,7 +11,9 @@
         "rigor.contract.v1",
         "rigor.verification.v1",
         "rigor.escalation.v1",
-        "rigor.review.v1"
+        "rigor.review.v1",
+        "rigor.attempt.v1",
+        "rigor.consultation.v1"
       ]
     },
     "artifactId": { "type": "string", "minLength": 1 },
@@ -83,6 +85,48 @@
           "riskTier",
           "externalTransmission",
           "verificationStatus"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "schemaVersion": { "const": "rigor.attempt.v1" } }
+      },
+      "then": {
+        "required": [
+          "routingDecisionArtifactId",
+          "sequence",
+          "provider",
+          "capabilityClass",
+          "purpose",
+          "startedAt",
+          "status",
+          "changedPaths"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": { "const": "rigor.consultation.v1" }
+        }
+      },
+      "then": {
+        "required": [
+          "sequence",
+          "provider",
+          "mode",
+          "requestedDecision",
+          "transmissionDecision",
+          "beforeTreeHash",
+          "afterTreeHash",
+          "changedPathsBefore",
+          "changedPathsAfter",
+          "usageStatus",
+          "status",
+          "outcome",
+          "findingCount",
+          "requiredActions"
         ]
       }
     }

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/model-profiles.v1.schema.json",
+  "title": "Rigor model profiles v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidates"],
+  "properties": {
+    "schemaVersion": { "const": "rigor.model-profiles.v1" },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "provider",
+          "capabilityClass",
+          "purposes",
+          "relativeCost",
+          "requiresAdditionalExternalTransmission",
+          "enabled"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "provider": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "model": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "capabilityClass": { "$ref": "#/$defs/capability" },
+          "purposes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/purpose" }
+          },
+          "relativeCost": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          },
+          "requiresAdditionalExternalTransmission": { "type": "boolean" },
+          "enabled": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "enum": ["economy", "standard", "premium", "frontier"]
+    },
+    "purpose": {
+      "enum": [
+        "implementation",
+        "consultation",
+        "review",
+        "adversarial-review",
+        "rescue"
+      ]
+    }
+  }
+}
