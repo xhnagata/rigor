@@ -2,8 +2,11 @@ import { EXIT, RigorError } from "./errors.js";
 import {
   MODEL_PROFILES_SCHEMA,
   ROUTING_INPUT_SCHEMA,
+  ROUTING_INPUT_V2_SCHEMA,
   ROUTING_DECISION_SCHEMA,
   ROUTING_PLAN_SCHEMA,
+  type AssessmentConfidence,
+  type AssessmentEvidence,
   type AvailabilityReport,
   type AvailabilityState,
   type CapabilityClass,
@@ -47,6 +50,11 @@ const purposes: RoutingPurpose[] = [
   "adversarial-review",
   "rescue",
 ];
+const confidenceLevels: AssessmentConfidence[] = ["low", "medium", "high"];
+const routingInputSchemaVersions = [
+  ROUTING_INPUT_SCHEMA,
+  ROUTING_INPUT_V2_SCHEMA,
+] as const;
 
 function oneOf<T extends string>(
   value: unknown,
@@ -79,53 +87,137 @@ function bool(value: unknown, name: string): boolean {
   return value;
 }
 
-export function parseRoutingInput(value: unknown): RoutingInput {
-  const item = record(value, "routing input");
-  if (item.schemaVersion !== ROUTING_INPUT_SCHEMA)
-    throw new RigorError("Unsupported routing input schema", EXIT.inputError);
-  const signals = record(item.signals, "signals");
-  const budget = record(item.budget, "budget");
-  const assessmentReasons = strings(
-    item.assessmentReasons,
-    "assessmentReasons",
-    20,
-  );
-  if (assessmentReasons.length === 0)
+// Repository-relative path discipline shared with intent planned paths: reject
+// absolute paths and ".." traversal segments so evidence cannot anchor itself
+// outside the repository it claims to observe.
+function assessmentPath(value: unknown, name: string): string {
+  const p = textField(value, name, 1024);
+  if (p.startsWith("/") || p.split(/[\\/]/u).includes(".."))
     throw new RigorError(
-      "assessmentReasons must not be empty",
+      `${name} must be a repository-relative path`,
       EXIT.inputError,
     );
+  return p;
+}
+
+function parseSignals(value: unknown): RoutingInput["signals"] {
+  const signals = record(value, "signals");
   return {
-    schemaVersion: ROUTING_INPUT_SCHEMA,
-    taskId: taskId(item.taskId),
-    purpose: oneOf(item.purpose, purposes, "purpose"),
-    signals: {
-      complexity: oneOf(signals.complexity, signalLevels, "complexity"),
-      ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
-      novelty: oneOf(signals.novelty, signalLevels, "novelty"),
-      verificationStrength: oneOf(
-        signals.verificationStrength,
-        verificationStrengths,
-        "verificationStrength",
-      ),
-    },
-    assessmentReasons,
-    budget: {
-      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
-      maxDurationMs: integer(
-        budget.maxDurationMs,
-        "maxDurationMs",
-        1_000,
-        86_400_000,
-      ),
-      maxRelativeCost: integer(
-        budget.maxRelativeCost,
-        "maxRelativeCost",
-        1,
-        1_000_000,
-      ),
-    },
+    complexity: oneOf(signals.complexity, signalLevels, "complexity"),
+    ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
+    novelty: oneOf(signals.novelty, signalLevels, "novelty"),
+    verificationStrength: oneOf(
+      signals.verificationStrength,
+      verificationStrengths,
+      "verificationStrength",
+    ),
   };
+}
+
+function parseBudget(value: unknown): RoutingInput["budget"] {
+  const budget = record(value, "budget");
+  return {
+    maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
+    maxDurationMs: integer(
+      budget.maxDurationMs,
+      "maxDurationMs",
+      1_000,
+      86_400_000,
+    ),
+    maxRelativeCost: integer(
+      budget.maxRelativeCost,
+      "maxRelativeCost",
+      1,
+      1_000_000,
+    ),
+  };
+}
+
+function parseEvidence(value: unknown): AssessmentEvidence[] {
+  if (!Array.isArray(value) || value.length === 0)
+    throw new RigorError(
+      "assessment.evidence must not be empty",
+      EXIT.inputError,
+    );
+  if (value.length > 20)
+    throw new RigorError(
+      "assessment.evidence must not exceed 20 items",
+      EXIT.inputError,
+    );
+  return value.map((raw, index) => {
+    const item = record(raw, `assessment.evidence[${index}]`);
+    return {
+      path: assessmentPath(item.path, `assessment.evidence[${index}].path`),
+      observation: textField(
+        item.observation,
+        `assessment.evidence[${index}].observation`,
+        10_000,
+      ),
+    };
+  });
+}
+
+export function parseRoutingInput(value: unknown): RoutingInput {
+  const item = record(value, "routing input");
+  if (item.schemaVersion === ROUTING_INPUT_SCHEMA) {
+    const assessmentReasons = strings(
+      item.assessmentReasons,
+      "assessmentReasons",
+      20,
+    );
+    if (assessmentReasons.length === 0)
+      throw new RigorError(
+        "assessmentReasons must not be empty",
+        EXIT.inputError,
+      );
+    return {
+      schemaVersion: ROUTING_INPUT_SCHEMA,
+      taskId: taskId(item.taskId),
+      purpose: oneOf(item.purpose, purposes, "purpose"),
+      signals: parseSignals(item.signals),
+      assessmentReasons,
+      budget: parseBudget(item.budget),
+    };
+  }
+  if (item.schemaVersion === ROUTING_INPUT_V2_SCHEMA) {
+    const assessmentRecord = record(item.assessment, "assessment");
+    const confidence = oneOf(
+      assessmentRecord.confidence,
+      confidenceLevels,
+      "assessment.confidence",
+    );
+    const evidence = parseEvidence(assessmentRecord.evidence);
+    const signals = parseSignals(item.signals);
+    // Fail closed: a claimed maximally-ambiguous task, or a task without
+    // deterministic verification, cannot also be assessed with high
+    // confidence. That combination is contradictory on its face.
+    if (
+      confidence === "high" &&
+      (signals.ambiguity === "critical" ||
+        signals.verificationStrength === "weak")
+    )
+      throw new RigorError(
+        "Contradictory assessment: high confidence with critical ambiguity or weak verification",
+        EXIT.inputError,
+      );
+    return {
+      schemaVersion: ROUTING_INPUT_V2_SCHEMA,
+      taskId: taskId(item.taskId),
+      purpose: oneOf(item.purpose, purposes, "purpose"),
+      signals,
+      // v2 does not carry a separate top-level assessmentReasons field; the
+      // internal invariant that every routing input has non-empty reasons is
+      // preserved by deriving reasons from the evidence observations.
+      assessmentReasons: evidence.map((entry) => entry.observation),
+      budget: parseBudget(item.budget),
+      assessment: {
+        inputSchemaVersion: ROUTING_INPUT_V2_SCHEMA,
+        confidence,
+        evidence,
+      },
+    };
+  }
+  throw new RigorError("Unsupported routing input schema", EXIT.inputError);
 }
 
 function parseCandidate(value: unknown, index: number): ModelCandidate {
@@ -246,6 +338,10 @@ export function route(
       availabilityStates.set(entry.candidateId, entry.state);
   }
   const required = requiredCapability(input);
+  // v1 legacy inputs carry no assessment, so they are treated as "medium"
+  // confidence and proceed exactly as they did before this change.
+  const confidence: AssessmentConfidence =
+    input.assessment?.confidence ?? "medium";
   const eligible: ModelCandidate[] = [];
   const excluded: RoutingDecision["excludedCandidates"] = [];
   for (const candidate of profiles.candidates) {
@@ -266,7 +362,10 @@ export function route(
         capabilityClasses.indexOf(right.capabilityClass) ||
       left.id.localeCompare(right.id),
   );
-  const selected = eligible[0];
+  // Low-confidence gate: never silently select economy (or anything else).
+  // A low-confidence assessment always produces an explicit review outcome,
+  // regardless of whether an eligible candidate exists.
+  const selected = confidence === "low" ? undefined : eligible[0];
   const selection = selected
     ? {
         candidateId: selected.id,
@@ -276,6 +375,12 @@ export function route(
         relativeCost: selected.relativeCost,
       }
     : null;
+  const status =
+    confidence === "low"
+      ? "requires-review"
+      : selection
+        ? "selected"
+        : "unroutable";
   return {
     schemaVersion: ROUTING_DECISION_SCHEMA,
     mode: "dry-run",
@@ -301,7 +406,12 @@ export function route(
     ...(availability === undefined
       ? {}
       : { availabilityReportHash: hash(availability) }),
-    status: selection ? "selected" : "unroutable",
+    assessment: {
+      inputSchemaVersion: input.schemaVersion,
+      confidence,
+      evidenceCount: input.assessment?.evidence.length ?? 0,
+    },
+    status,
   };
 }
 
@@ -361,6 +471,38 @@ export function parseRoutingPlan(value: unknown): RoutingPlan {
   const plannedHead = item.plannedHead;
   if (plannedHead !== null && typeof plannedHead !== "string")
     throw new RigorError("plannedHead is invalid", EXIT.inputError);
+  // Migration path: routing plans recorded before this change carry no
+  // `assessment` summary at all. Rather than fail closed on plans that were
+  // valid when they were written, synthesize the legacy default that matches
+  // how route() has always treated assessment-free v1 inputs.
+  const assessment =
+    item.assessment === undefined
+      ? {
+          inputSchemaVersion: ROUTING_INPUT_SCHEMA,
+          confidence: "medium" as const,
+          evidenceCount: 0,
+        }
+      : (() => {
+          const raw = record(item.assessment, "assessment");
+          return {
+            inputSchemaVersion: oneOf(
+              raw.inputSchemaVersion,
+              routingInputSchemaVersions,
+              "assessment.inputSchemaVersion",
+            ),
+            confidence: oneOf(
+              raw.confidence,
+              confidenceLevels,
+              "assessment.confidence",
+            ),
+            evidenceCount: integer(
+              raw.evidenceCount,
+              "assessment.evidenceCount",
+              0,
+              20,
+            ),
+          };
+        })();
   const plan: RoutingPlan = {
     schemaVersion: ROUTING_PLAN_SCHEMA,
     artifactId: textField(item.artifactId, "artifactId", 128),
@@ -439,6 +581,7 @@ export function parseRoutingPlan(value: unknown): RoutingPlan {
         1_000_000,
       ),
     },
+    assessment,
     status: "planned",
   };
   if (selection.model !== undefined)

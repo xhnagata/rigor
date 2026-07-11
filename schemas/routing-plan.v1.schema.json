@@ -119,6 +119,19 @@
       }
     },
     "availabilityReportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "assessment": {
+      "description": "Optional: plans recorded before schema version rigor.routing-input.v2 was introduced have no assessment summary. parseRoutingPlan synthesizes the legacy default { inputSchemaVersion: \"rigor.routing-input.v1\", confidence: \"medium\", evidenceCount: 0 } for those plans instead of failing closed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputSchemaVersion", "confidence", "evidenceCount"],
+      "properties": {
+        "inputSchemaVersion": {
+          "enum": ["rigor.routing-input.v1", "rigor.routing-input.v2"]
+        },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "evidenceCount": { "type": "integer", "minimum": 0, "maximum": 20 }
+      }
+    },
     "status": { "const": "planned" }
   },
   "$defs": {

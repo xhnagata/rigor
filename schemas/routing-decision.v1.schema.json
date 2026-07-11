@@ -19,6 +19,7 @@
     "selection",
     "controls",
     "budget",
+    "assessment",
     "status"
   ],
   "properties": {
@@ -104,7 +105,19 @@
       }
     },
     "availabilityReportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "status": { "enum": ["selected", "unroutable"] }
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputSchemaVersion", "confidence", "evidenceCount"],
+      "properties": {
+        "inputSchemaVersion": {
+          "enum": ["rigor.routing-input.v1", "rigor.routing-input.v2"]
+        },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "evidenceCount": { "type": "integer", "minimum": 0, "maximum": 20 }
+      }
+    },
+    "status": { "enum": ["selected", "unroutable", "requires-review"] }
   },
   "$defs": {
     "capability": {
