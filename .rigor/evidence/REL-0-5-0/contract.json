@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_b0c0bc3f-9995-4fc8-9dc9-326a7524635d",
+  "taskId": "REL-0-5-0",
+  "createdAt": "2026-07-11T15:51:30.246Z",
+  "preflightArtifactId": "preflight_5cd9b49e-168e-4755-8634-f84d640f8b91",
+  "preflightHash": "8849c7d9b352ff77747346d5651e83a3e907a787556653852f20fa5c8ff74f22",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.5.0.",
+    "CHANGELOG.md has a dated 0.5.0 section describing the #12 candidate-availability feature and no Unreleased section remains.",
+    ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs.",
+    "dist/rigor.cjs is unchanged and byte-identical to a fresh build.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "allowedPaths": [
+    "CHANGELOG.md",
+    "package.json",
+    ".claude-plugin/plugin.json",
+    ".rigor/rigor-ci.cjs"
+  ],
+  "constraints": [
+    "No source, schema, test, skill, or documentation changes beyond the four release files.",
+    "The .rigor/rigor-ci.cjs change is exclusively a byte-identical copy of dist/rigor.cjs; no policy or workflow change.",
+    "The release commit reaches main only through a protected pull request with required checks; never a direct push."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

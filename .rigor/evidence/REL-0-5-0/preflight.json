@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_5cd9b49e-168e-4755-8634-f84d640f8b91",
+  "taskId": "REL-0-5-0",
+  "createdAt": "2026-07-11T15:51:30.198Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "6060f4d9db8ddcb9c1f54fa0ebafda2976c25ef3b643ab6955e6d5b0017790b8",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-12",
+    "head": "6d5dc55b867c22fbd4744f31bf04c02819ccafdb",
+    "dirty": true,
+    "changedPaths": [
+      ".claude-plugin/plugin.json",
+      ".rigor/rigor-ci.cjs",
+      "CHANGELOG.md",
+      "package.json"
+    ]
+  },
+  "plannedPaths": [
+    ".claude-plugin/plugin.json",
+    ".rigor/rigor-ci.cjs",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "protectedPaths": [
+    ".rigor/rigor-ci.cjs"
+  ],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ],
+  "reasons": [
+    {
+      "ruleId": "governance",
+      "path": ".rigor/rigor-ci.cjs",
+      "reason": "Governance and enforcement changes can weaken controls."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

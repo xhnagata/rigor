@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-07-12
 
 - Add the `/rigor:assess` Skill and feed validated assessments into `/rigor:orchestrate`. `/rigor:assess` gathers only the task statement and the repository files, tests, and schemas it names, then produces a `rigor.routing-input.v2` with `signals`, an explicit `confidence`, and 1..20 repository-path-anchored `evidence` entries, tracing every signal judgment to at least one observation. It reports task characteristics only — it never names or selects a model, and evidence observations must state facts, never conclusions like "use model Z"; candidate selection remains exclusively a `rigor route` CLI decision. Before any `--record`, it validates the written input with `rigor route --dry-run` and stops (never loosening signals or confidence to force a pass) on malformed/unsupported/evidence-free/contradictory input (exit `3`) or on `requires-review`/`unroutable` (exit `2`), including low-confidence assessments, contradictory evidence, missing acceptance criteria, and required human decisions. `/rigor:orchestrate`'s routing-input argument becomes optional: when the caller supplies none, orchestrate obtains one via `/rigor:assess` and validates it via dry-run before `rigor route --record`, preserving every existing stop condition and the unverified configured-identity guarantee. No CLI, schema, or deterministic-routing behavior changed; the routing gates added in [#10](https://github.com/xhnagata/rigor/issues/10) are reused as-is ([#11](https://github.com/xhnagata/rigor/issues/11)).
 

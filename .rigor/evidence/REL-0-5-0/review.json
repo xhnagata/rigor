@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_79eef863-65fc-4cff-9809-bf241c52e8c8",
+  "taskId": "REL-0-5-0",
+  "createdAt": "2026-07-11T15:51:30.464Z",
+  "externalTransmission": "allowed",
+  "riskTier": "critical",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_b0c0bc3f-9995-4fc8-9dc9-326a7524635d",
+  "verificationArtifactId": "verification_ce918ced-df7a-4ded-b3ee-0ec9c4e053d5",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    ".rigor/rigor-ci.cjs",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.5.0.",
+    "CHANGELOG.md has a dated 0.5.0 section describing the #12 candidate-availability feature and no Unreleased section remains.",
+    ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs.",
+    "dist/rigor.cjs is unchanged and byte-identical to a fresh build.",
+    "Full suite (test:all, bench, plugin validate --strict, git diff --check) passes."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
