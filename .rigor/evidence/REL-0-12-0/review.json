@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_12e0a781-f1a5-4b02-b702-be071d97f306",
+  "taskId": "REL-0-12-0",
+  "createdAt": "2026-07-12T21:40:47.613Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_38136850-c7f3-47f5-a12e-e9cf83bc1e98",
+  "verificationArtifactId": "verification_e57ac441-7e31-420e-90ef-74844202c554",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "CHANGELOG.md contains a `## 0.12.0 - 2026-07-13` section describing the #23 test-integrity promotion governance feature",
+    "package.json and .claude-plugin/plugin.json both declare version 0.12.0 with no other content change",
+    "dist/rigor.cjs is byte-identical to a fresh build and to .rigor/rigor-ci.cjs (verified, not rebuilt or committed here)",
+    "The recorded required check git diff --check passes; npm run test:all passes on the release branch",
+    "The release lands through a protected pull request with rigor and quality checks green; rigor release-check passes on the merged main SHA before tagging v0.12.0"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

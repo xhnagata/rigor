@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.12.0 - 2026-07-13
 
 - Add conservative, version-bound test-integrity promotion governance: inert promotion proposals, strict cited-evidence/linkage validation, deterministic replay, a protected active-registry contract, proportional stop/review/advisory outcomes, occurrence-bound expiring waivers, fail-closed rollback freezes, and pinned base/head CI tamper escalation. The human-chosen risk floors are advisory 25/5/0.50, review 50/10/0.20, and stop 100/20/0.05 (evaluated/classified-fired/maximum false-discovery proportion). The shipped active set is empty because the four legacy events are unversioned and record zero firings, classifications, and outcomes ([#23](https://github.com/xhnagata/rigor/issues/23)).
 
