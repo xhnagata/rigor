@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_dbe9fe84-084a-44e9-bf8e-02fb96096e01",
+  "taskId": "REL-0-7-0",
+  "createdAt": "2026-07-12T00:46:35.446Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_2d51537a-b6d9-4f38-ba47-32889ceb4994",
+  "verificationArtifactId": "verification_ef1e2ae4-b293-4664-ab6d-6af736e1c511",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.7.0.",
+    "CHANGELOG.md has a 0.7.0 section dated 2026-07-12 summarizing the #13 deterministic failure-fingerprint and cross-attempt progress feature.",
+    "dist/rigor.cjs remains byte-identical to a fresh build (no bundle change).",
+    "rigor release-check --version 0.7.0 passes, and npm run test:all, npm run bench, and claude plugin validate . --strict pass."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
