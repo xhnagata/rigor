@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_bf7268ca-3f82-496b-8eeb-e89a42958dce",
+  "taskId": "GH-11-R2",
+  "createdAt": "2026-07-11T16:16:53.742Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "ac83b1e408d06dfd2f0aa875b5e77a962be41fdb1ca744c823155ff6ef453e13",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-11",
+    "head": "6d5dc55b867c22fbd4744f31bf04c02819ccafdb",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-11/attempts/attempt-session_1effd5dd-76f3-4b41-8b7d-50317bb014ee.json",
+      ".rigor/evidence/GH-11/attempts/attempt_06642036-2675-4b90-b716-8d03aa0d9a21.json",
+      ".rigor/evidence/GH-11/contract.json",
+      ".rigor/evidence/GH-11/preflight.json",
+      ".rigor/evidence/GH-11/review.json",
+      ".rigor/evidence/GH-11/routing/routing-plan_46cc4901-987f-4e23-bdbd-1e74f8561f45.json",
+      ".rigor/evidence/GH-11/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "docs/orchestration.md",
+      "scripts/validate-plugin.mjs",
+      "skills/assess/SKILL.md",
+      "skills/orchestrate/SKILL.md",
+      "test/e2e.test.ts",
+      "test/routing.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "skills/orchestrate/SKILL.md",
+    "test/e2e.test.ts"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/orchestrate/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/e2e.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

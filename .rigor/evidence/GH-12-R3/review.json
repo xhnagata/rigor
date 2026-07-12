@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_6800f8a8-efd8-441a-985f-1cb367755800",
+  "taskId": "GH-12-R3",
+  "createdAt": "2026-07-11T15:47:05.313Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_c70b8b54-a5a4-4431-be08-17be4b5f6285",
+  "verificationArtifactId": "verification_d39f0c1e-ea06-496e-99e4-c83114628ae2",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/availability.v1.schema.json",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "skills/orchestrate/SKILL.md",
+    "skills/route/SKILL.md",
+    "src/availability.ts",
+    "src/cli.ts",
+    "src/routing.ts",
+    "src/types.ts",
+    "test/availability.test.ts",
+    "test/e2e.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "The branch tree contains both the GH-12 availability feature and main's #10 assessment-confidence feature with no conflict markers and no behavior of either feature removed.",
+    "The routing decision and plan carry both the optional availabilityReportHash and the assessment summary; the status enum includes selected, unroutable, and requires-review; exclusion reason codes include UNAVAILABLE and INCOMPATIBLE.",
+    "Availability filtering and the low-confidence requires-review gate compose: exclusion runs per candidate and a low-confidence assessment still yields requires-review with no selection.",
+    "dist/rigor.cjs is rebuilt from the merged sources.",
+    "Full suite (test:all including both features' tests, bench, plugin validate --strict, git diff --check) passes on the merged tree."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

@@ -19,6 +19,7 @@
     "selection",
     "controls",
     "budget",
+    "assessment",
     "status"
   ],
   "properties": {
@@ -49,7 +50,9 @@
               "PURPOSE_UNSUPPORTED",
               "EXTERNAL_TRANSMISSION_DENIED",
               "INSUFFICIENT_CAPABILITY",
-              "BUDGET_EXCEEDED"
+              "BUDGET_EXCEEDED",
+              "UNAVAILABLE",
+              "INCOMPATIBLE"
             ]
           }
         }
@@ -101,7 +104,20 @@
         "maxRelativeCost": { "type": "integer", "minimum": 1 }
       }
     },
-    "status": { "enum": ["selected", "unroutable"] }
+    "availabilityReportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputSchemaVersion", "confidence", "evidenceCount"],
+      "properties": {
+        "inputSchemaVersion": {
+          "enum": ["rigor.routing-input.v1", "rigor.routing-input.v2"]
+        },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "evidenceCount": { "type": "integer", "minimum": 0, "maximum": 20 }
+      }
+    },
+    "status": { "enum": ["selected", "unroutable", "requires-review"] }
   },
   "$defs": {
     "capability": {

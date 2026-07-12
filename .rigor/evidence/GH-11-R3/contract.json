@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_5c818cf6-d444-4249-b1a2-bb815837df4a",
+  "taskId": "GH-11-R3",
+  "createdAt": "2026-07-11T16:19:14.670Z",
+  "preflightArtifactId": "preflight_e548e895-de95-45e6-b52d-d4b8ad7135ff",
+  "preflightHash": "0ec9aafda1070af8ce930eed943d9d2ec623329ef31cfefa0d69d668a7cb2b34",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "All GH-11 acceptance criteria remain satisfied: /rigor:assess reports evidence-anchored task characteristics with explicit confidence and never names or selects a model; deterministic validation runs via rigor route --dry-run before any --record; stop paths for low confidence, contradictory evidence, missing acceptance criteria, and required human decision are documented; /rigor:orchestrate accepts both human-authored and assess-produced routing input; SPIKE-ROUTE-1 fixtures cover the economy-selected and requires-review flows; configured identity stays unverified.",
+    "The two GH-11 independent-review remediations are applied: skills/orchestrate/SKILL.md describes exit-3 results as correctable only for an actual factual error (matching skills/assess/SKILL.md and docs/orchestration.md), and the stopped-flow e2e test asserts a requires-review rigor route --record persisted no routing-plan artifact.",
+    "npm run test:all, npm run bench, node scripts/validate-plugin.mjs, claude plugin validate . --strict, and git diff --check all pass on the final tree."
+  ],
+  "allowedPaths": [
+    "skills/**",
+    "scripts/validate-plugin.mjs",
+    "test/**",
+    "docs/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "No changes beyond issue #11's scope plus the two independent-review remediations.",
+    "Do not modify src/**, dist/**, schemas/**, bin/**, hooks/**, agents/**, .rigor/** (evidence excepted), or .github/**.",
+    "Do not delete, weaken, or skip existing tests."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

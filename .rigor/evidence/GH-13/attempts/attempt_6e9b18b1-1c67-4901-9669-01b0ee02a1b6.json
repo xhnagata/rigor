@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_6e9b18b1-1c67-4901-9669-01b0ee02a1b6",
+  "taskId": "GH-13",
+  "createdAt": "2026-07-11T15:33:52.458Z",
+  "sessionArtifactId": "attempt-session_16949a0e-788f-413f-97b3-8648d433f596",
+  "sessionHash": "7e9d15ac4d786b4f20d8382d37d09864fccd5e496cac4eed647626ff2e4917c1",
+  "routingPlanArtifactId": "routing-plan_7ee181d8-99ff-4693-b121-6edc765f399c",
+  "routingPlanHash": "fbfe2f0c6de35d7e48332eaabb1bccc246535df4327d2a042a059ef5be40db63",
+  "contractArtifactId": "contract_936c38a0-2186-40ce-a3e1-2071afc8d570",
+  "contractHash": "50534ed56df5c43ae221b4d11f89ba217f8dd5608b02f1c96bfd7dfc699282fb",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-sonnet-5",
+  "capabilityClass": "premium",
+  "purpose": "implementation",
+  "startedAt": "2026-07-11T15:33:28.407Z",
+  "completedAt": "2026-07-11T15:33:52.458Z",
+  "durationMs": 24051,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "afterHead": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "beforeTreeHash": "971555008817d4bdbe64c62d32f9d6df410a7907a1289f2b3a5c9995ed937c39",
+  "afterTreeHash": "2cfdc6c649fac095e6eb36e38063271f8a6132cb5b4abd9e5eeccb7cb011019a",
+  "changedPathsBefore": [],
+  "changedPaths": [
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/fingerprint.ts",
+    "src/types.ts",
+    "test/artifacts.test.ts",
+    "test/attempt.test.ts",
+    "test/fingerprint.test.ts"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_0595ca17-f810-479a-a557-97681c2af1c5",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  }
+}

@@ -143,6 +143,15 @@ rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input
 
 This command does not invoke a model or save evidence. `relativeCost` is a configured comparison weight, not an observed price. See [model routing and orchestration](docs/orchestration.md).
 
+To observe which configured candidates the current environment can actually invoke, produce a versioned availability report and let it filter unavailable or incompatible candidates before routing:
+
+```sh
+rigor availability --profiles /tmp/model-profiles.json > /tmp/availability.json
+rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/routing-input.json --profiles /tmp/model-profiles.json --availability /tmp/availability.json
+```
+
+`rigor availability` marks each candidate exactly one of `available`, `unavailable`, `unknown`, or `incompatible` by reading only documented, bounded local interfaces (a fixed set of environment variables); it performs no installation, authentication, or network transmission. The `codex-plugin-cc` presence variables are an orchestrator-declared channel, not a direct plugin observation; an unrecognized or missing declaration stays `unknown`. Availability is an observation, not attestation: unsupported or failed probing is recorded as `unknown` (never `available`), unavailable and incompatible candidates are excluded before attempt start instead of being silently substituted, and configured model identity stays `unverified`. Missing `codex-plugin-cc` excludes only candidates that require it. Runtime model identity, reasoning effort, usage, and cost remain unverified/unknown.
+
 For autonomous implementation, record the selected plan and bracket the delegated attempt:
 
 ```sh
@@ -176,7 +185,7 @@ Commit the evidence with the change. CI ignores evidence files when deriving the
 
 ## Daily workflow
 
-The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:route`, `/rigor:attempt`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. `/rigor:consult` and `/rigor:orchestrate` are explicitly invoked model-using workflows; they remain bounded by the same CLI policy and verification commands. No Skill invocation silently establishes a control.
+The manual skills `/rigor:preflight`, `/rigor:contract`, `/rigor:route`, `/rigor:attempt`, `/rigor:verify`, `/rigor:escalate`, `/rigor:review`, and `/rigor:retrospect` guide Claude through the same CLI flow. `/rigor:consult` and `/rigor:orchestrate` are explicitly invoked model-using workflows; they remain bounded by the same CLI policy and verification commands. `/rigor:assess` produces a validated `rigor.routing-input.v2` (task characteristics, evidence, and confidence) for `/rigor:orchestrate` to route when no human-authored routing input is supplied; it never names or selects a model itself. No Skill invocation silently establishes a control.
 
 Run the steps in this order: preflight, contract, recorded route, and attempt start before delegated edits; then complete every change, including the rebuilt `dist/rigor.cjs`, run `rigor verify`, and finalize the attempt; then `rigor review`; then commit code and evidence together in one commit. Verification records the worktree's uncommitted changes, so verifying before the last edit (or after an intermediate commit) produces evidence that does not cover the pull request's full change set and CI will reject it. Core artifacts are write-once: a task's `preflight.json`, `contract.json`, `verification.json`, and `review.json` are never overwritten; routing, attempt, and consultation artifacts are append-only collections. When scope changes or verification must be redone after saving, start a fresh task ID such as `APP-123-R2` and keep the earlier artifacts.
 

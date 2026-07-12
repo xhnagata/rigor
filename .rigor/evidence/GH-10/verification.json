@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_7c77deac-355c-4530-a810-67e34b1e0e54",
+  "taskId": "GH-10",
+  "contractArtifactId": "contract_33d334d7-3d96-40c9-9518-759df04c29e6",
+  "createdAt": "2026-07-11T14:48:53.517Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "treeHash": "c99172764b56bd5fd115f293601cfd7f807000af2512527933e543666055acf7",
+  "changedPaths": [
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-input.v2.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "src/routing.ts",
+    "src/types.ts",
+    "test/routing.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 12,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}

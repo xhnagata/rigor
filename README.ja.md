@@ -143,6 +143,15 @@ rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input
 
 このcommandはモデルを呼び出さず、証跡も保存しません。`relativeCost`は設定された比較用weightであり、観測済み価格ではありません。詳細は[モデルルーティングとオーケストレーション](docs/orchestration.md)を参照してください。
 
+現在の環境が実際にどの候補を起動できるかを観測するには、versioned availability reportを生成し、ルーティング前にunavailable/incompatibleな候補を除外させます。
+
+```sh
+rigor availability --profiles /tmp/model-profiles.json > /tmp/availability.json
+rigor route --dry-run --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/routing-input.json --profiles /tmp/model-profiles.json --availability /tmp/availability.json
+```
+
+`rigor availability`は各候補を`available`、`unavailable`、`unknown`、`incompatible`のいずれか一つに標識します。判定は文書化された限定的なローカルインターフェース（固定された環境変数の集合）のみを読み取り、インストール、認証、network送信は一切行いません。`codex-plugin-cc`のpresence変数はオーケストレーターが宣言するチャネルであり、pluginの直接観測ではありません。認識できない宣言や宣言の欠落は`unknown`のままです。availabilityはattestationではなく観測です。probingが未対応または失敗した場合は`available`ではなく`unknown`として記録し、unavailable/incompatibleな候補はattempt開始前に除外され、黙って別modelに差し替えられることはなく、設定上のmodel identityは`unverified`のままです。`codex-plugin-cc`が存在しない場合、それを必要とする候補のみを除外します。runtimeのmodel identity、reasoning effort、usage、costはunverified/unknownのままです。
+
 自律実装では選択planを保存し、委譲attemptの前後を記録します。
 
 ```sh
@@ -176,7 +185,7 @@ rigor outcome --input /tmp/outcome-input.json --attempt .rigor/evidence/APP-123/
 
 ## 日常フロー
 
-手動Skillの `/rigor:preflight`、`/rigor:contract`、`/rigor:route`、`/rigor:attempt`、`/rigor:verify`、`/rigor:escalate`、`/rigor:review`、`/rigor:retrospect` が同じCLIフローを案内します。`/rigor:consult`と`/rigor:orchestrate`は、明示的に起動するmodel利用workflowであり、同じCLI policyと検証commandに制約されます。Skillの実行だけで統制が暗黙に成立することはありません。
+手動Skillの `/rigor:preflight`、`/rigor:contract`、`/rigor:route`、`/rigor:attempt`、`/rigor:verify`、`/rigor:escalate`、`/rigor:review`、`/rigor:retrospect` が同じCLIフローを案内します。`/rigor:consult`と`/rigor:orchestrate`は、明示的に起動するmodel利用workflowであり、同じCLI policyと検証commandに制約されます。`/rigor:assess`は、human-authoredのrouting inputがない場合に`/rigor:orchestrate`がrouteするための検証済み `rigor.routing-input.v2`（task characteristics、evidence、confidence）を生成しますが、model自体を指名・選択することはありません。Skillの実行だけで統制が暗黙に成立することはありません。
 
 実行順序は、委譲編集前にpreflight、contract、recorded route、attempt startを行い、全編集（再buildした `dist/rigor.cjs` を含む）の完了後に `rigor verify`とattempt finish、次に `rigor review`、最後にcodeとevidenceを1つのcommitにまとめる、の順を推奨します。verificationはworktreeの未commit変更を記録するため、最後の編集より前にverifyしたり途中でcommitを挟むと、pull request全体の変更を覆わないevidenceになりCIが拒否します。core artifactはwrite-onceで、taskの `preflight.json`、`contract.json`、`verification.json`、`review.json` は上書きされません。routing、attempt、consultation artifactはappend-only collectionです。scopeが変わった場合や保存後に再verifyが必要な場合は、`APP-123-R2` のような新しいtask IDで始め、以前のartifactは残してください。
 

@@ -371,6 +371,321 @@ async function assertContainedPath(root, target) {
   }
 }
 
+// src/fingerprint.ts
+var ESC = String.fromCharCode(27);
+var BEL = String.fromCharCode(7);
+var ANSI_RE = new RegExp(
+  ESC + "\\[[0-9;]*[a-zA-Z]|" + ESC + "\\][^" + BEL + "]*" + BEL + "|" + ESC + "[@-Z\\\\\\]^_]",
+  "g"
+);
+var UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+var ISO_TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
+var CLOCK_TIME_RE = /\b\d{2}:\d{2}:\d{2}\b/g;
+var DURATION_RE = /\b\d+(?:\.\d+)?(?:ms|s|m)\b/g;
+var HEX_PREFIXED_RE = /0x[0-9a-fA-F]+/g;
+var HEX_RUN_RE = /\b[0-9a-fA-F]{8,}\b/g;
+var WINDOWS_PATH_RE = /[A-Za-z]:\\(?:[\w.@+-]+\\)*[\w.@+-]+\.[A-Za-z0-9]+/g;
+var POSIX_PATH_RE = /(?:[\w.@+-]+\/)+[\w.@+-]+\.[A-Za-z0-9]+/g;
+var LINE_COL_RE = /:\d+(?::\d+)?/g;
+var SIGNAL_RE = /error|fail|expect|received|assert|not ok|✖|✗|✘|\bat /iu;
+function dedupePreserveOrder(lines) {
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  for (const line of lines) {
+    if (!seen.has(line)) {
+      seen.add(line);
+      result.push(line);
+    }
+  }
+  return result;
+}
+function applyNoiseMasks(text) {
+  let normalized = text;
+  normalized = normalized.replace(ANSI_RE, "");
+  normalized = normalized.replace(UUID_RE, "<uuid>");
+  normalized = normalized.replace(ISO_TIMESTAMP_RE, "<ts>");
+  normalized = normalized.replace(CLOCK_TIME_RE, "<time>");
+  normalized = normalized.replace(DURATION_RE, "<dur>");
+  normalized = normalized.replace(HEX_PREFIXED_RE, "<hex>");
+  normalized = normalized.replace(WINDOWS_PATH_RE, "<path>");
+  normalized = normalized.replace(POSIX_PATH_RE, "<path>");
+  normalized = normalized.replace(HEX_RUN_RE, "<hex>");
+  normalized = normalized.replace(LINE_COL_RE, ":<n>");
+  return normalized;
+}
+function normalizeSignature(text) {
+  const normalized = applyNoiseMasks(text);
+  const lines = normalized.split(/\r\n|\r|\n/u).map((line) => line.trim().replace(/\s+/gu, " ")).filter((line) => line.length > 0);
+  const signalLines = lines.filter((line) => SIGNAL_RE.test(line));
+  const capped = signalLines.slice(0, 40);
+  return dedupePreserveOrder(capped);
+}
+var NODE_TEST_TOTAL_RE = /^# tests (\d+)/m;
+var NODE_TEST_PASS_RE = /^# pass (\d+)/m;
+var NODE_TEST_FAIL_RE = /^# fail (\d+)/m;
+function parseNodeTestSummary(output2) {
+  const total = NODE_TEST_TOTAL_RE.exec(output2)?.[1];
+  const passed = NODE_TEST_PASS_RE.exec(output2)?.[1];
+  const failed = NODE_TEST_FAIL_RE.exec(output2)?.[1];
+  if (total === void 0 || passed === void 0 || failed === void 0)
+    return null;
+  return {
+    total: Number(total),
+    passed: Number(passed),
+    failed: Number(failed)
+  };
+}
+var JEST_SUMMARY_RE = /Tests:\s*([^\n]+)/i;
+var JEST_SEGMENT_RE = /(\d+)\s*(failed|passed|total|skipped|todo)/i;
+function parseJestSummary(output2) {
+  const segment = JEST_SUMMARY_RE.exec(output2)?.[1];
+  if (segment === void 0) return null;
+  const counts = {};
+  for (const part of segment.split(",")) {
+    const match = JEST_SEGMENT_RE.exec(part.trim());
+    const value = match?.[1];
+    const label = match?.[2];
+    if (value !== void 0 && label !== void 0)
+      counts[label.toLowerCase()] = Number(value);
+  }
+  if (counts.total === void 0) return null;
+  const failed = counts.failed ?? 0;
+  const passed = counts.passed ?? counts.total - failed;
+  return { total: counts.total, passed, failed };
+}
+function parseTestStats(output2) {
+  return parseNodeTestSummary(output2) ?? parseJestSummary(output2);
+}
+var INFRA_PATTERN = /\b(?:ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|ENETUNREACH|ECONNRESET|ENETDOWN)\b|getaddrinfo|socket hang up|rate limit|Too Many Requests|network is unreachable|network error/i;
+function deriveCategory(status, normalizedText) {
+  if (status === "timed_out") return "timeout";
+  if (status === "error") return "infrastructure";
+  return INFRA_PATTERN.test(normalizedText) ? "infrastructure" : "implementation";
+}
+var ERROR_CLASS_PATTERNS = [
+  ["assertion", /AssertionError|assert|Expected|Received|toBe|to equal/i],
+  ["type", /TypeError|error TS\d+|is not a function/i],
+  ["syntax", /SyntaxError/i],
+  ["reference", /ReferenceError/i],
+  ["range", /RangeError/i],
+  ["module", /Cannot find module|ERR_MODULE_NOT_FOUND/i],
+  ["lint", /eslint|problems \(|✖ \d+ problems/i],
+  ["timeout", /timed out|timeout/i],
+  ["runtime", /Error/i]
+];
+function deriveErrorClass(normalizedText) {
+  for (const [label, pattern] of ERROR_CLASS_PATTERNS) {
+    if (pattern.test(normalizedText)) return label;
+  }
+  return "unknown";
+}
+var FAILED_TEST_PATTERNS = [
+  /^not ok \d+ - (.+)$/gm,
+  /^\s*✗\s+(.+)$/gm,
+  /^\s*✖\s+(.+)$/gm,
+  /^FAIL\s+(.+)$/gm
+];
+var TRAILING_DURATION_RE = /\s*\(\d+(?:\.\d+)?(?:ms|s|m)\)\s*$/u;
+var MAX_TEST_NAME_LENGTH = 200;
+function normalizeTestName(name) {
+  const withoutDuration = name.replace(TRAILING_DURATION_RE, "");
+  const masked = applyNoiseMasks(withoutDuration).replace(/\s+/gu, " ").trim();
+  return masked.slice(0, MAX_TEST_NAME_LENGTH);
+}
+function extractFailedTests(output2) {
+  const names = [];
+  for (const pattern of FAILED_TEST_PATTERNS) {
+    for (const match of output2.matchAll(pattern)) {
+      const raw = match[1];
+      if (raw !== void 0) names.push(normalizeTestName(raw));
+    }
+  }
+  names.sort();
+  return [...new Set(names)].slice(0, 50);
+}
+function deriveCheckFacts(input) {
+  const { checkId, status, output: output2 } = input;
+  const testStats = parseTestStats(output2);
+  if (status === "passed") {
+    return { checkId, status, testStats, failure: null };
+  }
+  const normalizedText = normalizeSignature(output2).join("\n");
+  const category = deriveCategory(status, normalizedText);
+  const errorClass = deriveErrorClass(normalizedText);
+  const failedTests = extractFailedTests(output2);
+  const signatureDigest = hash(normalizedText);
+  const fingerprint = hash({
+    checkId,
+    category,
+    errorClass,
+    failedTests,
+    signatureDigest
+  });
+  return {
+    checkId,
+    status,
+    testStats,
+    failure: {
+      category,
+      errorClass,
+      failedTests,
+      signatureDigest,
+      fingerprint
+    }
+  };
+}
+function verificationFingerprint(facts) {
+  const failing = facts.filter(
+    (fact) => fact.failure !== null
+  );
+  if (failing.length === 0) return null;
+  const sorted = [...failing].sort(
+    (a, b) => a.checkId < b.checkId ? -1 : a.checkId > b.checkId ? 1 : 0
+  );
+  return hash(sorted.map((fact) => fact.failure.fingerprint));
+}
+function aggregateCategory(facts) {
+  const categories = facts.filter(
+    (fact) => fact.failure !== null
+  ).map((fact) => fact.failure.category);
+  if (categories.length === 0) return null;
+  const unique = new Set(categories);
+  if (unique.size === 1) {
+    const [only] = unique;
+    if (only !== void 0) return only;
+  }
+  return "mixed";
+}
+function implFailureMap(facts) {
+  const map = /* @__PURE__ */ new Map();
+  for (const fact of facts) {
+    if (fact.failure !== null && fact.failure.category === "implementation") {
+      map.set(fact.checkId, {
+        fingerprint: fact.failure.fingerprint,
+        failedTests: new Set(fact.failure.failedTests)
+      });
+    }
+  }
+  return map;
+}
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const value of a) if (!b.has(value)) return false;
+  return true;
+}
+function isSubset(subset, superset) {
+  for (const value of subset) if (!superset.has(value)) return false;
+  return true;
+}
+function resolvedImplCheckIds(prevImpl, curImpl) {
+  return [...prevImpl.keys()].filter((checkId) => !curImpl.has(checkId));
+}
+function confirmCoverageForResolvedChecks(resolvedCheckIds, previousByCheck, currentByCheck) {
+  const signals = [];
+  for (const checkId of resolvedCheckIds) {
+    const priorStats = previousByCheck.get(checkId)?.testStats ?? null;
+    const curStats = currentByCheck.get(checkId)?.testStats ?? null;
+    const confirmed = priorStats !== null && curStats !== null && curStats.total >= priorStats.total;
+    if (!confirmed) {
+      signals.push(
+        `check ${checkId}: cannot confirm test coverage did not shrink (no parseable test counts)`
+      );
+    }
+  }
+  return signals;
+}
+function reducedOrIncomparable(prevImpl, curImpl, weakeningSignals, previousByCheck, currentByCheck) {
+  if (weakeningSignals.length > 0) {
+    return { status: "incomparable", weakeningSignals };
+  }
+  const coverageSignals = confirmCoverageForResolvedChecks(
+    resolvedImplCheckIds(prevImpl, curImpl),
+    previousByCheck,
+    currentByCheck
+  );
+  if (coverageSignals.length === 0) {
+    return { status: "reduced", weakeningSignals };
+  }
+  return {
+    status: "incomparable",
+    weakeningSignals: [...weakeningSignals, ...coverageSignals]
+  };
+}
+function compareFailures(previous, current) {
+  if (previous === null || previous.length === 0) {
+    return { status: "first", weakeningSignals: [] };
+  }
+  const weakeningSignals = [];
+  const currentByCheck = new Map(current.map((fact) => [fact.checkId, fact]));
+  const previousByCheck = new Map(previous.map((fact) => [fact.checkId, fact]));
+  for (const prevFact of previous) {
+    const curFact = currentByCheck.get(prevFact.checkId);
+    if (curFact === void 0) {
+      weakeningSignals.push(
+        `check ${prevFact.checkId}: no longer present in verification`
+      );
+      continue;
+    }
+    if (prevFact.testStats !== null && curFact.testStats !== null && curFact.testStats.total < prevFact.testStats.total) {
+      weakeningSignals.push(
+        `check ${prevFact.checkId}: observed test total dropped from ${prevFact.testStats.total} to ${curFact.testStats.total}`
+      );
+    }
+  }
+  const prevImpl = implFailureMap(previous);
+  const curImpl = implFailureMap(current);
+  const prevImplEmpty = prevImpl.size === 0;
+  const curImplEmpty = curImpl.size === 0;
+  if (!prevImplEmpty && curImplEmpty) {
+    return reducedOrIncomparable(
+      prevImpl,
+      curImpl,
+      weakeningSignals,
+      previousByCheck,
+      currentByCheck
+    );
+  }
+  if (prevImplEmpty) {
+    return { status: "incomparable", weakeningSignals };
+  }
+  const prevFingerprints = new Set(
+    [...prevImpl.values()].map((value) => value.fingerprint)
+  );
+  const curFingerprints = new Set(
+    [...curImpl.values()].map((value) => value.fingerprint)
+  );
+  const sameKeys = prevImpl.size === curImpl.size && [...prevImpl.keys()].every((key) => curImpl.has(key));
+  const sameFailedTests = sameKeys && [...prevImpl.entries()].every(([key, value]) => {
+    const curValue = curImpl.get(key);
+    return curValue !== void 0 && setsEqual(value.failedTests, curValue.failedTests);
+  });
+  if (setsEqual(prevFingerprints, curFingerprints) && sameFailedTests) {
+    return { status: "unchanged", weakeningSignals };
+  }
+  const curStrictSubsetOfPrev = curFingerprints.size < prevFingerprints.size && isSubset(curFingerprints, prevFingerprints);
+  if (curStrictSubsetOfPrev) {
+    return reducedOrIncomparable(
+      prevImpl,
+      curImpl,
+      weakeningSignals,
+      previousByCheck,
+      currentByCheck
+    );
+  }
+  const prevStrictSubsetOfCur = prevFingerprints.size < curFingerprints.size && isSubset(prevFingerprints, curFingerprints);
+  const newFailingAppeared = [...curImpl.keys()].some((key) => !prevImpl.has(key)) || [...curImpl.entries()].some(([key, value]) => {
+    const prevValue = prevImpl.get(key);
+    if (prevValue === void 0) return false;
+    for (const test of value.failedTests)
+      if (!prevValue.failedTests.has(test)) return true;
+    return false;
+  });
+  if (prevStrictSubsetOfCur || newFailingAppeared) {
+    return { status: "expanded", weakeningSignals };
+  }
+  return { status: "incomparable", weakeningSignals };
+}
+
 // src/types.ts
 var POLICY_SCHEMA = "rigor.policy.v1";
 var INTENT_SCHEMA = "rigor.intent.v1";
@@ -382,6 +697,7 @@ var ESCALATION_SCHEMA = "rigor.escalation.v1";
 var ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1";
 var REVIEW_SCHEMA = "rigor.review.v1";
 var ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1";
+var ROUTING_INPUT_V2_SCHEMA = "rigor.routing-input.v2";
 var MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1";
 var ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1";
 var ATTEMPT_SCHEMA = "rigor.attempt.v1";
@@ -394,6 +710,7 @@ var ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1";
 var ATTEMPT_RESULT_INPUT_SCHEMA = "rigor.attempt-result-input.v1";
 var OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1";
 var OUTCOME_SCHEMA = "rigor.outcome.v1";
+var AVAILABILITY_SCHEMA = "rigor.availability.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -533,6 +850,13 @@ function parseVerification(value) {
   strings(item.changedPaths, "verification.changedPaths");
   if (item.status !== "passed" && item.status !== "failed")
     throw new RigorError("Invalid verification status", EXIT.inputError);
+  if (item.failureFingerprint !== void 0 && item.failureFingerprint !== null)
+    textField(item.failureFingerprint, "verification.failureFingerprint", 128);
+  if (item.failureFacts !== void 0 && !Array.isArray(item.failureFacts))
+    throw new RigorError(
+      "verification.failureFacts must be an array",
+      EXIT.inputError
+    );
   return item;
 }
 function parseContractInput(value) {
@@ -587,6 +911,7 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     (pathname) => !matches(pathname, contract.allowedPaths)
   );
   const checks = [];
+  const failureFacts = [];
   for (const check of policy.checks.filter(
     (item) => contract.requiredChecks.includes(item.id)
   )) {
@@ -594,22 +919,41 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     try {
       result = await run(check.command, check.args, root, check.timeoutMs);
     } catch {
+      const facts2 = deriveCheckFacts({
+        checkId: check.id,
+        status: "error",
+        exitCode: null,
+        output: "spawn-error"
+      });
+      failureFacts.push(facts2);
       checks.push({
         id: check.id,
         status: "error",
         exitCode: null,
         durationMs: 0,
-        outputDigest: hash("spawn-error")
+        outputDigest: hash("spawn-error"),
+        ...facts2.failure === null ? {} : { failure: facts2.failure }
       });
       continue;
     }
     const combined = Buffer.concat([result.stdout, result.stderr]);
+    const outputText = combined.toString("utf8");
+    const status = result.timedOut ? "timed_out" : result.code === 0 ? "passed" : "failed";
+    const facts = deriveCheckFacts({
+      checkId: check.id,
+      status,
+      exitCode: result.code,
+      output: outputText
+    });
+    failureFacts.push(facts);
     checks.push({
       id: check.id,
-      status: result.timedOut ? "timed_out" : result.code === 0 ? "passed" : "failed",
+      status,
       exitCode: result.code,
       durationMs: result.durationMs,
-      outputDigest: hash(combined.toString("utf8"))
+      outputDigest: hash(outputText),
+      ...facts.testStats === null ? {} : { testStats: facts.testStats },
+      ...facts.failure === null ? {} : { failure: facts.failure }
     });
   }
   const passed = scopeViolations.length === 0 && checks.every((check) => check.status === "passed");
@@ -625,7 +969,9 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     changedPaths,
     scopeViolations,
     checks,
-    status: passed ? "passed" : "failed"
+    status: passed ? "passed" : "failed",
+    failureFingerprint: verificationFingerprint(failureFacts),
+    failureFacts
   };
 }
 function parseEscalationInput(value) {
@@ -2071,6 +2417,11 @@ var purposes = [
   "adversarial-review",
   "rescue"
 ];
+var confidenceLevels = ["low", "medium", "high"];
+var routingInputSchemaVersions = [
+  ROUTING_INPUT_SCHEMA,
+  ROUTING_INPUT_V2_SCHEMA
+];
 function oneOf(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
@@ -2086,53 +2437,123 @@ function bool2(value, name) {
     throw new RigorError(`${name} must be boolean`, EXIT.inputError);
   return value;
 }
-function parseRoutingInput(value) {
-  const item = record(value, "routing input");
-  if (item.schemaVersion !== ROUTING_INPUT_SCHEMA)
-    throw new RigorError("Unsupported routing input schema", EXIT.inputError);
-  const signals = record(item.signals, "signals");
-  const budget = record(item.budget, "budget");
-  const assessmentReasons = strings(
-    item.assessmentReasons,
-    "assessmentReasons",
-    20
-  );
-  if (assessmentReasons.length === 0)
+function assessmentPath(value, name) {
+  const p = textField(value, name, 1024);
+  if (p.startsWith("/") || p.split(/[\\/]/u).includes(".."))
     throw new RigorError(
-      "assessmentReasons must not be empty",
+      `${name} must be a repository-relative path`,
       EXIT.inputError
     );
+  return p;
+}
+function parseSignals(value) {
+  const signals = record(value, "signals");
   return {
-    schemaVersion: ROUTING_INPUT_SCHEMA,
-    taskId: taskId(item.taskId),
-    purpose: oneOf(item.purpose, purposes, "purpose"),
-    signals: {
-      complexity: oneOf(signals.complexity, signalLevels, "complexity"),
-      ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
-      novelty: oneOf(signals.novelty, signalLevels, "novelty"),
-      verificationStrength: oneOf(
-        signals.verificationStrength,
-        verificationStrengths,
-        "verificationStrength"
-      )
-    },
-    assessmentReasons,
-    budget: {
-      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
-      maxDurationMs: integer(
-        budget.maxDurationMs,
-        "maxDurationMs",
-        1e3,
-        864e5
-      ),
-      maxRelativeCost: integer(
-        budget.maxRelativeCost,
-        "maxRelativeCost",
-        1,
-        1e6
-      )
-    }
+    complexity: oneOf(signals.complexity, signalLevels, "complexity"),
+    ambiguity: oneOf(signals.ambiguity, signalLevels, "ambiguity"),
+    novelty: oneOf(signals.novelty, signalLevels, "novelty"),
+    verificationStrength: oneOf(
+      signals.verificationStrength,
+      verificationStrengths,
+      "verificationStrength"
+    )
   };
+}
+function parseBudget(value) {
+  const budget = record(value, "budget");
+  return {
+    maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
+    maxDurationMs: integer(
+      budget.maxDurationMs,
+      "maxDurationMs",
+      1e3,
+      864e5
+    ),
+    maxRelativeCost: integer(
+      budget.maxRelativeCost,
+      "maxRelativeCost",
+      1,
+      1e6
+    )
+  };
+}
+function parseEvidence(value) {
+  if (!Array.isArray(value) || value.length === 0)
+    throw new RigorError(
+      "assessment.evidence must not be empty",
+      EXIT.inputError
+    );
+  if (value.length > 20)
+    throw new RigorError(
+      "assessment.evidence must not exceed 20 items",
+      EXIT.inputError
+    );
+  return value.map((raw, index) => {
+    const item = record(raw, `assessment.evidence[${index}]`);
+    return {
+      path: assessmentPath(item.path, `assessment.evidence[${index}].path`),
+      observation: textField(
+        item.observation,
+        `assessment.evidence[${index}].observation`,
+        1e4
+      )
+    };
+  });
+}
+function parseRoutingInput(value) {
+  const item = record(value, "routing input");
+  if (item.schemaVersion === ROUTING_INPUT_SCHEMA) {
+    const assessmentReasons = strings(
+      item.assessmentReasons,
+      "assessmentReasons",
+      20
+    );
+    if (assessmentReasons.length === 0)
+      throw new RigorError(
+        "assessmentReasons must not be empty",
+        EXIT.inputError
+      );
+    return {
+      schemaVersion: ROUTING_INPUT_SCHEMA,
+      taskId: taskId(item.taskId),
+      purpose: oneOf(item.purpose, purposes, "purpose"),
+      signals: parseSignals(item.signals),
+      assessmentReasons,
+      budget: parseBudget(item.budget)
+    };
+  }
+  if (item.schemaVersion === ROUTING_INPUT_V2_SCHEMA) {
+    const assessmentRecord = record(item.assessment, "assessment");
+    const confidence = oneOf(
+      assessmentRecord.confidence,
+      confidenceLevels,
+      "assessment.confidence"
+    );
+    const evidence = parseEvidence(assessmentRecord.evidence);
+    const signals = parseSignals(item.signals);
+    if (confidence === "high" && (signals.ambiguity === "critical" || signals.verificationStrength === "weak"))
+      throw new RigorError(
+        "Contradictory assessment: high confidence with critical ambiguity or weak verification",
+        EXIT.inputError
+      );
+    return {
+      schemaVersion: ROUTING_INPUT_V2_SCHEMA,
+      taskId: taskId(item.taskId),
+      purpose: oneOf(item.purpose, purposes, "purpose"),
+      signals,
+      // v2 does not carry a separate top-level assessmentReasons field; the
+      // internal invariant that every routing input has non-empty reasons is
+      // preserved by deriving reasons from the evidence observations.
+      assessmentReasons: evidence.map((entry) => entry.observation),
+      budget: parseBudget(item.budget),
+      assessment: {
+        inputSchemaVersion: ROUTING_INPUT_V2_SCHEMA,
+        confidence,
+        evidence
+      }
+    };
+  }
+  throw new RigorError("Unsupported routing input schema", EXIT.inputError);
 }
 function parseCandidate(value, index) {
   const item = record(value, `candidates[${index}]`);
@@ -2197,8 +2618,11 @@ function requiredCapability(input) {
   const weaknessBump = input.signals.verificationStrength === "weak" ? 1 : 0;
   return capabilityClasses[Math.min(signalRank + weaknessBump, 3)];
 }
-function exclusionReason(candidate, input, preflight, required) {
+function exclusionReason(candidate, input, preflight, required, availability) {
   if (!candidate.enabled) return "DISABLED";
+  const state = availability.get(candidate.id);
+  if (state === "incompatible") return "INCOMPATIBLE";
+  if (state === "unavailable") return "UNAVAILABLE";
   if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
   if (preflight.externalTransmission === "denied" && candidate.requiresAdditionalExternalTransmission)
     return "EXTERNAL_TRANSMISSION_DENIED";
@@ -2208,24 +2632,41 @@ function exclusionReason(candidate, input, preflight, required) {
     return "BUDGET_EXCEEDED";
   return null;
 }
-function route(preflight, input, profiles) {
+function route(preflight, input, profiles, availability) {
   if (input.taskId !== preflight.taskId)
     throw new RigorError(
       "Routing taskId does not match preflight",
       EXIT.inputError
     );
+  const availabilityStates2 = /* @__PURE__ */ new Map();
+  if (availability !== void 0) {
+    if (availability.modelProfilesHash !== hash(profiles))
+      throw new RigorError(
+        "Availability report does not match the model profiles",
+        EXIT.inputError
+      );
+    for (const entry of availability.candidates)
+      availabilityStates2.set(entry.candidateId, entry.state);
+  }
   const required = requiredCapability(input);
+  const confidence = input.assessment?.confidence ?? "medium";
   const eligible = [];
   const excluded = [];
   for (const candidate of profiles.candidates) {
-    const reasonCode = exclusionReason(candidate, input, preflight, required);
+    const reasonCode = exclusionReason(
+      candidate,
+      input,
+      preflight,
+      required,
+      availabilityStates2
+    );
     if (reasonCode) excluded.push({ candidateId: candidate.id, reasonCode });
     else eligible.push(candidate);
   }
   eligible.sort(
     (left, right) => left.relativeCost - right.relativeCost || capabilityClasses.indexOf(left.capabilityClass) - capabilityClasses.indexOf(right.capabilityClass) || left.id.localeCompare(right.id)
   );
-  const selected = eligible[0];
+  const selected = confidence === "low" ? void 0 : eligible[0];
   const selection = selected ? {
     candidateId: selected.id,
     provider: selected.provider,
@@ -2233,6 +2674,7 @@ function route(preflight, input, profiles) {
     capabilityClass: selected.capabilityClass,
     relativeCost: selected.relativeCost
   } : null;
+  const status = confidence === "low" ? "requires-review" : selection ? "selected" : "unroutable";
   return {
     schemaVersion: ROUTING_DECISION_SCHEMA,
     mode: "dry-run",
@@ -2252,7 +2694,13 @@ function route(preflight, input, profiles) {
       requireIndependentReview: preflight.riskTier === "high" || preflight.riskTier === "critical" || preflight.protectedPaths.length > 0
     },
     budget: input.budget,
-    status: selection ? "selected" : "unroutable"
+    ...availability === void 0 ? {} : { availabilityReportHash: hash(availability) },
+    assessment: {
+      inputSchemaVersion: input.schemaVersion,
+      confidence,
+      evidenceCount: input.assessment?.evidence.length ?? 0
+    },
+    status
   };
 }
 function createRoutingPlan(decision, preflight, contract, now = /* @__PURE__ */ new Date()) {
@@ -2297,6 +2745,31 @@ function parseRoutingPlan(value) {
   const plannedHead = item.plannedHead;
   if (plannedHead !== null && typeof plannedHead !== "string")
     throw new RigorError("plannedHead is invalid", EXIT.inputError);
+  const assessment = item.assessment === void 0 ? {
+    inputSchemaVersion: ROUTING_INPUT_SCHEMA,
+    confidence: "medium",
+    evidenceCount: 0
+  } : (() => {
+    const raw = record(item.assessment, "assessment");
+    return {
+      inputSchemaVersion: oneOf(
+        raw.inputSchemaVersion,
+        routingInputSchemaVersions,
+        "assessment.inputSchemaVersion"
+      ),
+      confidence: oneOf(
+        raw.confidence,
+        confidenceLevels,
+        "assessment.confidence"
+      ),
+      evidenceCount: integer(
+        raw.evidenceCount,
+        "assessment.evidenceCount",
+        0,
+        20
+      )
+    };
+  })();
   const plan = {
     schemaVersion: ROUTING_PLAN_SCHEMA,
     artifactId: textField(item.artifactId, "artifactId", 128),
@@ -2375,6 +2848,7 @@ function parseRoutingPlan(value) {
         1e6
       )
     },
+    assessment,
     status: "planned"
   };
   if (selection.model !== void 0)
@@ -2395,13 +2869,267 @@ function parseRoutingPlan(value) {
           "PURPOSE_UNSUPPORTED",
           "EXTERNAL_TRANSMISSION_DENIED",
           "INSUFFICIENT_CAPABILITY",
-          "BUDGET_EXCEEDED"
+          "BUDGET_EXCEEDED",
+          "UNAVAILABLE",
+          "INCOMPATIBLE"
         ],
         "reasonCode"
       )
     };
   });
+  if (item.availabilityReportHash !== void 0)
+    plan.availabilityReportHash = textField(
+      item.availabilityReportHash,
+      "availabilityReportHash",
+      128
+    );
   return plan;
+}
+
+// src/availability.ts
+var CLAUDE_PRESENCE_VARS = ["CLAUDE_PLUGIN_ROOT", "CLAUDE_CODE_ENTRYPOINT"];
+var TRUTHY = /* @__PURE__ */ new Set(["1", "true", "yes", "present"]);
+var FALSEY = /* @__PURE__ */ new Set(["0", "false", "no", "absent"]);
+function boundedVersion(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 128 || trimmed.includes("\0"))
+    return null;
+  return trimmed;
+}
+function codexPresence(value) {
+  if (typeof value !== "string") return "unknown";
+  const normalized = value.trim().toLowerCase();
+  if (TRUTHY.has(normalized)) return "present";
+  if (FALSEY.has(normalized)) return "absent";
+  return "unknown";
+}
+function probeEnvironment(env = process.env) {
+  try {
+    const claudeVersion = boundedVersion(env.CLAUDE_CODE_VERSION);
+    const configuredRaw = typeof env.ANTHROPIC_MODEL === "string" ? env.ANTHROPIC_MODEL.trim() : null;
+    const configuredModel = configuredRaw !== null && configuredRaw.length > 0 && configuredRaw.length <= 256 && !configuredRaw.includes("\0") ? configuredRaw : null;
+    return {
+      probeSupported: true,
+      claudeCode: {
+        present: CLAUDE_PRESENCE_VARS.some(
+          (name) => typeof env[name] === "string" && env[name].length > 0
+        ),
+        version: claudeVersion
+      },
+      configuredModel,
+      codexPlugin: {
+        presence: codexPresence(env.RIGOR_CODEX_PLUGIN_PRESENT),
+        version: boundedVersion(env.RIGOR_CODEX_PLUGIN_VERSION)
+      }
+    };
+  } catch {
+    return {
+      probeSupported: false,
+      claudeCode: { present: false, version: null },
+      configuredModel: null,
+      codexPlugin: { presence: "unknown", version: null }
+    };
+  }
+}
+function deriveState(candidate, observation) {
+  if (candidate.provider !== "claude" && candidate.provider !== "codex-plugin-cc")
+    return {
+      state: "incompatible",
+      reason: "Provider cannot be invoked by the Claude Code execution layer (only claude and codex-plugin-cc are supported).",
+      toolVersion: null
+    };
+  if (!observation.probeSupported)
+    return {
+      state: "unknown",
+      reason: "Environment probing is unsupported; availability is unknown.",
+      toolVersion: null
+    };
+  if (candidate.provider === "claude") {
+    if (observation.claudeCode.present)
+      return {
+        state: "available",
+        reason: "Claude Code execution environment observed; runtime model identity remains unverified.",
+        toolVersion: observation.claudeCode.version
+      };
+    return {
+      state: "unknown",
+      reason: "Claude Code environment not observable through documented variables; availability is unknown.",
+      toolVersion: observation.claudeCode.version
+    };
+  }
+  if (observation.codexPlugin.presence === "present")
+    return {
+      state: "available",
+      reason: "codex-plugin-cc declared present by the orchestrator.",
+      toolVersion: observation.codexPlugin.version
+    };
+  if (observation.codexPlugin.presence === "absent")
+    return {
+      state: "unavailable",
+      reason: "codex-plugin-cc declared absent by the orchestrator.",
+      toolVersion: observation.codexPlugin.version
+    };
+  return {
+    state: "unknown",
+    reason: "codex-plugin-cc presence not declared through documented variables; availability is unknown.",
+    toolVersion: observation.codexPlugin.version
+  };
+}
+function buildAvailabilityReport(profiles, observation, now = /* @__PURE__ */ new Date()) {
+  const observedAt = now.toISOString();
+  const candidates = profiles.candidates.map(
+    (candidate) => {
+      const derived = deriveState(candidate, observation);
+      return {
+        candidateId: candidate.id,
+        provider: candidate.provider,
+        state: derived.state,
+        reason: derived.reason,
+        observedAt,
+        toolVersion: derived.toolVersion
+      };
+    }
+  );
+  return {
+    schemaVersion: AVAILABILITY_SCHEMA,
+    artifactId: artifactId("availability"),
+    createdAt: observedAt,
+    modelProfilesHash: hash(profiles),
+    probeStatus: observation.probeSupported ? "supported" : "unsupported",
+    environment: {
+      claudeCode: {
+        present: observation.claudeCode.present,
+        version: observation.claudeCode.version
+      },
+      configuredModel: observation.configuredModel === null ? null : { value: observation.configuredModel, attestation: "unverified" },
+      codexPlugin: {
+        presence: observation.codexPlugin.presence,
+        version: observation.codexPlugin.version
+      }
+    },
+    candidates
+  };
+}
+var availabilityStates = [
+  "available",
+  "unavailable",
+  "unknown",
+  "incompatible"
+];
+var codexPresences = ["present", "absent", "unknown"];
+function oneOf2(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function optionalVersion(value, name) {
+  if (value === null) return null;
+  return textField(value, name, 128);
+}
+function parseAvailabilityReport(value) {
+  const item = record(value, "availability report");
+  if (item.schemaVersion !== AVAILABILITY_SCHEMA)
+    throw new RigorError(
+      "Unsupported availability report schema",
+      EXIT.inputError
+    );
+  const environment = record(item.environment, "environment");
+  const claudeCode = record(environment.claudeCode, "environment.claudeCode");
+  const codexPlugin = record(
+    environment.codexPlugin,
+    "environment.codexPlugin"
+  );
+  if (typeof claudeCode.present !== "boolean")
+    throw new RigorError(
+      "environment.claudeCode.present must be boolean",
+      EXIT.inputError
+    );
+  let configuredModel = null;
+  if (environment.configuredModel !== null) {
+    const configured = record(
+      environment.configuredModel,
+      "environment.configuredModel"
+    );
+    if (configured.attestation !== "unverified")
+      throw new RigorError(
+        "configuredModel.attestation must be unverified",
+        EXIT.inputError
+      );
+    configuredModel = {
+      value: textField(configured.value, "configuredModel.value", 256),
+      attestation: "unverified"
+    };
+  }
+  if (!Array.isArray(item.candidates))
+    throw new RigorError("candidates must be an array", EXIT.inputError);
+  const candidates = item.candidates.map((raw, index) => {
+    const candidate = record(raw, `candidates[${index}]`);
+    return {
+      candidateId: textField(
+        candidate.candidateId,
+        `candidates[${index}].candidateId`,
+        128
+      ),
+      provider: textField(
+        candidate.provider,
+        `candidates[${index}].provider`,
+        128
+      ),
+      state: oneOf2(
+        candidate.state,
+        availabilityStates,
+        `candidates[${index}].state`
+      ),
+      reason: textField(candidate.reason, `candidates[${index}].reason`, 1e3),
+      observedAt: textField(
+        candidate.observedAt,
+        `candidates[${index}].observedAt`,
+        128
+      ),
+      toolVersion: optionalVersion(
+        candidate.toolVersion,
+        `candidates[${index}].toolVersion`
+      )
+    };
+  });
+  return {
+    schemaVersion: AVAILABILITY_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    modelProfilesHash: textField(
+      item.modelProfilesHash,
+      "modelProfilesHash",
+      128
+    ),
+    probeStatus: oneOf2(
+      item.probeStatus,
+      ["supported", "unsupported"],
+      "probeStatus"
+    ),
+    environment: {
+      claudeCode: {
+        present: claudeCode.present,
+        version: optionalVersion(
+          claudeCode.version,
+          "environment.claudeCode.version"
+        )
+      },
+      configuredModel,
+      codexPlugin: {
+        presence: oneOf2(
+          codexPlugin.presence,
+          codexPresences,
+          "environment.codexPlugin.presence"
+        ),
+        version: optionalVersion(
+          codexPlugin.version,
+          "environment.codexPlugin.version"
+        )
+      }
+    },
+    candidates
+  };
 }
 
 // src/consultation.ts
@@ -2419,7 +3147,7 @@ var outcomes = [
   "investigate",
   "ask-human"
 ];
-function oneOf2(value, values, name) {
+function oneOf3(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -2448,7 +3176,7 @@ function parseConsultationRequest(value) {
     schemaVersion: CONSULTATION_REQUEST_SCHEMA,
     taskId: taskId(item.taskId),
     provider: "codex-plugin-cc",
-    mode: oneOf2(item.mode, modes, "mode"),
+    mode: oneOf3(item.mode, modes, "mode"),
     requestedDecision: textField(
       item.requestedDecision,
       "requestedDecision",
@@ -2480,7 +3208,7 @@ function parseConsultationSession(value) {
     ),
     preflightHash: textField(item.preflightHash, "preflightHash", 128),
     provider: "codex-plugin-cc",
-    mode: oneOf2(item.mode, modes, "mode"),
+    mode: oneOf3(item.mode, modes, "mode"),
     requestedDecision: textField(
       item.requestedDecision,
       "requestedDecision",
@@ -2504,11 +3232,11 @@ function parseConsultationResultInput(value) {
   const result = {
     schemaVersion: CONSULTATION_RESULT_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    status: oneOf2(item.status, ["completed", "failed"], "status"),
-    outcome: oneOf2(item.outcome, outcomes, "outcome"),
+    status: oneOf3(item.status, ["completed", "failed"], "status"),
+    outcome: oneOf3(item.outcome, outcomes, "outcome"),
     findingCount: item.findingCount,
     requiredActions: strings(item.requiredActions, "requiredActions", 100),
-    usageStatus: oneOf2(
+    usageStatus: oneOf3(
       item.usageStatus,
       ["recorded", "unavailable"],
       "usageStatus"
@@ -2652,7 +3380,7 @@ var purposes2 = [
   "adversarial-review",
   "rescue"
 ];
-function oneOf3(value, values, name) {
+function oneOf4(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -2672,11 +3400,12 @@ async function attemptState(root, task) {
     names = await (0, import_promises8.readdir)(directory);
   } catch (error) {
     if (error.code === "ENOENT")
-      return { count: 0, unfinished: [] };
+      return { count: 0, unfinished: [], finishedAttempts: [] };
     throw error;
   }
   const sessions = /* @__PURE__ */ new Set();
   const finished = /* @__PURE__ */ new Set();
+  const finishedAttempts = [];
   for (const name of names.filter((item) => item.endsWith(".json"))) {
     let item;
     try {
@@ -2694,13 +3423,29 @@ async function attemptState(root, task) {
     }
     if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
       sessions.add(textField(item.artifactId, "artifactId", 128));
-    if (item.schemaVersion === ATTEMPT_SCHEMA)
+    if (item.schemaVersion === ATTEMPT_SCHEMA) {
       finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
+      finishedAttempts.push(item);
+    }
   }
   return {
     count: sessions.size,
-    unfinished: [...sessions].filter((id) => !finished.has(id))
+    unfinished: [...sessions].filter((id) => !finished.has(id)),
+    finishedAttempts
   };
+}
+function mostRecentPriorAttempt(finishedAttempts, beforeSequence) {
+  let best = null;
+  let bestSequence = -1;
+  for (const item of finishedAttempts) {
+    const sequence = item.sequence;
+    if (typeof sequence !== "number" || !(sequence < beforeSequence)) continue;
+    if (sequence > bestSequence) {
+      bestSequence = sequence;
+      best = item;
+    }
+  }
+  return best;
 }
 function parseAttemptSession(value) {
   const item = record(value, "attempt session");
@@ -2730,12 +3475,12 @@ function parseAttemptSession(value) {
     ),
     contractHash: textField(item.contractHash, "contractHash", 128),
     provider: textField(selection.provider, "selection.provider", 128),
-    capabilityClass: oneOf3(
+    capabilityClass: oneOf4(
       selection.capabilityClass,
       capabilities,
       "selection.capabilityClass"
     ),
-    purpose: oneOf3(item.purpose, purposes2, "purpose"),
+    purpose: oneOf4(item.purpose, purposes2, "purpose"),
     budget: {
       maxAttempts: Number(budget.maxAttempts),
       maxDurationMs: Number(budget.maxDurationMs),
@@ -2771,7 +3516,7 @@ function parseAttempt(value) {
   textField(item.artifactId, "attempt.artifactId", 128);
   if (!Number.isInteger(item.sequence) || item.sequence < 1 || item.sequence > 20)
     throw new RigorError("attempt.sequence is invalid", EXIT.inputError);
-  oneOf3(
+  oneOf4(
     item.status,
     ["completed", "failed", "cancelled", "scope-violation", "budget-exceeded"],
     "attempt.status"
@@ -2779,7 +3524,7 @@ function parseAttempt(value) {
   if (!Number.isInteger(item.durationMs) || item.durationMs < 0)
     throw new RigorError("attempt.durationMs is invalid", EXIT.inputError);
   textField(item.provider, "attempt.provider", 128);
-  oneOf3(item.capabilityClass, capabilities, "attempt.capabilityClass");
+  oneOf4(item.capabilityClass, capabilities, "attempt.capabilityClass");
   if (item.executionIdentityStatus !== "unverified")
     throw new RigorError(
       "executionIdentityStatus must be unverified",
@@ -2792,6 +3537,34 @@ function parseAttempt(value) {
       "attempt.verificationArtifactId",
       128
     );
+  if (item.failureFingerprint !== void 0 && item.failureFingerprint !== null)
+    textField(item.failureFingerprint, "attempt.failureFingerprint", 128);
+  if (item.failureCategory !== void 0 && item.failureCategory !== null)
+    oneOf4(
+      item.failureCategory,
+      ["implementation", "infrastructure", "timeout", "flaky", "mixed"],
+      "attempt.failureCategory"
+    );
+  if (item.failureFacts !== void 0 && !Array.isArray(item.failureFacts))
+    throw new RigorError(
+      "attempt.failureFacts must be an array",
+      EXIT.inputError
+    );
+  if (item.progress !== void 0) {
+    const progress = record(item.progress, "attempt.progress");
+    oneOf4(
+      progress.status,
+      ["first", "unchanged", "reduced", "expanded", "incomparable"],
+      "attempt.progress.status"
+    );
+    strings(progress.weakeningSignals, "attempt.progress.weakeningSignals");
+    if (progress.comparedToAttemptArtifactId !== null && progress.comparedToAttemptArtifactId !== void 0)
+      textField(
+        progress.comparedToAttemptArtifactId,
+        "attempt.progress.comparedToAttemptArtifactId",
+        128
+      );
+  }
   return item;
 }
 function parseAttemptResultInput(value) {
@@ -2804,7 +3577,7 @@ function parseAttemptResultInput(value) {
   const result = {
     schemaVersion: ATTEMPT_RESULT_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    status: oneOf3(item.status, ["completed", "failed", "cancelled"], "status")
+    status: oneOf4(item.status, ["completed", "failed", "cancelled"], "status")
   };
   for (const [key, value2] of Object.entries({
     failureClass: optionalText2(item.failureClass, "failureClass"),
@@ -2932,6 +3705,40 @@ async function finishAttempt(root, session, contract, input, verification, now =
   if (!Number.isFinite(durationMs) || durationMs < 0)
     throw new RigorError("Attempt timestamps are invalid", EXIT.inputError);
   const status = scopeViolations.length > 0 ? "scope-violation" : durationMs > session.budget.maxDurationMs ? "budget-exceeded" : input.status;
+  const failureFacts = verification?.failureFacts ?? [];
+  const failureFingerprint = verification?.failureFingerprint ?? null;
+  const failureCategory = aggregateCategory(failureFacts);
+  const { finishedAttempts } = await attemptState(root, session.taskId);
+  const prior = mostRecentPriorAttempt(finishedAttempts, session.sequence);
+  let progress;
+  if (prior === null) {
+    progress = {
+      status: "first",
+      comparedToAttemptArtifactId: null,
+      weakeningSignals: []
+    };
+  } else {
+    const comparedToAttemptArtifactId = textField(
+      prior.artifactId,
+      "prior attempt artifactId",
+      128
+    );
+    const priorFailureFacts = Array.isArray(prior.failureFacts) ? prior.failureFacts : null;
+    if (priorFailureFacts === null) {
+      progress = {
+        status: "incomparable",
+        comparedToAttemptArtifactId,
+        weakeningSignals: []
+      };
+    } else {
+      const comparison = compareFailures(priorFailureFacts, failureFacts);
+      progress = {
+        status: comparison.status,
+        comparedToAttemptArtifactId,
+        weakeningSignals: comparison.weakeningSignals
+      };
+    }
+  }
   const attempt = {
     schemaVersion: ATTEMPT_SCHEMA,
     artifactId: artifactId("attempt"),
@@ -2960,7 +3767,11 @@ async function finishAttempt(root, session, contract, input, verification, now =
     changedPathsBefore: session.changedPathsBefore,
     changedPaths,
     scopeViolations,
-    ...verification === void 0 ? {} : { verificationArtifactId: verification.artifactId }
+    ...verification === void 0 ? {} : { verificationArtifactId: verification.artifactId },
+    failureFingerprint,
+    failureCategory,
+    failureFacts,
+    progress
   };
   for (const key of [
     "failureClass",
@@ -2981,7 +3792,7 @@ async function finishAttempt(root, session, contract, input, verification, now =
 }
 
 // src/outcome.ts
-function oneOf4(value, values, name) {
+function oneOf5(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -3007,7 +3818,7 @@ function reject(message) {
 function parseUsageInput(value) {
   const item = record(value, "usage");
   const usage = {
-    status: oneOf4(
+    status: oneOf5(
       item.status,
       ["recorded", "unavailable", "unknown"],
       "usage.status"
@@ -3059,7 +3870,7 @@ function parseOutcomeInput(value) {
   const input = {
     schemaVersion: OUTCOME_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    decision: oneOf4(item.decision, ["accepted", "rejected"], "decision"),
+    decision: oneOf5(item.decision, ["accepted", "rejected"], "decision"),
     acceptedWithoutModelCodeChanges: boolean(
       item.acceptedWithoutModelCodeChanges,
       "acceptedWithoutModelCodeChanges"
@@ -3082,12 +3893,12 @@ function parseOutcomeInput(value) {
       medium: integer2(findings.medium, "reviewFindings.medium", 0, 1e4),
       low: integer2(findings.low, "reviewFindings.low", 0, 1e4)
     },
-    revertStatus: oneOf4(
+    revertStatus: oneOf5(
       item.revertStatus,
       ["none", "reverted"],
       "revertStatus"
     ),
-    escapedDefectStatus: oneOf4(
+    escapedDefectStatus: oneOf5(
       item.escapedDefectStatus,
       ["none", "suspected", "confirmed"],
       "escapedDefectStatus"
@@ -3263,7 +4074,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
@@ -3298,6 +4109,14 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output({ ...result, saved });
     return EXIT.success;
   }
+  if (command === "availability") {
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles"))
+    );
+    const report = buildAvailabilityReport(profiles, probeEnvironment());
+    output(report);
+    return EXIT.success;
+  }
   if (command === "route") {
     const dryRun = args.includes("--dry-run");
     const recordPlan = args.includes("--record");
@@ -3313,7 +4132,9 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     const profiles = parseModelProfiles(
       await readJson(option(args, "--profiles"))
     );
-    const result = route(preflight, input, profiles);
+    const availabilityPath = option(args, "--availability", false);
+    const availability = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
+    const result = route(preflight, input, profiles, availability);
     if (result.status !== "selected") {
       output(result);
       return EXIT.policyViolation;

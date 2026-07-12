@@ -4,6 +4,7 @@ import { EXIT, RigorError } from "./errors.js";
 import { gitFacts, treeHash } from "./git.js";
 import { matches } from "./paths.js";
 import { saveCollectionArtifact } from "./artifacts.js";
+import { aggregateCategory, compareFailures } from "./fingerprint.js";
 import {
   ATTEMPT_RESULT_INPUT_SCHEMA,
   ATTEMPT_SCHEMA,
@@ -12,8 +13,11 @@ import {
   type AttemptResultInput,
   type AttemptSession,
   type CapabilityClass,
+  type CheckFacts,
   type Contract,
+  type FailureCategory,
   type Policy,
+  type ProgressComparison,
   type RoutingPlan,
   type RoutingPurpose,
   type Verification,
@@ -65,18 +69,23 @@ function filteredChangedPaths(paths: string[]): string[] {
 async function attemptState(
   root: string,
   task: string,
-): Promise<{ count: number; unfinished: string[] }> {
+): Promise<{
+  count: number;
+  unfinished: string[];
+  finishedAttempts: Record<string, unknown>[];
+}> {
   const directory = path.join(root, ".rigor", "evidence", task, "attempts");
   let names: string[];
   try {
     names = await readdir(directory);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT")
-      return { count: 0, unfinished: [] };
+      return { count: 0, unfinished: [], finishedAttempts: [] };
     throw error;
   }
   const sessions = new Set<string>();
   const finished = new Set<string>();
+  const finishedAttempts: Record<string, unknown>[] = [];
   for (const name of names.filter((item) => item.endsWith(".json"))) {
     let item: Record<string, unknown>;
     try {
@@ -94,13 +103,38 @@ async function attemptState(
     }
     if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
       sessions.add(textField(item.artifactId, "artifactId", 128));
-    if (item.schemaVersion === ATTEMPT_SCHEMA)
+    if (item.schemaVersion === ATTEMPT_SCHEMA) {
       finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
+      finishedAttempts.push(item);
+    }
   }
   return {
     count: sessions.size,
     unfinished: [...sessions].filter((id) => !finished.has(id)),
+    finishedAttempts,
   };
+}
+
+/**
+ * The most recently finished attempt for this task with sequence strictly
+ * before `beforeSequence`, or null when none exists. Used to look up the
+ * baseline for cross-attempt failure-progress comparison.
+ */
+function mostRecentPriorAttempt(
+  finishedAttempts: Record<string, unknown>[],
+  beforeSequence: number,
+): Record<string, unknown> | null {
+  let best: Record<string, unknown> | null = null;
+  let bestSequence = -1;
+  for (const item of finishedAttempts) {
+    const sequence = item.sequence;
+    if (typeof sequence !== "number" || !(sequence < beforeSequence)) continue;
+    if (sequence > bestSequence) {
+      bestSequence = sequence;
+      best = item;
+    }
+  }
+  return best;
 }
 
 export function parseAttemptSession(value: unknown): AttemptSession {
@@ -198,6 +232,40 @@ export function parseAttempt(value: unknown): Attempt {
       "attempt.verificationArtifactId",
       128,
     );
+  // failureFingerprint/failureCategory/failureFacts/progress are additive;
+  // older attempt.json artifacts predate them and must still parse, so only
+  // validate shape when the fields are present.
+  if (item.failureFingerprint !== undefined && item.failureFingerprint !== null)
+    textField(item.failureFingerprint, "attempt.failureFingerprint", 128);
+  if (item.failureCategory !== undefined && item.failureCategory !== null)
+    oneOf(
+      item.failureCategory,
+      ["implementation", "infrastructure", "timeout", "flaky", "mixed"],
+      "attempt.failureCategory",
+    );
+  if (item.failureFacts !== undefined && !Array.isArray(item.failureFacts))
+    throw new RigorError(
+      "attempt.failureFacts must be an array",
+      EXIT.inputError,
+    );
+  if (item.progress !== undefined) {
+    const progress = record(item.progress, "attempt.progress");
+    oneOf(
+      progress.status,
+      ["first", "unchanged", "reduced", "expanded", "incomparable"],
+      "attempt.progress.status",
+    );
+    strings(progress.weakeningSignals, "attempt.progress.weakeningSignals");
+    if (
+      progress.comparedToAttemptArtifactId !== null &&
+      progress.comparedToAttemptArtifactId !== undefined
+    )
+      textField(
+        progress.comparedToAttemptArtifactId,
+        "attempt.progress.comparedToAttemptArtifactId",
+        128,
+      );
+  }
   return item as unknown as Attempt;
 }
 
@@ -382,6 +450,50 @@ export async function finishAttempt(
       : durationMs > session.budget.maxDurationMs
         ? "budget-exceeded"
         : input.status;
+
+  // Deterministically derived from the linked verification, never from model
+  // input. Kept separate from the model-supplied, speculative `failureClass`.
+  const failureFacts: CheckFacts[] = verification?.failureFacts ?? [];
+  const failureFingerprint: string | null =
+    verification?.failureFingerprint ?? null;
+  const failureCategory: FailureCategory | "mixed" | null =
+    aggregateCategory(failureFacts);
+
+  const { finishedAttempts } = await attemptState(root, session.taskId);
+  const prior = mostRecentPriorAttempt(finishedAttempts, session.sequence);
+  let progress: ProgressComparison;
+  if (prior === null) {
+    progress = {
+      status: "first",
+      comparedToAttemptArtifactId: null,
+      weakeningSignals: [],
+    };
+  } else {
+    const comparedToAttemptArtifactId = textField(
+      prior.artifactId,
+      "prior attempt artifactId",
+      128,
+    );
+    const priorFailureFacts = Array.isArray(prior.failureFacts)
+      ? (prior.failureFacts as CheckFacts[])
+      : null;
+    if (priorFailureFacts === null) {
+      // The prior attempt predates failure fingerprinting.
+      progress = {
+        status: "incomparable",
+        comparedToAttemptArtifactId,
+        weakeningSignals: [],
+      };
+    } else {
+      const comparison = compareFailures(priorFailureFacts, failureFacts);
+      progress = {
+        status: comparison.status,
+        comparedToAttemptArtifactId,
+        weakeningSignals: comparison.weakeningSignals,
+      };
+    }
+  }
+
   const attempt: Attempt = {
     schemaVersion: ATTEMPT_SCHEMA,
     artifactId: artifactId("attempt"),
@@ -413,6 +525,10 @@ export async function finishAttempt(
     ...(verification === undefined
       ? {}
       : { verificationArtifactId: verification.artifactId }),
+    failureFingerprint,
+    failureCategory,
+    failureFacts,
+    progress,
   };
   for (const key of [
     "failureClass",

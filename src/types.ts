@@ -1,3 +1,11 @@
+import type {
+  CheckFacts,
+  CheckFailure,
+  FailureCategory,
+  ProgressComparison,
+  TestStats,
+} from "./fingerprint.js";
+
 export const POLICY_SCHEMA = "rigor.policy.v1" as const;
 export const INTENT_SCHEMA = "rigor.intent.v1" as const;
 export const PREFLIGHT_SCHEMA = "rigor.preflight.v1" as const;
@@ -8,6 +16,7 @@ export const ESCALATION_SCHEMA = "rigor.escalation.v1" as const;
 export const ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1" as const;
 export const REVIEW_SCHEMA = "rigor.review.v1" as const;
 export const ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1" as const;
+export const ROUTING_INPUT_V2_SCHEMA = "rigor.routing-input.v2" as const;
 export const MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1" as const;
 export const ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1" as const;
 export const ATTEMPT_SCHEMA = "rigor.attempt.v1" as const;
@@ -24,6 +33,16 @@ export const ATTEMPT_RESULT_INPUT_SCHEMA =
   "rigor.attempt-result-input.v1" as const;
 export const OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1" as const;
 export const OUTCOME_SCHEMA = "rigor.outcome.v1" as const;
+export const AVAILABILITY_SCHEMA = "rigor.availability.v1" as const;
+
+export type {
+  CheckFacts,
+  CheckFailure,
+  FailureCategory,
+  ProgressComparison,
+  ProgressStatus,
+  TestStats,
+} from "./fingerprint.js";
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
@@ -124,6 +143,8 @@ export interface CheckResult {
   exitCode: number | null;
   durationMs: number;
   outputDigest: string;
+  testStats?: TestStats;
+  failure?: CheckFailure;
 }
 
 export interface Verification {
@@ -139,6 +160,12 @@ export interface Verification {
   scopeViolations: string[];
   checks: CheckResult[];
   status: "passed" | "failed";
+  /**
+   * Additive, optional for backward compatibility with verification.json
+   * artifacts recorded before failure fingerprinting existed.
+   */
+  failureFingerprint?: string | null;
+  failureFacts?: CheckFacts[];
 }
 
 export interface EscalationInput {
@@ -151,8 +178,23 @@ export interface EscalationInput {
   requestedDecision: string;
 }
 
+export type AssessmentConfidence = "low" | "medium" | "high";
+
+export interface AssessmentEvidence {
+  path: string; // repository-relative path anchoring the observation
+  observation: string; // what was observed at that path
+}
+
+export interface RoutingAssessment {
+  inputSchemaVersion:
+    | typeof ROUTING_INPUT_SCHEMA
+    | typeof ROUTING_INPUT_V2_SCHEMA;
+  confidence: AssessmentConfidence;
+  evidence: AssessmentEvidence[]; // [] for legacy v1
+}
+
 export interface RoutingInput {
-  schemaVersion: typeof ROUTING_INPUT_SCHEMA;
+  schemaVersion: typeof ROUTING_INPUT_SCHEMA | typeof ROUTING_INPUT_V2_SCHEMA;
   taskId: string;
   purpose: RoutingPurpose;
   signals: {
@@ -167,6 +209,7 @@ export interface RoutingInput {
     maxDurationMs: number;
     maxRelativeCost: number;
   };
+  assessment?: RoutingAssessment; // present only for v2 inputs
 }
 
 export interface ModelCandidate {
@@ -190,7 +233,60 @@ export type RoutingExclusionReason =
   | "PURPOSE_UNSUPPORTED"
   | "EXTERNAL_TRANSMISSION_DENIED"
   | "INSUFFICIENT_CAPABILITY"
-  | "BUDGET_EXCEEDED";
+  | "BUDGET_EXCEEDED"
+  | "UNAVAILABLE"
+  | "INCOMPATIBLE";
+
+export type AvailabilityState =
+  | "available"
+  | "unavailable"
+  | "unknown"
+  | "incompatible";
+
+export type CodexPluginPresence = "present" | "absent" | "unknown";
+
+/**
+ * Raw observation of the local execution environment gathered through
+ * documented, bounded interfaces only (environment variables). It performs no
+ * installation, authentication, or network transmission and never scrapes
+ * undocumented UI output. `probeSupported` is false when the interface is
+ * unavailable or its format changed, so every derived state fails safe to
+ * `unknown` rather than fabricating availability.
+ */
+export interface EnvironmentObservation {
+  probeSupported: boolean;
+  claudeCode: { present: boolean; version: string | null };
+  configuredModel: string | null;
+  codexPlugin: { presence: CodexPluginPresence; version: string | null };
+}
+
+export interface CandidateAvailability {
+  candidateId: string;
+  provider: string;
+  state: AvailabilityState;
+  reason: string;
+  observedAt: string;
+  toolVersion: string | null;
+}
+
+/**
+ * A versioned observation (not attestation) of which configured candidates the
+ * current environment can invoke. Configured model identity, reasoning effort,
+ * usage, and cost remain unverified; availability is never runtime attestation.
+ */
+export interface AvailabilityReport {
+  schemaVersion: typeof AVAILABILITY_SCHEMA;
+  artifactId: string;
+  createdAt: string;
+  modelProfilesHash: string;
+  probeStatus: "supported" | "unsupported";
+  environment: {
+    claudeCode: { present: boolean; version: string | null };
+    configuredModel: { value: string; attestation: "unverified" } | null;
+    codexPlugin: { presence: CodexPluginPresence; version: string | null };
+  };
+  candidates: CandidateAvailability[];
+}
 
 export interface RoutingDecision {
   schemaVersion: typeof ROUTING_DECISION_SCHEMA;
@@ -220,7 +316,15 @@ export interface RoutingDecision {
     requireIndependentReview: boolean;
   };
   budget: RoutingInput["budget"];
-  status: "selected" | "unroutable";
+  availabilityReportHash?: string;
+  assessment: {
+    inputSchemaVersion:
+      | typeof ROUTING_INPUT_SCHEMA
+      | typeof ROUTING_INPUT_V2_SCHEMA;
+    confidence: AssessmentConfidence;
+    evidenceCount: number;
+  };
+  status: "selected" | "unroutable" | "requires-review";
 }
 
 export interface Attempt {
@@ -260,6 +364,17 @@ export interface Attempt {
   failureClass?: string;
   externalSessionId?: string;
   externalTurnId?: string;
+  /**
+   * Additive, optional for backward compatibility with attempt.json artifacts
+   * recorded before failure fingerprinting existed. Deterministically derived
+   * from the linked verification's failureFacts, never copied from model
+   * input; kept separate from the model-supplied, speculative `failureClass`
+   * above.
+   */
+  failureFingerprint?: string | null;
+  failureCategory?: FailureCategory | "mixed" | null;
+  failureFacts?: CheckFacts[];
+  progress?: ProgressComparison;
 }
 
 export interface RoutingPlan

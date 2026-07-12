@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_e81d80a0-ba60-4182-8723-d296714bae9d",
+  "taskId": "GH-11-R3",
+  "createdAt": "2026-07-11T16:19:23.767Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_5c818cf6-d444-4249-b1a2-bb815837df4a",
+  "verificationArtifactId": "verification_a504e52b-80d6-468a-ae3f-1b9a6c119f34",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/orchestration.md",
+    "scripts/validate-plugin.mjs",
+    "skills/assess/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "test/e2e.test.ts",
+    "test/routing.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "All GH-11 acceptance criteria remain satisfied: /rigor:assess reports evidence-anchored task characteristics with explicit confidence and never names or selects a model; deterministic validation runs via rigor route --dry-run before any --record; stop paths for low confidence, contradictory evidence, missing acceptance criteria, and required human decision are documented; /rigor:orchestrate accepts both human-authored and assess-produced routing input; SPIKE-ROUTE-1 fixtures cover the economy-selected and requires-review flows; configured identity stays unverified.",
+    "The two GH-11 independent-review remediations are applied: skills/orchestrate/SKILL.md describes exit-3 results as correctable only for an actual factual error (matching skills/assess/SKILL.md and docs/orchestration.md), and the stopped-flow e2e test asserts a requires-review rigor route --record persisted no routing-plan artifact.",
+    "npm run test:all, npm run bench, node scripts/validate-plugin.mjs, claude plugin validate . --strict, and git diff --check all pass on the final tree."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

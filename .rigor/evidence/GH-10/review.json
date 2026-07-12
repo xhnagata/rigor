@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_3cfa119b-56d1-41fb-9de7-6b7991529a94",
+  "taskId": "GH-10",
+  "createdAt": "2026-07-11T14:48:53.677Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_33d334d7-3d96-40c9-9518-759df04c29e6",
+  "verificationArtifactId": "verification_7c77deac-355c-4530-a810-67e34b1e0e54",
+  "changedPaths": [
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/routing-decision.v1.schema.json",
+    "schemas/routing-input.v2.schema.json",
+    "schemas/routing-plan.v1.schema.json",
+    "src/routing.ts",
+    "src/types.ts",
+    "test/routing.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "Malformed, unsupported, contradictory, and evidence-free assessments fail closed at parse.",
+    "A low-confidence assessment produces an explicit review/escalation routing outcome instead of silently selecting the economy class.",
+    "Pure routing remains deterministic for identical inputs.",
+    "Existing v1 routing inputs and recorded plans remain compatible via an explicit migration path.",
+    "Risk from preflight stays separate from required capability.",
+    "Tests cover assessment boundary cases and v1 backward compatibility.",
+    "Orchestration documentation defines the trust treatment of assessment evidence."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
