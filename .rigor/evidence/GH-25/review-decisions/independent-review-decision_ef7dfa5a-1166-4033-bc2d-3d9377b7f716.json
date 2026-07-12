@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "rigor.independent-review-decision.v1",
+  "taskId": "GH-25",
+  "inputHash": "332fe2038625deff2e578ab6d71e096f1ca69b3694e8b0908f5ad09c049ec193",
+  "pluginAvailability": "available",
+  "externalTransmission": "allowed",
+  "decision": "request-independent-review",
+  "reasonCode": "REVIEW_TRIGGERED",
+  "triggerReasons": [
+    "CRITICAL_RISK",
+    "SECURITY_CONCERN",
+    "DATA_INTEGRITY_CONCERN",
+    "HUMAN_REQUEST"
+  ],
+  "invocationAllowed": true,
+  "approvalEffect": "none",
+  "artifactId": "independent-review-decision_ef7dfa5a-1166-4033-bc2d-3d9377b7f716",
+  "createdAt": "2026-07-12T20:46:13.964Z"
+}

@@ -1,0 +1,64 @@
+# ADR 0001 non-production provenance smoke test (#25).
+#
+# This exercises the GitHub Artifact Attestation path WITHOUT touching any real
+# release subject. It is NON-PRODUCTION: it attests only a clearly-marked
+# synthetic file, builds nothing, and creates no tag, release, or asset.
+#
+# It is triggered ONLY by workflow_dispatch and runs in the protected
+# `provenance-smoke` environment, so a repository owner must explicitly approve
+# and dispatch each run. It cannot be triggered by a fork pull request because
+# there is no PR or reusable-workflow trigger.
+#
+# The production consumer policy (scripts/verify-provenance.mjs) rejects any
+# attestation produced here regardless: this run's signer workflow path, its
+# `workflow_dispatch` trigger event (not `push`), and its non-tag branch ref all
+# fail the production identity checks. A smoke attestation therefore can never
+# be substituted for a real release attestation.
+
+name: provenance-smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    environment: provenance-smoke
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Guard non-production identity
+        run: |
+          set -euo pipefail
+          if [ "${{ github.repository_id }}" != "1296432215" ]; then
+            echo "unexpected repository id ${{ github.repository_id }}" >&2
+            exit 1
+          fi
+          if [ "${{ github.ref_type }}" != "branch" ]; then
+            echo "smoke must run from a branch, not ${{ github.ref_type }}" >&2
+            exit 1
+          fi
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "smoke must not run from main" >&2
+            exit 1
+          fi
+
+      - name: Generate a synthetic non-production subject
+        run: |
+          set -euo pipefail
+          {
+            echo "NONPRODUCTION-provenance-smoke"
+            echo "This file is a non-production smoke-test subject for ADR 0001 (#25)."
+            echo "It is NOT a Rigor release artifact and must never be trusted as one."
+            echo "commit=${GITHUB_SHA}"
+          } > NONPRODUCTION-provenance-smoke.txt
+
+      - name: Attest ONLY the synthetic subject
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: NONPRODUCTION-provenance-smoke.txt

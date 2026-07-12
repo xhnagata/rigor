@@ -117,17 +117,47 @@ All steps are human-authorized; Rigor performs none of them.
    git push origin vX.Y.Z
    ```
 
-Until issues #25 and #26 implement and validate ADR 0001, do not describe this
-procedure as producing an attested release. A tag, release page, CI success, or
-checksum placed beside the same artifact is not independent proof. The current
-release may be described only as a bundle reproducibly checked before tagging.
+## Producer provenance (attestation generation)
 
-When provenance is implemented, release documentation must additionally identify
-the attested bundle and complete-plugin subject digests, source commit equal to
-the tag target, signer workflow identity, attestation bundles, withdrawal/deny
-procedure, and the exact consumer command or promotion boundary that fails
-closed before execution. Those future steps supplement rather than replace this
-pre-tag gate.
+Pushing the `vX.Y.Z` tag triggers the dedicated
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) signer
+(ADR 0001 [#25](https://github.com/xhnagata/rigor/issues/25)). It runs only on a
+`v*.*.*` tag push — never on a pull request, reusable call, or manual dispatch,
+so a fork pull request cannot invoke it — with least privilege (`contents:
+read`, plus `id-token: write` and `attestations: write` on the build job only).
+It re-validates the tag against the manifest version, rebuilds `dist/rigor.cjs`
+and fails on any drift from the committed bundle, deterministically packages the
+complete plugin into `rigor-X.Y.Z.tar.gz`, emits the detached
+`rigor-X.Y.Z.release-manifest.json`, and generates keyless GitHub OIDC Artifact
+Attestations (SLSA v1 provenance) over all three subjects. The archive and
+manifest are exposed only as build artifacts and their digests printed to the
+job summary; the workflow never grants `contents: write`, so **attaching them to
+the GitHub Release is a separate, human-authorized step.**
+
+No SLSA Build Level is claimed. This is producer provenance only: describe a
+release as attested only for versions this workflow actually signed. Do not
+retroactively describe any past version (including the current one at
+implementation time) as attested.
+
+## Verification
+
+A consumer verifies a downloaded subject against independently held policy with
+the exact `gh attestation verify` command plus the certificate-extension checks
+that the flags do not enforce (numeric repository id, trigger event, tag
+pattern, runner environment). Use the reference verifier
+[`scripts/verify-provenance.mjs`](../scripts/verify-provenance.mjs), which fails
+closed and never prints `verified` on failure. Release notes for an attested
+version must identify the attested bundle and complete-plugin subject digests,
+the source commit equal to the tag target, the signer workflow identity, and the
+withdrawal/deny procedure. See [provenance.md](provenance.md) for the full
+verification command, consumer-held policy (gh pinning, ≤7-day trusted-root
+refresh, ≤30-day offline age, consumer-distributed denylist), root rotation,
+attestation deletion/withdrawal, and rollback.
+
+The ordinary Claude Code marketplace still has no confirmed pre-activation
+verifier over the exact cached bytes, so [#26](https://github.com/xhnagata/rigor/issues/26)
+remains blocked and no end-to-end distribution guarantee is claimed. These steps
+supplement rather than replace the pre-tag gate above.
 
 See the [threat model](threat-model.md) for the read-only GitHub API trust
 boundary that `rigor governance` and `rigor release-check` rely on.

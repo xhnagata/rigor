@@ -263,6 +263,8 @@ claude plugin validate . --strict
 
 releaseは[リリース手順書](docs/release.md)に従います。release commitは必須check（`rigor` と `quality`）がgreenな保護されたpull request経由でのみ `main` に到達し（直接pushは禁止）、その後に決定的な `rigor release-check` の pre-tag gateを通過して初めて、人がtagとpublishを行います。gateはclean tree、`package.json` と `.claude-plugin/plugin.json` の同期されたversion、`CHANGELOG.md` の該当セクション、fresh buildとbyte一致する `dist/rigor.cjs`、期待するbranchとcommit、そして厳密なSHAに対するGitHub CIの成功を確認します。`--repo` を省くとCIはunverifiableとなり、gateはfail closedします。manifest versionがClaude Codeのcache versionになるため、更新配布にはversion bumpが必要です。
 
+release tagのpushは、`dist/rigor.cjs`、決定的な完全plugin archive、detached release manifestに対する鍵レスのGitHub OIDC Artifact Attestation（SLSA v1 build provenance）も生成し、fail-closedなreference verifierで検証できます。これはproducer provenanceのみです（[#25](https://github.com/xhnagata/rigor/issues/25)）。SLSA Build Levelは主張せず、通常のmarketplace installには実行前にcache済みbytesを検証する確認済みのpre-activation verifierが存在しないため（[#26](https://github.com/xhnagata/rigor/issues/26) は依然としてblocked）、artifactの傍らに置かれたmanifestやchecksumは証明になりません。詳細は[provenanceと検証](docs/provenance.md)を参照してください。
+
 ## セキュリティ前提と既知の限界
 
 証跡はversion controlへ入るため、secretを含めてはいけません。Rigorはcheckの生出力を保存しませんが、利用者が入力した散文をsanitizeできません。intent、contract、escalationは必要最小限にしてください。悪意あるpolicyは悪意あるcommandを実行できるため、policy変更をCODEOWNERSとbase/head reviewで保護してください。

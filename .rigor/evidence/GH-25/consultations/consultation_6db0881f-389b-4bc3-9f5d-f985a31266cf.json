@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "rigor.consultation.v2",
+  "artifactId": "consultation_6db0881f-389b-4bc3-9f5d-f985a31266cf",
+  "taskId": "GH-25",
+  "createdAt": "2026-07-12T20:53:12.856Z",
+  "sessionArtifactId": "consultation-session_402d6acc-dcfc-41b6-8685-f1d722e0736e",
+  "sessionHash": "4aea00c0551b3cf7aea8a574ad80e65209b9672bd56cfc334357226a5e525d89",
+  "provider": "codex-plugin-cc",
+  "mode": "consultation",
+  "requestedDecision": "Design discussion for #25 (ADR 0001 producer provenance). Freeze five owner-reserved decisions the ADR left open: (1) exact file list + normalization rules for a deterministic complete-plugin archive (candidates: .claude-plugin/, agents/, bin/, dist/rigor.cjs, hooks/, skills/, README.md, LICENSE) so two builds byte-match; (2) detached release-manifest schema (fields, digests, source/tag/workflow binding) published beside the archive, never self-referential; (3) consumer verification: gh attestation verify flags plus which cert-extension values (numeric repo id 1296432215, trigger event, tag pattern) must be checked from JSON since flags don't enforce them, verifier/gh version pinning, trusted-root refresh cadence, max offline age, denylist distribution; (4) whether to recommend enabling GitHub immutable releases (separately authorized) or pin commit+digests treating tags as mutable; (5) a safe authorized non-production attestation smoke-test approach that proves the path without a real release. Separate facts, options, recommendation, uncertainty, and human decisions. Read-only.",
+  "transmissionDecision": "allowed",
+  "beforeTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "afterTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "beforeHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "afterHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "changedPathsBefore": [],
+  "changedPathsAfter": [],
+  "usageStatus": "unavailable",
+  "status": "completed",
+  "outcome": "accept",
+  "findingCount": 5,
+  "requiredActions": [
+    "Package an explicit 21-file allowlist (.claude-plugin/{marketplace,plugin}.json, agents/rigor-reviewer.md, bin/rigor, dist/rigor.cjs, hooks/hooks.json, skills/*/SKILL.md, LICENSE, README.md, README.ja.md) under rigor-X.Y.Z/, dirs 0755, bin/rigor 0755, others 0644, sorted, mtime 0, uid/gid 0, ustar, gzip without timestamp; reject symlinks/extra/missing/mode-mismatch; exclude src/test/docs/schemas/scripts/node_modules/.git/.github/.rigor/package*.json.",
+    "Emit detached rigor-X.Y.Z.release-manifest.json (canonical JSON, sorted keys, additionalProperties false) with schemaVersion, release.tag/version, source.repository/repositoryId(1296432215)/commit/ref, workflow.path/ref/digest, subjects.bundle+pluginArchive sha256, tools.node/esbuild, and an explicit trustAnchor note that the manifest is metadata not proof. Never self-referential; attest the manifest as a third subject.",
+    "Fail-closed consumer verifier calling gh attestation verify with --repo --signer-workflow --signer-digest --source-digest --source-ref --cert-oidc-issuer --deny-self-hosted-runners --predicate-type --format json; then enforce cert-extension values not covered by flags (repo id OID 1.3.6.1.4.1.57264.1.14=1296432215, trigger event=push, source ref matching ^refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+$, GitHub-hosted runner) from JSON; pin gh version, refresh roots<=7d, offline<=30d, external denylist. Test logic against captured/synthetic fixtures offline.",
+    "Immutable releases: choose option (a) - document enabling as a separately authorized owner action while consumer policy treats every tag as mutable and pins commit+digests; do NOT enable in #25.",
+    "Smoke test in a SEPARATE workflow (provenance-smoke.yml), workflow_dispatch only, protected environment with owner approval, canonical repo id only, branch ref only (reject main and all tags), GitHub-hosted, least privilege (contents:read,id-token:write,attestations:write), actions pinned to full SHAs, synthetic subject only (never dist/rigor.cjs or the archive), no tag/release/asset creation. Never add workflow_dispatch/pull_request_target/workflow_call to the production signer workflow. Validate tag with strict regex before attesting so fork PRs cannot mint trusted provenance."
+  ],
+  "findings": [
+    {
+      "severity": "informational",
+      "evidenceLocation": {
+        "path": "scripts/package-plugin.mjs"
+      },
+      "reproducibility": "always",
+      "requiredAction": "Package an explicit 21-file allowlist (.claude-plugin/{marketplace,plugin}.json, agents/rigor-reviewer.md, bin/rigor, dist/rigor.cjs, hooks/hooks.json, skills/*/SKILL.md, LICENSE, README.md, README.ja.md) under rigor-X.Y.Z/, dirs 0755, bin/rigor 0755, others 0644, sorted, mtime 0, uid/gid 0, ustar, gzip without timestamp; reject symlinks/extra/missing/mode-mismatch; exclude src/test/docs/schemas/scripts/node_modules/.git/.github/.rigor/package*.json.",
+      "confidence": "high"
+    },
+    {
+      "severity": "informational",
+      "evidenceLocation": {
+        "path": "scripts/package-plugin.mjs"
+      },
+      "reproducibility": "always",
+      "requiredAction": "Emit detached rigor-X.Y.Z.release-manifest.json (canonical JSON, sorted keys, additionalProperties false) with schemaVersion, release.tag/version, source.repository/repositoryId(1296432215)/commit/ref, workflow.path/ref/digest, subjects.bundle+pluginArchive sha256, tools.node/esbuild, and an explicit trustAnchor note that the manifest is metadata not proof. Never self-referential; attest the manifest as a third subject.",
+      "confidence": "high"
+    },
+    {
+      "severity": "informational",
+      "evidenceLocation": {
+        "path": "scripts/verify-provenance.mjs"
+      },
+      "reproducibility": "always",
+      "requiredAction": "Fail-closed consumer verifier calling gh attestation verify with --repo --signer-workflow --signer-digest --source-digest --source-ref --cert-oidc-issuer --deny-self-hosted-runners --predicate-type --format json; then enforce cert-extension values not covered by flags (repo id OID 1.3.6.1.4.1.57264.1.14=1296432215, trigger event=push, source ref matching ^refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+$, GitHub-hosted runner) from JSON; pin gh version, refresh roots<=7d, offline<=30d, external denylist. Test logic against captured/synthetic fixtures offline.",
+      "confidence": "high"
+    },
+    {
+      "severity": "informational",
+      "evidenceLocation": {
+        "path": "docs/release.md"
+      },
+      "reproducibility": "always",
+      "requiredAction": "Immutable releases: choose option (a) - document enabling as a separately authorized owner action while consumer policy treats every tag as mutable and pins commit+digests; do NOT enable in #25.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": ".github/workflows/release.yml"
+      },
+      "reproducibility": "always",
+      "requiredAction": "Smoke test in a SEPARATE workflow (provenance-smoke.yml), workflow_dispatch only, protected environment with owner approval, canonical repo id only, branch ref only (reject main and all tags), GitHub-hosted, least privilege (contents:read,id-token:write,attestations:write), actions pinned to full SHAs, synthetic subject only (never dist/rigor.cjs or the archive), no tag/release/asset creation. Never add workflow_dispatch/pull_request_target/workflow_call to the production signer workflow. Validate tag with strict regex before attesting so fork PRs cannot mint trusted provenance.",
+      "confidence": "high"
+    }
+  ],
+  "modelStatus": "recorded",
+  "reasoningEffortStatus": "recorded",
+  "externalSessionId": "019f5815-7b73-7463-8834-401efdeb27c1",
+  "model": "gpt-5.6-sol",
+  "reasoningEffort": "high"
+}

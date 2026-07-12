@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_ecd93c74-786d-4096-9774-d7a27307a49c",
+  "taskId": "GH-25",
+  "createdAt": "2026-07-12T21:22:41.022Z",
+  "sessionArtifactId": "attempt-session_9b01d155-e88f-489d-a480-df25e97202f5",
+  "sessionHash": "54d940d9428b62602e6e062fd3bb91332b9f294c4fa0f1e430721612096e889d",
+  "routingPlanArtifactId": "routing-plan_d73eb63a-2565-4ac3-a3ff-4c34089db289",
+  "routingPlanHash": "5fb458f5a0ae4ecf96988479aa75ef8cc6cd5b4714f21e70b655ed0397ded12e",
+  "contractArtifactId": "contract_0a12c06a-3980-4368-b76a-bf02067ff3c1",
+  "contractHash": "a58e650aeb962f042c5426e76b4ad98eb0e28d1a6dc31c7b38dbe8d5f1d6d382",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-opus-4-8",
+  "capabilityClass": "premium",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T21:02:18.998Z",
+  "completedAt": "2026-07-12T21:22:41.022Z",
+  "durationMs": 1222024,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "afterHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "beforeTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "afterTreeHash": "2cf7d30d28432765aecba362469b677c5444514db53ecefcefaebda76a6ef984",
+  "changedPathsBefore": [],
+  "changedPaths": [
+    ".github/workflows/provenance-smoke.yml",
+    ".github/workflows/release.yml",
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/mvp-limitations.md",
+    "docs/provenance.md",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "schemas/release-manifest.v1.schema.json",
+    "scripts/package-plugin.mjs",
+    "scripts/verify-provenance.mjs",
+    "test/fixtures/provenance/README.md",
+    "test/fixtures/provenance/empty.json",
+    "test/fixtures/provenance/positive.json",
+    "test/provenance.test.ts"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_2eb27faf-2954-4927-85ea-4a99e4e1f351",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  }
+}

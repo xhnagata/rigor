@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_1ec7c4fe-aec7-4490-90c7-424192cdde17",
+  "taskId": "GH-25",
+  "contractArtifactId": "contract_0a12c06a-3980-4368-b76a-bf02067ff3c1",
+  "createdAt": "2026-07-12T21:37:45.749Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "treeHash": "9ed93042927920fa63bb9ac078bfdee8b21857f2e2a7e3f446f76be1ebc7c180",
+  "changedPaths": [
+    ".github/workflows/provenance-smoke.yml",
+    ".github/workflows/release.yml",
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/mvp-limitations.md",
+    "docs/provenance.md",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "schemas/release-manifest.v1.schema.json",
+    "scripts/package-plugin.mjs",
+    "scripts/verify-provenance.mjs",
+    "test/fixtures/provenance/README.md",
+    "test/fixtures/provenance/empty.json",
+    "test/fixtures/provenance/positive.json",
+    "test/provenance.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 9,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}
