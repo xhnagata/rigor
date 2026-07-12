@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_7860df35-7d36-4ba9-9fb0-67d184aa1d8b",
+  "taskId": "REL-0-10-0",
+  "createdAt": "2026-07-12T14:39:15.443Z",
+  "preflightArtifactId": "preflight_60264be7-5ce1-451f-bd8e-eb070c0206b1",
+  "preflightHash": "d5313ca79194a2997da83edae8f419bb1cddafeb87282328cfd2575e1362dcc7",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json version are 0.10.0",
+    "CHANGELOG Unreleased section is renamed to 0.10.0 with the release date and retains the #51 entry",
+    "No source, schema, or dist change in this release commit"
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Version bump and CHANGELOG only; no source/schema/dist/test change",
+    "Do not touch .rigor governance config"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
