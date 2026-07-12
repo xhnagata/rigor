@@ -23,6 +23,8 @@ import {
   OUTCOME_SCHEMA,
   PREFLIGHT_SCHEMA,
   REVIEW_SCHEMA,
+  TEST_INTEGRITY_CLASSIFICATION_SCHEMA,
+  TEST_INTEGRITY_EVENT_SCHEMA,
   VERIFY_SCHEMA,
   type CheckFacts,
   type Contract,
@@ -30,6 +32,7 @@ import {
   type EscalationInput,
   type Policy,
   type Preflight,
+  type TestIntegritySignalId,
   type Verification,
 } from "./types.js";
 
@@ -381,6 +384,7 @@ export async function retrospect(root: string): Promise<unknown> {
     }
   }
   const { outcomeTotals, candidates } = await aggregateOutcomes(root);
+  const testIntegrity = await aggregateTestIntegrity(root);
   return {
     schemaVersion: "rigor.retrospective.v1",
     generatedAt: new Date().toISOString(),
@@ -388,7 +392,199 @@ export async function retrospect(root: string): Promise<unknown> {
     eventCounts: counts,
     outcomeTotals,
     candidates,
+    testIntegrity,
   };
+}
+
+const TEST_INTEGRITY_SIGNAL_IDS: readonly TestIntegritySignalId[] = [
+  "TI-05",
+  "TI-06",
+  "TI-07",
+  "TI-08",
+  "TI-09",
+];
+
+interface SignalAccumulator {
+  evaluated: number;
+  fired: number;
+  unreviewed: number;
+  truePositive: number;
+  falsePositive: number;
+  uncertain: number;
+}
+
+interface ScannedEvent {
+  firedSignals: Set<string>;
+  evaluatedSignals: Set<string>;
+  artifactId: string;
+}
+
+interface VerdictEntry {
+  key: string;
+  verdict: string;
+  createdAt: string;
+  artifactId: string;
+}
+
+/**
+ * Aggregates the append-only test-integrity shadow evidence into per-signal
+ * denominators: how often each signal was evaluated (the scan denominator),
+ * how often it fired, how many fired occurrences remain unreviewed, and the
+ * human classification tally. Never throws on a malformed file; counts it,
+ * exactly like malformedOutcomes. Purely advisory shadow evidence — it reflects
+ * no verification, progress, review, or merge outcome.
+ */
+async function aggregateTestIntegrity(root: string): Promise<unknown> {
+  const evidence = path.join(root, ".rigor", "evidence");
+  let malformedEvents = 0;
+  let malformedClassifications = 0;
+  let classificationCount = 0;
+  const events: ScannedEvent[] = [];
+  const verdictEntries: VerdictEntry[] = [];
+  let taskDirs: string[] = [];
+  try {
+    const entries = await readdir(evidence, { withFileTypes: true });
+    taskDirs = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  for (const task of taskDirs) {
+    const directory = path.join(evidence, task, "test-integrity");
+    let names: string[];
+    try {
+      names = await readdir(directory);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    for (const name of names.filter((file) => file.endsWith(".json"))) {
+      const isClassification = name.startsWith("test-integrity-classification");
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = record(
+          JSON.parse(
+            await readFile(path.join(directory, name), "utf8"),
+          ) as unknown,
+          "test-integrity artifact",
+        );
+      } catch {
+        if (isClassification) malformedClassifications += 1;
+        else malformedEvents += 1;
+        continue;
+      }
+      if (isClassification) {
+        if (!collectClassification(parsed, verdictEntries))
+          malformedClassifications += 1;
+        else classificationCount += 1;
+      } else if (!collectEvent(parsed, events)) {
+        malformedEvents += 1;
+      }
+    }
+  }
+  const verdictMap = new Map<string, string>();
+  for (const entry of [...verdictEntries].sort((a, b) =>
+    a.createdAt === b.createdAt
+      ? a.artifactId.localeCompare(b.artifactId)
+      : a.createdAt.localeCompare(b.createdAt),
+  ))
+    verdictMap.set(entry.key, entry.verdict);
+
+  const signals: Record<string, unknown> = {};
+  for (const id of TEST_INTEGRITY_SIGNAL_IDS) {
+    const acc: SignalAccumulator = {
+      evaluated: 0,
+      fired: 0,
+      unreviewed: 0,
+      truePositive: 0,
+      falsePositive: 0,
+      uncertain: 0,
+    };
+    for (const event of events) {
+      if (event.evaluatedSignals.has(id)) acc.evaluated += 1;
+      if (!event.firedSignals.has(id)) continue;
+      acc.fired += 1;
+      const verdict = verdictMap.get(`${event.artifactId}|${id}`);
+      if (verdict === "true-positive") acc.truePositive += 1;
+      else if (verdict === "false-positive") acc.falsePositive += 1;
+      else if (verdict === "uncertain") acc.uncertain += 1;
+      else acc.unreviewed += 1;
+    }
+    signals[id] = {
+      evaluated: acc.evaluated,
+      fired: acc.fired,
+      unreviewed: acc.unreviewed,
+      humanClassified: {
+        truePositive: acc.truePositive,
+        falsePositive: acc.falsePositive,
+        uncertain: acc.uncertain,
+      },
+    };
+  }
+  return {
+    events: events.length,
+    classifications: classificationCount,
+    malformedEvents,
+    malformedClassifications,
+    signals,
+  };
+}
+
+function collectEvent(
+  parsed: Record<string, unknown>,
+  events: ScannedEvent[],
+): boolean {
+  if (parsed.schemaVersion !== TEST_INTEGRITY_EVENT_SCHEMA) return false;
+  const artifactId = parsed.artifactId;
+  if (typeof artifactId !== "string") return false;
+  if (!Array.isArray(parsed.signals) || !Array.isArray(parsed.signalsEvaluated))
+    return false;
+  const firedSignals = new Set<string>();
+  for (const signal of parsed.signals) {
+    if (
+      signal !== null &&
+      typeof signal === "object" &&
+      typeof (signal as Record<string, unknown>).signalId === "string"
+    )
+      firedSignals.add((signal as Record<string, unknown>).signalId as string);
+  }
+  const evaluatedSignals = new Set<string>();
+  for (const id of parsed.signalsEvaluated)
+    if (typeof id === "string") evaluatedSignals.add(id);
+  events.push({ firedSignals, evaluatedSignals, artifactId });
+  return true;
+}
+
+function collectClassification(
+  parsed: Record<string, unknown>,
+  verdictEntries: VerdictEntry[],
+): boolean {
+  if (parsed.schemaVersion !== TEST_INTEGRITY_CLASSIFICATION_SCHEMA)
+    return false;
+  const eventArtifactId = parsed.eventArtifactId;
+  const artifactId = parsed.artifactId;
+  const createdAt = parsed.createdAt;
+  if (
+    typeof eventArtifactId !== "string" ||
+    typeof artifactId !== "string" ||
+    typeof createdAt !== "string" ||
+    !Array.isArray(parsed.verdicts)
+  )
+    return false;
+  for (const verdict of parsed.verdicts) {
+    if (verdict === null || typeof verdict !== "object") continue;
+    const signalId = (verdict as Record<string, unknown>).signalId;
+    const value = (verdict as Record<string, unknown>).verdict;
+    if (typeof signalId !== "string" || typeof value !== "string") continue;
+    verdictEntries.push({
+      key: `${eventArtifactId}|${signalId}`,
+      verdict: value,
+      createdAt,
+      artifactId,
+    });
+  }
+  return true;
 }
 
 interface DataCompleteness {
