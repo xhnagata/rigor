@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_44750791-27dd-4e7c-b908-cc9fcd74016e",
+  "taskId": "GH-21",
+  "createdAt": "2026-07-12T04:58:32.281Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "ab47ebe1fccea9c2b5e1b1e96ab3c28da079c308d6c85cd528053d76ee6e4c53",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-21",
+    "head": "1c082b7ff88113f0085a295e74366e435c914dd2",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/test-integrity.md",
+    "docs/threat-model.md"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/mvp-limitations.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/test-integrity.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}

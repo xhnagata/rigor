@@ -183,6 +183,8 @@ Failure categorization is conservative: `infrastructure` requires a specific, un
 
 `reduced` is fail-closed. It is not enough for a prior implementation-category failure to simply stop failing (or for the current failure set to be a strict subset of the prior one): for every such resolved check, Rigor requires positive confirmation that its observed test coverage did not shrink — the prior and current `CheckFacts` for that `checkId` must both carry a parseable `testStats` count, and the current total must be greater than or equal to the prior total. When any resolved check lacks that confirmation (for example, because its runner's output could not be parsed into a test count), `compareFailures` reports `incomparable` instead of `reduced` and adds a `check <id>: cannot confirm test coverage did not shrink (no parseable test counts)` weakening signal. This closes the gap where an unparseable runner could let a hidden regression — failing tests deleted or weakened rather than fixed — be reported as genuine progress.
 
+The weakening signals recorded here are the implemented subset of a broader test-weakening threat catalog; [test-integrity.md](test-integrity.md) classifies the remaining proposed, unimplemented signals and their planned shadow-mode collection.
+
 All of this is deterministically derived by Rigor code from the verification's own check output — never copied from model input. It is kept entirely separate from the model-supplied, speculative `failureClass` on `attempt-result-input.v1`/`attempt.v1`, which remains free-form text for human review and is never treated as a fact.
 
 ## Consultation protocol

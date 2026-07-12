@@ -1,0 +1,61 @@
+{
+  "taskId": "GH-21",
+  "preflightArtifactId": "preflight_44750791-27dd-4e7c-b908-cc9fcd74016e",
+  "preflightHash": "c242e71b91916cf0eefc3b8d264ee0e8e277d4c3d5eb548f3f7c6292fb5f8ba7",
+  "routingInputHash": "56c6cb154025440fc972c67d717e821d5b16c297694c1505f908463e9174e213",
+  "modelProfilesHash": "de5660f0df86a8dc787bd41a0be374d3eeded709f4fd9750264a90296948ff88",
+  "purpose": "implementation",
+  "requiredCapabilityClass": "frontier",
+  "eligibleCandidates": [
+    "claude-fable-5"
+  ],
+  "excludedCandidates": [
+    {
+      "candidateId": "claude-haiku-4-5",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    },
+    {
+      "candidateId": "claude-sonnet-5",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    },
+    {
+      "candidateId": "claude-opus-4-8",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    },
+    {
+      "candidateId": "codex-plugin-cc-default",
+      "reasonCode": "PURPOSE_UNSUPPORTED"
+    }
+  ],
+  "selection": {
+    "candidateId": "claude-fable-5",
+    "provider": "claude",
+    "model": "claude-fable-5",
+    "capabilityClass": "frontier",
+    "relativeCost": 15
+  },
+  "controls": {
+    "externalTransmission": "allowed",
+    "requireHumanApproval": false,
+    "requireIndependentReview": false
+  },
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 14400000,
+    "maxRelativeCost": 100
+  },
+  "availabilityReportHash": "e997f563cc708b89c26959019a62f91f82a2d9398cc517715034ad7d3732141e",
+  "assessment": {
+    "inputSchemaVersion": "rigor.routing-input.v2",
+    "confidence": "medium",
+    "evidenceCount": 8
+  },
+  "schemaVersion": "rigor.routing-plan.v1",
+  "artifactId": "routing-plan_08aabc2a-0d37-4386-889e-e38b061f2b3b",
+  "createdAt": "2026-07-12T05:01:44.342Z",
+  "contractArtifactId": "contract_c06662b0-3aec-4aca-a6e7-78ff206ddb72",
+  "contractHash": "be1e4ad287ffbbf259a0cbeb32f7b7ee92de9daa1b0bb1ffea588402adefe87f",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "plannedHead": "1c082b7ff88113f0085a295e74366e435c914dd2",
+  "status": "planned"
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_35f74063-a40c-4dd8-b442-5498a49c6503",
+  "taskId": "GH-21",
+  "createdAt": "2026-07-12T05:01:54.811Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_08aabc2a-0d37-4386-889e-e38b061f2b3b",
+  "routingPlanHash": "c0a4de901c808f031ae2b4ffdc5b4caa489bcb50b3c7e25aeb94f6e2e3f512d7",
+  "contractArtifactId": "contract_c06662b0-3aec-4aca-a6e7-78ff206ddb72",
+  "contractHash": "be1e4ad287ffbbf259a0cbeb32f7b7ee92de9daa1b0bb1ffea588402adefe87f",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 14400000,
+    "maxRelativeCost": 100
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "1c082b7ff88113f0085a295e74366e435c914dd2",
+  "beforeTreeHash": "7f757012796c38a79e3a8279f4dd10665ae41880a5b3a751832b3aea6c95f9fb",
+  "changedPathsBefore": [],
+  "selection": {
+    "provider": "claude",
+    "model": "claude-fable-5",
+    "capabilityClass": "frontier"
+  }
+}

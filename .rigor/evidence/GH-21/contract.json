@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c06662b0-3aec-4aca-a6e7-78ff206ddb72",
+  "taskId": "GH-21",
+  "createdAt": "2026-07-12T04:59:04.421Z",
+  "preflightArtifactId": "preflight_44750791-27dd-4e7c-b908-cc9fcd74016e",
+  "preflightHash": "c242e71b91916cf0eefc3b8d264ee0e8e277d4c3d5eb548f3f7c6292fb5f8ba7",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "docs/test-integrity.md catalogs assertion deletion/relaxation, tolerance widening, skip/only/todo, case removal, snapshot churn, mock substitution, coverage decline, mutation-score decline, and configured-check weakening as bounded threats.",
+    "Every cataloged signal is classified by confidence, language/framework dependence, false-positive risk, required context, and possible enforcement level, and is explicitly labeled a deterministic fact, a tool-derived measurement, or an advisory interpretation.",
+    "Every proposed signal either has a falsifiable test (a concrete repository change that must fire it and a concrete benign change that must not) or is explicitly rejected with the reason.",
+    "docs/test-integrity.md defines attacker and accidental-change scenarios relevant to Rigor attempts.",
+    "docs/test-integrity.md specifies a minimal shadow-mode event format that records signals without enforcing them, aligned with existing artifact conventions (no raw command output, repository-relative paths, opaque digests).",
+    "docs/test-integrity.md explains how the catalog interacts with the #13 failure-fingerprint/progress comparison (weakeningSignals, fail-closed reduced) and with #16 outcome-based calibration.",
+    "High-confidence candidates for shadow-mode collection (#22) are explicitly identified and distinguished from rejected or advisory-only signals.",
+    "docs/test-integrity.md states what must never be advertised as a semantic guarantee, and docs/threat-model.md and docs/mvp-limitations.md reference the catalog while remaining honest that semantic test quality is not guaranteed.",
+    "CHANGELOG.md documents the design under an Unreleased heading following the one-entry-per-issue convention.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass, and git diff --check is clean."
+  ],
+  "allowedPaths": [
+    "CHANGELOG.md",
+    "docs/test-integrity.md",
+    "docs/threat-model.md",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md"
+  ],
+  "constraints": [
+    "Documentation-only change: do not modify src/**, dist/**, schemas/**, bin/**, hooks/**, agents/**, skills/**, test/**, scripts/**, .rigor/** (except GH-21 task evidence), or .github/**.",
+    "Do not implement any enforcement, detector, schema, or CI check; this issue is research/design only (enforcement is deferred to #22/#23 after false-positive evidence exists).",
+    "Do not describe any signal as an implemented guarantee, a semantic test-quality judgment, or an authoritative CI verdict; LLM review remains advisory.",
+    "Do not delete or weaken existing threat-model rows, trust boundaries, documented limitations, or tests; merged main content must be preserved.",
+    "The shadow-mode event format must follow existing evidence conventions: no raw command output or transcripts, repository-relative paths only, opaque digests for content, explicit schemaVersion naming.",
+    "Signals that cannot be computed deterministically from Git objects or configured check output must be classified as tool-derived or advisory, never as deterministic facts."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
