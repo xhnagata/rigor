@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_b4fe70a2-07b6-48c2-85c4-52479335440e",
+  "taskId": "GH-15",
+  "createdAt": "2026-07-12T06:41:10.950Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "3e9f2e112a605df2f257aa6b9b6a779407577c51414d1812a8a14fc38374bfcf",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "ea11acd720597b8cc5978491815cd4d12b52a3bd",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/consultation-result-input.v2.schema.json",
+    "schemas/consultation.v2.schema.json",
+    "schemas/independent-review-decision.v1.schema.json",
+    "schemas/independent-review-input.v1.schema.json",
+    "schemas/inputs.v1.schema.json",
+    "skills/consult/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "src/cli.ts",
+    "src/consultation.ts",
+    "src/review-selection.ts",
+    "src/types.ts",
+    "test/consultation.test.ts",
+    "test/review-selection.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/consult/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/orchestrate/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/consultation.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/review-selection.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/consultation.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/review-selection.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}

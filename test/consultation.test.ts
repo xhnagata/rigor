@@ -71,6 +71,27 @@ function result(taskId: string) {
   });
 }
 
+function structuredResult(taskId: string) {
+  return parseConsultationResultInput({
+    schemaVersion: "rigor.consultation-result-input.v2",
+    taskId,
+    status: "completed",
+    outcome: "revise",
+    findings: [
+      {
+        severity: "high",
+        evidenceLocation: { path: "src/consultation.ts", line: 1 },
+        reproducibility: "always",
+        requiredAction: "Keep the transmission gate before invocation",
+        confidence: "high",
+      },
+    ],
+    usageStatus: "unavailable",
+    modelStatus: "unavailable",
+    reasoningEffortStatus: "unavailable",
+  });
+}
+
 test("consultation ignores its own append-only evidence", async () => {
   const root = await repository();
   const before = await preflight(root, "TASK-1");
@@ -114,6 +135,73 @@ test("same-path content mutation is detected", async () => {
   assert.deepEqual(finished.consultation.changedPathsBefore, ["a.txt"]);
   assert.deepEqual(finished.consultation.changedPathsAfter, ["a.txt"]);
   assert.equal(finished.consultation.status, "mutated-worktree");
+});
+
+test("changed path set and HEAD mutations remain detected", async () => {
+  const pathRoot = await repository();
+  const pathStarted = await startConsultation(
+    pathRoot,
+    policy,
+    await preflight(pathRoot, "TASK-PATH"),
+    request("TASK-PATH"),
+  );
+  await writeFile(path.join(pathRoot, "new.txt"), "new path\n");
+  const pathFinished = await finishConsultation(
+    pathRoot,
+    pathStarted.session,
+    result("TASK-PATH"),
+  );
+  assert.equal(pathFinished.consultation.status, "mutated-worktree");
+  assert.deepEqual(pathFinished.consultation.changedPathsAfter, ["new.txt"]);
+
+  const headRoot = await repository();
+  const headStarted = await startConsultation(
+    headRoot,
+    policy,
+    await preflight(headRoot, "TASK-HEAD"),
+    request("TASK-HEAD"),
+  );
+  await writeFile(path.join(headRoot, "a.txt"), "committed mutation\n");
+  await git(headRoot, ["add", "a.txt"]);
+  await git(headRoot, ["commit", "-q", "-m", "mutate during consultation"]);
+  const headFinished = await finishConsultation(
+    headRoot,
+    headStarted.session,
+    result("TASK-HEAD"),
+  );
+  assert.equal(headFinished.consultation.status, "mutated-worktree");
+  assert.notEqual(
+    headFinished.consultation.beforeHead,
+    headFinished.consultation.afterHead,
+  );
+});
+
+test("structured findings are normalized without inferred metadata", async () => {
+  const root = await repository();
+  const started = await startConsultation(
+    root,
+    policy,
+    await preflight(root, "TASK-V2"),
+    request("TASK-V2"),
+  );
+  const finished = await finishConsultation(
+    root,
+    started.session,
+    structuredResult("TASK-V2"),
+  );
+  assert.equal(finished.consultation.schemaVersion, "rigor.consultation.v2");
+  assert.equal(finished.consultation.findingCount, 1);
+  assert.deepEqual(finished.consultation.findings?.[0], {
+    severity: "high",
+    evidenceLocation: { path: "src/consultation.ts", line: 1 },
+    reproducibility: "always",
+    requiredAction: "Keep the transmission gate before invocation",
+    confidence: "high",
+  });
+  assert.equal(finished.consultation.usageStatus, "unavailable");
+  assert.equal(finished.consultation.modelStatus, "unavailable");
+  assert.equal(finished.consultation.model, undefined);
+  assert.equal(finished.consultation.reasoningEffort, undefined);
 });
 
 test("transmission denial prevents a Codex consultation session", async () => {
@@ -160,6 +248,89 @@ test("consultation parsers fail closed", () => {
       findingCount: -1,
       requiredActions: [],
       usageStatus: "unavailable",
+    }),
+  );
+  for (const pathValue of [
+    "/tmp/a.ts",
+    "../a.ts",
+    "C:\\repo\\a.ts",
+    "C:relative.ts",
+  ]) {
+    assert.throws(() =>
+      parseConsultationResultInput({
+        schemaVersion: "rigor.consultation-result-input.v2",
+        taskId: "TASK-1",
+        status: "completed",
+        outcome: "revise",
+        findings: [
+          {
+            severity: "high",
+            evidenceLocation: { path: pathValue },
+            reproducibility: "always",
+            requiredAction: "fix it",
+            confidence: "high",
+          },
+        ],
+        usageStatus: "unavailable",
+        modelStatus: "unavailable",
+        reasoningEffortStatus: "unavailable",
+      }),
+    );
+  }
+  assert.throws(() =>
+    parseConsultationResultInput({
+      schemaVersion: "rigor.consultation-result-input.v2",
+      taskId: "TASK-1",
+      status: "completed",
+      outcome: "accept",
+      findings: [],
+      usageStatus: "unavailable",
+      modelStatus: "recorded",
+      reasoningEffortStatus: "unavailable",
+    }),
+  );
+  assert.throws(() =>
+    parseConsultationResultInput({
+      schemaVersion: "rigor.consultation-result-input.v2",
+      taskId: "TASK-1",
+      status: "completed",
+      outcome: "accept",
+      findings: [],
+      usageStatus: "unavailable",
+      modelStatus: "unavailable",
+      reasoningEffortStatus: "unavailable",
+      rawTranscript: "must not be accepted",
+    }),
+  );
+  const oversizedFinding = (requiredAction: string) => ({
+    severity: "high",
+    evidenceLocation: { path: "src/a.ts" },
+    reproducibility: "always",
+    requiredAction,
+    confidence: "high",
+  });
+  assert.throws(() =>
+    parseConsultationResultInput({
+      schemaVersion: "rigor.consultation-result-input.v2",
+      taskId: "TASK-1",
+      status: "completed",
+      outcome: "revise",
+      findings: Array.from({ length: 101 }, () => oversizedFinding("fix it")),
+      usageStatus: "unavailable",
+      modelStatus: "unavailable",
+      reasoningEffortStatus: "unavailable",
+    }),
+  );
+  assert.throws(() =>
+    parseConsultationResultInput({
+      schemaVersion: "rigor.consultation-result-input.v2",
+      taskId: "TASK-1",
+      status: "completed",
+      outcome: "revise",
+      findings: [oversizedFinding("x".repeat(2001))],
+      usageStatus: "unavailable",
+      modelStatus: "unavailable",
+      reasoningEffortStatus: "unavailable",
     }),
   );
 });

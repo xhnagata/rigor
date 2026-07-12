@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_56995239-2471-4dff-82e9-50e89689f392",
+  "taskId": "GH-15-R2",
+  "createdAt": "2026-07-12T12:58:21.386Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_c7ba1ae0-1c02-4ad2-bb26-c4881602d43f",
+  "verificationArtifactId": "verification_237f0a66-24b2-4d1d-85fc-e9cc0632e96e",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/consultation-result-input.v2.schema.json",
+    "schemas/consultation.v2.schema.json",
+    "schemas/independent-review-decision.v1.schema.json",
+    "schemas/independent-review-input.v1.schema.json",
+    "schemas/inputs.v1.schema.json",
+    "skills/consult/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "src/cli.ts",
+    "src/consultation.ts",
+    "src/review-selection.ts",
+    "src/types.ts",
+    "test/consultation.test.ts",
+    "test/review-selection.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "The GH-15 CHANGELOG entry appears under the Unreleased section, not inside the released 0.8.0 section",
+    "The full uncommitted diff against origin/main 6d8dba7 is covered by this task's verification changedPaths",
+    "The recorded git-diff-check passes; test:all, bench, and plugin validation are rerun and reported in the PR",
+    "No external transmission or live Codex invocation occurs during remediation"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

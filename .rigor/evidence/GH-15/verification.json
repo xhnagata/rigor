@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_b929032d-5676-4226-8fee-fb7a0c859ab7",
+  "taskId": "GH-15",
+  "contractArtifactId": "contract_3b04ed32-cad6-4966-ab32-cc98b042bfe7",
+  "createdAt": "2026-07-12T06:50:29.315Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "ea11acd720597b8cc5978491815cd4d12b52a3bd",
+  "treeHash": "8962ee08362d960a546eaae2b2b018105ecdb7f03917b376106da30866a8f15f",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/consultation-result-input.v2.schema.json",
+    "schemas/consultation.v2.schema.json",
+    "schemas/independent-review-decision.v1.schema.json",
+    "schemas/independent-review-input.v1.schema.json",
+    "schemas/inputs.v1.schema.json",
+    "skills/consult/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "src/cli.ts",
+    "src/consultation.ts",
+    "src/review-selection.ts",
+    "src/types.ts",
+    "test/consultation.test.ts",
+    "test/review-selection.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 11,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

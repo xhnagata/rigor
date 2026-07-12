@@ -74,6 +74,10 @@ import {
 } from "./test-integrity.js";
 import { artifactId, readJson, record, taskId, textField } from "./util.js";
 import { ESCALATION_DECISION_INPUT_SCHEMA } from "./types.js";
+import {
+  parseConsultationDecisionInput,
+  selectConsultation,
+} from "./review-selection.js";
 import type { Verification } from "./types.js";
 
 function option(
@@ -128,7 +132,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -254,6 +258,16 @@ export async function main(
     const result = await startConsultation(root, policy, preflight, request);
     output({ ...result.session, saved: result.saved });
     return EXIT.success;
+  }
+  if (command === "consult-decide") {
+    const input = parseConsultationDecisionInput(
+      await readJson(option(args, "--input")!),
+    );
+    const result = selectConsultation(input);
+    output(result);
+    return result.decision === "stop-required-review"
+      ? EXIT.policyViolation
+      : EXIT.success;
   }
   if (command === "consult-finish") {
     const session = parseConsultationSession(

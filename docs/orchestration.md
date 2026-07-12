@@ -99,6 +99,24 @@ The optional Codex integration uses [`openai/codex-plugin-cc`](https://github.co
 
 External job, session, turn, model, effort, and usage identifiers are optional because the plugin exposes different metadata for review jobs and synchronous subagent consultations. Absolute paths in findings must be normalized to repository-relative paths before persistence.
 
+The three model-using purposes are distinct:
+
+- **Consultation** asks a bounded question during design or implementation. It returns advice and uncertainty, not an exhaustive change review.
+- **Independent review** challenges a proposed or completed change from a separate Codex context. It is read-only and produces structured findings, but agreement or zero findings are not verification, approval, or merge permission.
+- **Rescue** diagnoses or implements a way out of a stuck attempt. A read-only diagnosis may use the consultation boundary; any rescue allowed to edit must use the attempt start/finish scope and verification boundary instead, because mutation would correctly fail `consult-finish`.
+
+`rigor consult-decide --input <file>` separates the decision to request an independent challenge from the actual `consult-start`/provider invocation. The `rigor.independent-review-input.v1` selector is pure: for the same validated input it returns the same decision, reason code, ordered trigger reasons, and input hash, and it performs no I/O, clock read, or model call. Its security-significant order is:
+
+1. external transmission denial, before any trigger or invocation request (`EXTERNAL_TRANSMISSION_DENIED`, `continue-claude-only`, `invocationAllowed: false`);
+2. fixed triggers in order: `HIGH_RISK`/`CRITICAL_RISK`, `LOW_ASSESSMENT_CONFIDENCE`, `REPEATED_UNCHANGED_FAILURE`, `SECURITY_CONCERN`, `DATA_INTEGRITY_CONCERN`, `HUMAN_REQUEST`;
+3. no trigger (`NO_REVIEW_TRIGGER`, optional skip);
+4. positively available plugin (`REVIEW_TRIGGERED`, request independent review);
+5. unavailable, unknown, or incompatible plugin, mapped by `policy.unavailableAction` to optional skip, explicit required-review stop, or Claude-only continuation.
+
+`unknown` is not treated as available at this invocation boundary. A decision that requests review is still only advisory: `consult-start` independently rechecks the saved preflight against the current policy, HEAD, planned paths, and external-transmission decision and must succeed immediately before any provider call. Thus a fabricated or stale decision input cannot bypass transmission denial. The CLI never invokes Codex itself.
+
+The decision output fixes `approvalEffect: "none"`. Neither the decision nor the final consultation creates or changes a verification, review approval, human approval, CI result, or merge state. When Codex is absent, policy can skip an optional review, stop explicitly when the review is required, or select Claude-only continuation. When transmission is denied, Claude-only continuation is mandatory regardless of trigger or plugin availability.
+
 ## Schemas
 
 - `routing-input.v1.schema.json` describes the explicit task assessment (flat `assessmentReasons`) and budget.
@@ -114,8 +132,11 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 - `escalation-decision.v1.schema.json` describes the deterministic retry/escalate/stop result, selected capability/candidate, every candidate exclusion, linked input hashes, and the remaining relative-cost budget.
 - `consultation-request.v1.schema.json` bounds the decision sent to `codex-plugin-cc`.
 - `consultation-session.v1.schema.json` records the pre-consultation Git snapshot.
-- `consultation-result-input.v1.schema.json` accepts a minimal normalized result without raw transcript or chain of thought.
-- `consultation.v1.schema.json` links the session and result and records the post-consultation mutation check.
+- `independent-review-input.v1.schema.json` bounds trigger facts, availability, transmission, threshold, and unavailable-plugin policy for `consult-decide`.
+- `independent-review-decision.v1.schema.json` records the pure decision, ordered reason codes, invocation permission, and explicit absence of approval effect.
+- `consultation-result-input.v1.schema.json` remains accepted unchanged for backward compatibility.
+- `consultation-result-input.v2.schema.json` accepts zero to one hundred structured findings with enumerated severity/reproducibility/confidence, bounded required actions, repository-relative evidence locations, and explicit usage/model/effort availability.
+- `consultation.v1.schema.json` remains the output for v1 inputs; `consultation.v2.schema.json` adds the structured findings and metadata statuses. Both reuse the same mandatory post-consultation content, changed-path, and HEAD mutation check.
 - `outcome-input.v1.schema.json` bounds the human-reported disposition of a task.
 - `outcome.v1.schema.json` links the outcome to its attempt, verification, and review and normalizes usage as measured-or-unavailable.
 
@@ -228,6 +249,14 @@ Remove `--dry-run` to append the decision evidence. Rigor computes and records t
 
 ## Consultation protocol
 
+First select whether independent review adds enough value:
+
+```sh
+rigor consult-decide --input /tmp/independent-review-input.json
+```
+
+Exit `0` returns request, skip, or Claude-only continuation. `stop-required-review` exits `2`. A request is not an invocation and does not authorize transmission; it only says the validated trigger and availability facts warrant proceeding to the mandatory preflight boundary.
+
 Start a consultation before invoking Codex:
 
 ```sh
@@ -238,7 +267,7 @@ rigor consult-start \
 
 `consult-start` rejects a stale policy hash, a changed HEAD, paths outside the preflight scope, or denied external transmission. If the implementation scope changed, create a fresh preflight before consultation.
 
-After `codex-plugin-cc` returns, normalize only its outcome, finding count, required actions, and available external IDs, then finish:
+After `codex-plugin-cc` returns, normalize only its outcome, structured findings, explicit metadata availability, and available external IDs, then finish:
 
 ```sh
 rigor consult-finish \
@@ -246,7 +275,9 @@ rigor consult-finish \
   --input /tmp/consultation-result.json
 ```
 
-Both the session and final result are append-only. Evidence files and the local event log are excluded from the before/after content hash so recording the session does not report itself as a mutation. Any other content change, changed path, or HEAD change makes `consult-finish` exit `2` with `status: "mutated-worktree"`.
+Each v2 finding contains severity, repository-relative evidence path and optional line, reproducibility, required action, and confidence. Arrays and strings are bounded; absolute/traversal paths are rejected. Set `usageStatus`, `modelStatus`, and `reasoningEffortStatus` to `unavailable` when the provider did not expose them and omit the corresponding values rather than guessing. Do not persist a full transcript, chain of thought, secrets, or unrelated command/repository content.
+
+Both the session and final result are append-only. Evidence files and the local event log are excluded from the before/after content hash so recording the session does not report itself as a mutation. Any other content change, changed path, or HEAD change makes `consult-finish` exit `2` with `status: "mutated-worktree"`. Prompt text saying “read-only” is not enforcement; this deterministic boundary is. An `accept` outcome or empty `findings` array remains advisory and cannot satisfy `rigor verify`, human approval, CI, or merge controls.
 
 ## Outcome and retrospect metrics
 

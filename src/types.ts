@@ -26,12 +26,19 @@ export const MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1" as const;
 export const ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1" as const;
 export const ATTEMPT_SCHEMA = "rigor.attempt.v1" as const;
 export const CONSULTATION_SCHEMA = "rigor.consultation.v1" as const;
+export const CONSULTATION_V2_SCHEMA = "rigor.consultation.v2" as const;
 export const CONSULTATION_REQUEST_SCHEMA =
   "rigor.consultation-request.v1" as const;
 export const CONSULTATION_SESSION_SCHEMA =
   "rigor.consultation-session.v1" as const;
 export const CONSULTATION_RESULT_INPUT_SCHEMA =
   "rigor.consultation-result-input.v1" as const;
+export const CONSULTATION_RESULT_INPUT_V2_SCHEMA =
+  "rigor.consultation-result-input.v2" as const;
+export const CONSULTATION_DECISION_INPUT_SCHEMA =
+  "rigor.independent-review-input.v1" as const;
+export const CONSULTATION_DECISION_SCHEMA =
+  "rigor.independent-review-decision.v1" as const;
 export const ROUTING_PLAN_SCHEMA = "rigor.routing-plan.v1" as const;
 export const ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1" as const;
 export const ATTEMPT_RESULT_INPUT_SCHEMA =
@@ -539,7 +546,7 @@ export interface AttemptResultInput {
 }
 
 export interface Consultation {
-  schemaVersion: typeof CONSULTATION_SCHEMA;
+  schemaVersion: typeof CONSULTATION_SCHEMA | typeof CONSULTATION_V2_SCHEMA;
   artifactId: string;
   taskId: string;
   createdAt: string;
@@ -565,6 +572,25 @@ export interface Consultation {
   outcome: "accept" | "revise" | "reject" | "investigate" | "ask-human";
   findingCount: number;
   requiredActions: string[];
+  /** Present and required only on rigor.consultation.v2 artifacts. */
+  findings?: ConsultationFinding[];
+  modelStatus?: "recorded" | "unavailable";
+  reasoningEffortStatus?: "recorded" | "unavailable";
+}
+
+export type ConsultationFindingSeverity =
+  | "critical"
+  | "high"
+  | "medium"
+  | "low"
+  | "informational";
+
+export interface ConsultationFinding {
+  severity: ConsultationFindingSeverity;
+  evidenceLocation: { path: string; line?: number };
+  reproducibility: "always" | "intermittent" | "not-reproduced";
+  requiredAction: string;
+  confidence: AssessmentConfidence;
 }
 
 export interface ConsultationRequest {
@@ -592,7 +618,9 @@ export interface ConsultationSession {
 }
 
 export interface ConsultationResultInput {
-  schemaVersion: typeof CONSULTATION_RESULT_INPUT_SCHEMA;
+  schemaVersion:
+    | typeof CONSULTATION_RESULT_INPUT_SCHEMA
+    | typeof CONSULTATION_RESULT_INPUT_V2_SCHEMA;
   taskId: string;
   status: "completed" | "failed";
   outcome: "accept" | "revise" | "reject" | "investigate" | "ask-human";
@@ -604,6 +632,61 @@ export interface ConsultationResultInput {
   model?: string;
   reasoningEffort?: string;
   usageStatus: "recorded" | "unavailable";
+  /** Present and required only on rigor.consultation-result-input.v2. */
+  findings?: ConsultationFinding[];
+  modelStatus?: "recorded" | "unavailable";
+  reasoningEffortStatus?: "recorded" | "unavailable";
+}
+
+export type ConsultationTriggerReason =
+  | "HIGH_RISK"
+  | "CRITICAL_RISK"
+  | "LOW_ASSESSMENT_CONFIDENCE"
+  | "REPEATED_UNCHANGED_FAILURE"
+  | "SECURITY_CONCERN"
+  | "DATA_INTEGRITY_CONCERN"
+  | "HUMAN_REQUEST";
+
+export type ConsultationDecisionKind =
+  | "request-independent-review"
+  | "skip-independent-review"
+  | "stop-required-review"
+  | "continue-claude-only";
+
+export interface ConsultationDecisionInput {
+  schemaVersion: typeof CONSULTATION_DECISION_INPUT_SCHEMA;
+  taskId: string;
+  riskTier: RiskTier;
+  assessmentConfidence: AssessmentConfidence;
+  failureProgress: "none" | "changed" | "unchanged";
+  fingerprintRepetitions: number;
+  concerns: { security: boolean; dataIntegrity: boolean };
+  humanRequested: boolean;
+  externalTransmission: Transmission;
+  pluginAvailability: AvailabilityState;
+  policy: {
+    unchangedFailureThreshold: number;
+    unavailableAction: "skip" | "stop" | "continue-claude-only";
+  };
+}
+
+export interface ConsultationDecision {
+  schemaVersion: typeof CONSULTATION_DECISION_SCHEMA;
+  taskId: string;
+  inputHash: string;
+  decision: ConsultationDecisionKind;
+  reasonCode:
+    | "EXTERNAL_TRANSMISSION_DENIED"
+    | "NO_REVIEW_TRIGGER"
+    | "REVIEW_TRIGGERED"
+    | "OPTIONAL_REVIEW_PLUGIN_UNAVAILABLE"
+    | "REQUIRED_REVIEW_PLUGIN_UNAVAILABLE"
+    | "CLAUDE_ONLY_PLUGIN_UNAVAILABLE";
+  triggerReasons: ConsultationTriggerReason[];
+  invocationAllowed: boolean;
+  pluginAvailability: AvailabilityState;
+  externalTransmission: Transmission;
+  approvalEffect: "none";
 }
 
 export type TestIntegritySignalId =

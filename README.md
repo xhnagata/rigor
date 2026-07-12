@@ -163,15 +163,18 @@ rigor attempt-finish --session .rigor/evidence/APP-123/attempts/attempt-session_
 
 Completed attempts require linked passing verification. Failed attempts use `verify --dry-run` so retries do not consume the task's write-once verification artifact. Configured provider/model identity is recorded as unverified rather than presented as runtime attestation.
 
-An optional Codex consultation is bracketed by append-only snapshots:
+An independent Codex challenge is first selected deterministically, then bracketed by append-only snapshots:
 
 ```sh
+rigor consult-decide --input /tmp/independent-review-input.json
 rigor consult-start --preflight .rigor/evidence/APP-123/preflight.json --input /tmp/consultation-request.json
 # consult through codex-plugin-cc
 rigor consult-finish --session .rigor/evidence/APP-123/consultations/consultation-session_ID.json --input /tmp/consultation-result.json
 ```
 
-`consult-finish` fails if repository content, changed paths, or HEAD changed during a read-only consultation. It stores a normalized summary and available external IDs, never the raw model transcript.
+`consult-decide` is pure and invokes no model. High/critical risk, low assessment confidence, repeated unchanged failure, security or data-integrity concern, and explicit human request are deterministic triggers. Transmission denial is evaluated before any request and yields Claude-only continuation; unavailable/unknown plugin state produces optional skip, required stop, or Claude-only continuation according to the input policy. Only `request-independent-review` with `invocationAllowed: true` may proceed, and `consult-start` remains the hard transmission prerequisite.
+
+`consult-finish` fails if repository content, changed paths, or HEAD changed during a read-only consultation. v2 results store bounded structured findings (severity, repository-relative evidence location, reproducibility, required action, and confidence) and explicit unavailable usage/model/effort status, never a raw transcript, chain of thought, absolute path, or unnecessary repository content. Codex agreement and zero findings do not verify or approve a change and never grant merge permission.
 
 After review, record the task's disposition and link it to its evidence:
 

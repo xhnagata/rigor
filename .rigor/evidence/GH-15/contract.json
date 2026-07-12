@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_3b04ed32-cad6-4966-ab32-cc98b042bfe7",
+  "taskId": "GH-15",
+  "createdAt": "2026-07-12T06:41:15.249Z",
+  "preflightArtifactId": "preflight_b4fe70a2-07b6-48c2-85c4-52479335440e",
+  "preflightHash": "48eb1eabf31a2fafc2cc44b70fac0dd1accd3de80cafb457643497896d3eb828",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "Deterministic triggers cover high or critical risk, low confidence, repeated unchanged failure, security, data integrity, and explicit human request",
+    "Transmission denial is evaluated before any review request and yields Claude-only continuation without invocation",
+    "Unavailable plugin distinguishes optional skip, required stop, and Claude-only continuation",
+    "Structured findings are bounded, repository-relative, versioned, and preserve unavailable metadata without inference",
+    "Existing consultation mutation checks remain mandatory and Codex results never create verification or approval",
+    "Fixture tests need no live Codex account and required repository checks pass"
+  ],
+  "allowedPaths": [
+    "src/consultation.ts",
+    "src/review-selection.ts",
+    "src/types.ts",
+    "src/cli.ts",
+    "schemas/independent-review-input.v1.schema.json",
+    "schemas/independent-review-decision.v1.schema.json",
+    "schemas/consultation-result-input.v2.schema.json",
+    "schemas/consultation.v2.schema.json",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/inputs.v1.schema.json",
+    "test/consultation.test.ts",
+    "test/review-selection.test.ts",
+    "skills/consult/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "docs/orchestration.md",
+    "README.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "No external transmission or live Codex invocation",
+    "No overwrite, reset, checkout, commit, push, or PR creation",
+    "Preserve v1 artifact semantics through additive versioning",
+    "Do not persist absolute paths, transcripts, chain of thought, secrets, or unnecessary command output",
+    "Do not infer model, effort, usage, tokens, or cost metadata"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

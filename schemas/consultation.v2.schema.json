@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/consultation.v2.schema.json",
+  "title": "Rigor consultation v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "sessionArtifactId",
+    "sessionHash",
+    "provider",
+    "mode",
+    "requestedDecision",
+    "transmissionDecision",
+    "beforeTreeHash",
+    "afterTreeHash",
+    "beforeHead",
+    "afterHead",
+    "changedPathsBefore",
+    "changedPathsAfter",
+    "usageStatus",
+    "modelStatus",
+    "reasoningEffortStatus",
+    "status",
+    "outcome",
+    "findingCount",
+    "findings",
+    "requiredActions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.consultation.v2" },
+    "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "taskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 128
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "sessionArtifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sessionHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "provider": { "const": "codex-plugin-cc" },
+    "mode": {
+      "enum": ["review", "adversarial-review", "consultation", "rescue"]
+    },
+    "requestedDecision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "transmissionDecision": { "const": "allowed" },
+    "beforeTreeHash": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "afterTreeHash": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "beforeHead": { "type": ["string", "null"] },
+    "afterHead": { "type": ["string", "null"] },
+    "changedPathsBefore": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+    },
+    "changedPathsAfter": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+    },
+    "externalJobId": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "externalSessionId": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "externalTurnId": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "model": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "reasoningEffort": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "usageStatus": { "enum": ["recorded", "unavailable"] },
+    "modelStatus": { "enum": ["recorded", "unavailable"] },
+    "reasoningEffortStatus": { "enum": ["recorded", "unavailable"] },
+    "status": { "enum": ["completed", "failed", "mutated-worktree"] },
+    "outcome": {
+      "enum": ["accept", "revise", "reject", "investigate", "ask-human"]
+    },
+    "findingCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "findings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severity",
+          "evidenceLocation",
+          "reproducibility",
+          "requiredAction",
+          "confidence"
+        ],
+        "properties": {
+          "severity": {
+            "enum": ["critical", "high", "medium", "low", "informational"]
+          },
+          "evidenceLocation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024,
+                "pattern": "^(?!/|\\\\|[A-Za-z]:)(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+              },
+              "line": { "type": "integer", "minimum": 1, "maximum": 10000000 }
+            }
+          },
+          "reproducibility": {
+            "enum": ["always", "intermittent", "not-reproduced"]
+          },
+          "requiredAction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "confidence": { "enum": ["low", "medium", "high"] }
+        }
+      }
+    },
+    "requiredActions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    }
+  }
+}

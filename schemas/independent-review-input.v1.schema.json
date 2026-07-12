@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/independent-review-input.v1.schema.json",
+  "title": "Rigor independent review input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "riskTier",
+    "assessmentConfidence",
+    "failureProgress",
+    "fingerprintRepetitions",
+    "concerns",
+    "humanRequested",
+    "externalTransmission",
+    "pluginAvailability",
+    "policy"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.independent-review-input.v1" },
+    "taskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 128
+    },
+    "riskTier": { "enum": ["low", "medium", "high", "critical"] },
+    "assessmentConfidence": { "enum": ["low", "medium", "high"] },
+    "failureProgress": { "enum": ["none", "changed", "unchanged"] },
+    "fingerprintRepetitions": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "concerns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["security", "dataIntegrity"],
+      "properties": {
+        "security": { "type": "boolean" },
+        "dataIntegrity": { "type": "boolean" }
+      }
+    },
+    "humanRequested": { "type": "boolean" },
+    "externalTransmission": { "enum": ["allowed", "denied"] },
+    "pluginAvailability": {
+      "enum": ["available", "unavailable", "unknown", "incompatible"]
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unchangedFailureThreshold", "unavailableAction"],
+      "properties": {
+        "unchangedFailureThreshold": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 20
+        },
+        "unavailableAction": {
+          "enum": ["skip", "stop", "continue-claude-only"]
+        }
+      }
+    }
+  }
+}

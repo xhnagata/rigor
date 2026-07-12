@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c7ba1ae0-1c02-4ad2-bb26-c4881602d43f",
+  "taskId": "GH-15-R2",
+  "createdAt": "2026-07-12T12:51:28.273Z",
+  "preflightArtifactId": "preflight_15435f66-baee-4604-bb98-c40c3d541fd2",
+  "preflightHash": "96180ce17dd7d923a167a40aaa3b7d6cc5ecfab0ce4e4e65a68543d2f2dc4e64",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "The GH-15 CHANGELOG entry appears under the Unreleased section, not inside the released 0.8.0 section",
+    "The full uncommitted diff against origin/main 6d8dba7 is covered by this task's verification changedPaths",
+    "The recorded git-diff-check passes; test:all, bench, and plugin validation are rerun and reported in the PR",
+    "No external transmission or live Codex invocation occurs during remediation"
+  ],
+  "allowedPaths": [
+    "src/consultation.ts",
+    "src/review-selection.ts",
+    "src/types.ts",
+    "src/cli.ts",
+    "schemas/independent-review-input.v1.schema.json",
+    "schemas/independent-review-decision.v1.schema.json",
+    "schemas/consultation-result-input.v2.schema.json",
+    "schemas/consultation.v2.schema.json",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/inputs.v1.schema.json",
+    "test/consultation.test.ts",
+    "test/review-selection.test.ts",
+    "skills/consult/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "docs/orchestration.md",
+    "README.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "No external transmission or live Codex invocation",
+    "Preserve v1 artifact semantics through additive versioning",
+    "Do not persist absolute paths, transcripts, chain of thought, secrets, or unnecessary command output",
+    "Remediation edits stay within the original GH-15 allowed paths"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

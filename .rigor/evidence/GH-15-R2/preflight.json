@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_15435f66-baee-4604-bb98-c40c3d541fd2",
+  "taskId": "GH-15-R2",
+  "createdAt": "2026-07-12T12:51:28.223Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "61aac2dadb9bfa086caaefca5c0c318fea445ff941d66e0800b9e9900956e6fe",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "6d8dba708eb60725f17abf04028dd1a60b6085cb",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-15/contract.json",
+      ".rigor/evidence/GH-15/preflight.json",
+      ".rigor/evidence/GH-15/verification.json",
+      "CHANGELOG.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "schemas/artifacts.v1.schema.json",
+      "schemas/consultation-result-input.v2.schema.json",
+      "schemas/consultation.v2.schema.json",
+      "schemas/independent-review-decision.v1.schema.json",
+      "schemas/independent-review-input.v1.schema.json",
+      "schemas/inputs.v1.schema.json",
+      "skills/consult/SKILL.md",
+      "skills/orchestrate/SKILL.md",
+      "src/cli.ts",
+      "src/consultation.ts",
+      "src/review-selection.ts",
+      "src/types.ts",
+      "test/consultation.test.ts",
+      "test/review-selection.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/consultation-result-input.v2.schema.json",
+    "schemas/consultation.v2.schema.json",
+    "schemas/independent-review-decision.v1.schema.json",
+    "schemas/independent-review-input.v1.schema.json",
+    "schemas/inputs.v1.schema.json",
+    "skills/consult/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "src/cli.ts",
+    "src/consultation.ts",
+    "src/review-selection.ts",
+    "src/types.ts",
+    "test/consultation.test.ts",
+    "test/review-selection.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/consult/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "skills/orchestrate/SKILL.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/consultation.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/review-selection.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/consultation.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/review-selection.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

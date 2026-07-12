@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add pure `rigor consult-decide` policy selection for optional `codex-plugin-cc` independent challenge. Fixed ordered triggers cover high/critical risk, low assessment confidence, repeated unchanged failure, security/data-integrity concern, and explicit human request; external-transmission denial is evaluated first and always prevents invocation, while unavailable/unknown plugin policy distinguishes optional skip, required stop, and Claude-only continuation. Add `rigor.independent-review-input.v1`/decision schemas and additive consultation result/artifact v2 schemas with bounded structured findings and explicit unavailable usage/model/effort metadata. Existing consultation v1 artifacts remain accepted unchanged, `consult-start`/`consult-finish` keep content/path/HEAD mutation enforcement, the CLI never calls a model, and Codex agreement or zero findings has `approvalEffect: none` and cannot verify, approve, or permit merge ([#15](https://github.com/xhnagata/rigor/issues/15)).
+
 - Refresh the pinned CI verifier: `.rigor/rigor-ci.cjs` is again byte-identical to the committed `dist/rigor.cjs` (it had last been regenerated at 0.5.0), so the `rigor` CI gate runs the same code the repository ships, including failure fingerprinting ([#13](https://github.com/xhnagata/rigor/issues/13)), bounded escalation decisions ([#14](https://github.com/xhnagata/rigor/issues/14)), and test-integrity shadow collection ([#22](https://github.com/xhnagata/rigor/issues/22)). No source, policy, schema, or workflow change; the copy was verified byte-identical and exercised against the pull-request diff before merge.
 
 ## 0.8.0 - 2026-07-12
