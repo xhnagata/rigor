@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_7afba478-72db-4a47-b955-037e8e441b31",
+  "taskId": "REL-0-10-0",
+  "createdAt": "2026-07-12T14:39:42.713Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_7860df35-7d36-4ba9-9fb0-67d184aa1d8b",
+  "verificationArtifactId": "verification_56e67df5-099f-4237-bea4-a51f0837f68c",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json version are 0.10.0",
+    "CHANGELOG Unreleased section is renamed to 0.10.0 with the release date and retains the #51 entry",
+    "No source, schema, or dist change in this release commit"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

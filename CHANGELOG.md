@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 - 2026-07-12
 
 - Add append-only persistence for `rigor consult-decide` decisions. Each decision is recorded under `.rigor/evidence/<task>/review-decisions/` with a UUID-suffixed filename, including its `inputHash` for auditability; the `--dry-run` flag prints without persisting. Decisions remain advisory (`approvalEffect: none`) with no verification/review/CI linkage, and `consult-start` stays the hard transmission gate ([#51](https://github.com/xhnagata/rigor/issues/51)).
 
