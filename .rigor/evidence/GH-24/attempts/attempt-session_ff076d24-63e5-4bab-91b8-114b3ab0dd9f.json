@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_ff076d24-63e5-4bab-91b8-114b3ab0dd9f",
+  "taskId": "GH-24",
+  "createdAt": "2026-07-12T00:52:10.523Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_84b075ae-5bc4-4d0b-b691-b615d56bf8e0",
+  "routingPlanHash": "9d4e55d5b16a60ba3380ac512e3be46da907de6a96dff576104f0d0f1314c0b2",
+  "contractArtifactId": "contract_3ba52eb3-8794-4eef-9deb-f106982bb54b",
+  "contractHash": "a6aa4732580183448f6bf3e983f60274c180aaa073cde269bc09107e7744a646",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 14400000,
+    "maxRelativeCost": 100
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "4625f1066aa00687299c96b08caee7e7a76007a4",
+  "beforeTreeHash": "0c4525137b9ffb6b01961610f065ad019a06d4e480f0ea9f623c3a2a7a25d9de",
+  "changedPathsBefore": [
+    ".gitignore",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "selection": {
+    "provider": "claude",
+    "model": "claude-sonnet-5",
+    "capabilityClass": "standard"
+  }
+}

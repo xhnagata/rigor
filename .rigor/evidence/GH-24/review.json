@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_545c1384-935d-4bac-8f19-b80ca388bf0e",
+  "taskId": "GH-24",
+  "createdAt": "2026-07-12T00:59:55.340Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_3ba52eb3-8794-4eef-9deb-f106982bb54b",
+  "verificationArtifactId": "verification_7c3a9801-a8e3-4419-ab64-33426ea58859",
+  "changedPaths": [
+    ".gitignore",
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "acceptanceCriteria": [
+    "docs/adr/0001-provenance-trust-model.md gives every proposed claim a producer and an independent verifier across release tag, source commit, dist/rigor.cjs, plugin distribution, local evidence, CI evidence, workflow identity, and Claude/Codex runtime model identity.",
+    "The ADR states which controls add security beyond current CI re-derivation and rejects checksum-beside-artifact, bundle-only attestation, and unauthenticated SLSA formats as sufficient provenance.",
+    "Keyless GitHub OIDC/Sigstore, GitHub Artifact Attestations, and SLSA-compatible options are evaluated against requirements with an adopted option and recorded rejected alternatives.",
+    "Missing consumer enforcement (no confirmed pre-activation verification point in the ordinary Claude Code marketplace flow) is documented as a blocker for #26, not hidden.",
+    "Implementation is split into independently testable follow-ups: #25 producer provenance and #26 consumer enforcement, with explicit completion and blocked conditions.",
+    "docs/threat-model.md, docs/architecture.md, docs/release.md, and docs/mvp-limitations.md reference the ADR without claiming an implemented attestation, SLSA Build Level, runtime model attestation, or consumer verifier.",
+    "CHANGELOG.md documents the ADR under an Unreleased heading following the one-entry-per-issue convention.",
+    "npm run test:all (format, lint, typecheck, tests, plugin structure validation, local link checks), npm run bench, and claude plugin validate . --strict pass on the merged tree."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

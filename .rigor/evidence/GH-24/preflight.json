@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_1c8e04bd-b11b-4bb2-951c-890ea83cb8df",
+  "taskId": "GH-24",
+  "createdAt": "2026-07-12T00:51:19.730Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "b6ed3377a535dea9150ff688a994a7f3fc42dc23fac680446185758cb3c492e5",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "4625f1066aa00687299c96b08caee7e7a76007a4",
+    "dirty": true,
+    "changedPaths": [
+      ".gitignore",
+      "docs/adr/0001-provenance-trust-model.md",
+      "docs/architecture.md",
+      "docs/mvp-limitations.md",
+      "docs/release.md",
+      "docs/threat-model.md"
+    ]
+  },
+  "plannedPaths": [
+    ".gitignore",
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/adr/0001-provenance-trust-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/architecture.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/mvp-limitations.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/release.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}
