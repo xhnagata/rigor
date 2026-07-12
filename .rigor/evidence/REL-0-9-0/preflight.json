@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_e6bb68cc-92b1-4f36-8d83-3f1fa4c5cdce",
+  "taskId": "REL-0-9-0",
+  "createdAt": "2026-07-12T13:42:21.542Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "79a17bbe3c844943064bd21368ffb69f85b0649edad45ed974e04f1f28706875",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-rel-0-9-0",
+    "head": "c1b57dec623a0a7eb4ccf2325ba9151a2190f4e7",
+    "dirty": true,
+    "changedPaths": [
+      ".claude-plugin/plugin.json",
+      "CHANGELOG.md",
+      "package.json"
+    ]
+  },
+  "plannedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

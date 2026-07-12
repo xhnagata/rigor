@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c54fdead-b9d6-4fd1-ab0c-53d7270bd354",
+  "taskId": "REL-0-9-0",
+  "createdAt": "2026-07-12T13:42:21.596Z",
+  "preflightArtifactId": "preflight_e6bb68cc-92b1-4f36-8d83-3f1fa4c5cdce",
+  "preflightHash": "885cbc1c30bb5cfdf15d3932b51c66f55031a2bcd4beb80cbe872bae6fe46e00",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.9.0.",
+    "CHANGELOG.md renames the Unreleased heading to '## 0.9.0 - 2026-07-12' with the #15, #21-amendment, and #48 entries preserved, a previously missing #14 escalate-decide entry added, and an honesty note on the #48 entry recording the post-#50 divergence of the pinned CI verifier and the owner's explicit deferral of the re-sync.",
+    "dist/rigor.cjs is unchanged in this release (no source change; last rebuilt in #50).",
+    "rigor release-check --version 0.9.0 passes on the merged main SHA after the release PR merges, before tagging."
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Mechanical release change only: no source, schema, docs, workflow, or dist edits.",
+    "Do not create keys, secrets, attestations, or GitHub configuration, and do not increase any workflow permission.",
+    "Do not describe the release as attested or as carrying provenance; the added CHANGELOG entries must not overstate any control (Codex-produced #14 base implementation stays disclosed as unattested, the pinned verifier divergence stays disclosed)."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
