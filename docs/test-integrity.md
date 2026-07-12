@@ -30,14 +30,15 @@ Five more — TI-05, TI-06, TI-07, TI-08, and TI-09 — are now implemented as
 [#22](https://github.com/xhnagata/rigor/issues/22): the `rigor
 test-integrity-scan` command records them as `rigor.test-integrity-event.v1`
 evidence, and `rigor test-integrity-classify` records human verdicts on them.
-Shadow collection is record-only: a fired signal changes no verification,
+Each event remains shadow-only: a fired event changes no verification,
 progress, review, or merge outcome (`mode` is always `shadow`, `enforcement`
-always `none`). Every other signal in this catalog remains proposed and
-unimplemented. Enforcement is still explicitly deferred for the shadow signals
-too — it will not be proposed until per-signal false-positive evidence has been
-collected in shadow mode and calibrated against outcomes
-([#16](https://github.com/xhnagata/rigor/issues/16)), a decision left to
-[#23](https://github.com/xhnagata/rigor/issues/23). See
+always `none`). Issue #23 adds promotion governance and proportional outcome
+evaluation around those records, but the shipped active set is empty. **Zero
+signals are promoted today:** the recorded dataset has four legacy events,
+TI-05..TI-09 each evaluated four times, zero firings, zero classifications, and
+zero outcomes. It therefore meets none of the risk floors below, and the legacy
+events lack the detector/candidate-set manifest required for version-bound
+promotion. See
 [Implemented shadow collection](#implemented-shadow-collection) below.
 
 ## Classification vocabulary
@@ -80,7 +81,7 @@ evidence:
 3. **Shadow candidate (#22, implemented)** — recorded as a
    `rigor.test-integrity-event.v1` event by `rigor test-integrity-scan`
    without any effect on verification, progress, review, or merge, so
-   false-positive rates can be measured against outcomes. TI-05, TI-06, TI-07,
+   firing and review metrics can be measured against outcomes. TI-05, TI-06, TI-07,
    TI-08, and TI-09 are the implemented shadow-collection set on this rung.
    TI-13 and TI-15 are **proposed additions to shadow collection at lower
    priority** — they are not yet collected by the implemented scanner and no
@@ -128,7 +129,7 @@ signals must start as shadow events rather than gates:
 | B1  | An honest refactor renames or moves test files without changing content | TI-06 must not fire: fixed-threshold rename pairing matches the files; TI-03 is unaffected because the total is unchanged        |
 | B2  | Tests are deleted because the feature they covered was removed          | TI-03 and TI-06 fire; the change is legitimate and reviewable; the shadow record becomes false-positive evidence for calibration |
 | B3  | A test-framework migration changes the runner's summary format          | Test counts stop parsing; #13 reports `incomparable` rather than `reduced` — fail-closed and honest, not a weakening verdict     |
-| B4  | Snapshots are regenerated after an intentional UI change                | TI-08 fires benignly; this expected high false-positive rate is exactly why snapshot churn is shadow-only                        |
+| B4  | Snapshots are regenerated after an intentional UI change                | TI-08 fires benignly; this expected high benign-firing share is exactly why snapshot churn is shadow-only                        |
 | B5  | A flaky test is quarantined with `.skip` and a tracking issue           | TI-05 fires benignly; the reviewer, not the signal, decides whether the quarantine is justified                                  |
 | B6  | A parametrized test matrix is deliberately reduced to cut CI time       | TI-03 fires; the drop is real and worth a reviewer's attention even though the intent is benign                                  |
 
@@ -193,7 +194,7 @@ suite into a passing one without touching a single assertion. Changed paths
 matching snapshot conventions (`__snapshots__/`, `*.snap`) alongside
 implementation changes (TI-08) are deterministic to compute; intentional
 snapshot updates after a UI change look identical, so the interpretation is
-advisory and the expected false-positive rate is high.
+advisory and the expected benign-firing share is high.
 
 ### Mock substitution
 
@@ -287,12 +288,10 @@ reason instead.
 | TI-15  | A diff replaces `expect(x).toEqual(y)` with `expect(x).toBeDefined()` (a configured weakening pair)                                                                                                                                   | A diff that replaces `toEqual` with `toStrictEqual` (a strengthening)                                                                                          |
 | TI-16  | Rejected as an authoritative check: a model verdict has no falsifiable specification, its false-positive profile cannot be stated in advance, and treating it as authoritative is an explicit non-goal; model review remains advisory | —                                                                                                                                                              |
 
-## Shadow-mode event format (specification only)
+## Shadow-mode event format
 
-Shadow collection in [#22](https://github.com/xhnagata/rigor/issues/22) would
-record signals as append-only evidence without enforcing anything. This is a
-specification of the JSON shape; no schema file, detector, or command is
-created by this document. It follows the existing evidence conventions: no
+Shadow collection records signals as append-on-create evidence without
+enforcing anything. The versioned schema follows the existing evidence conventions: no
 raw command output or transcripts, repository-relative paths only, opaque
 digests for content, bounded lengths, and explicit `null` rather than
 fabricated values.
@@ -312,6 +311,40 @@ fabricated values.
     "headSha": null,
     "worktreeDigest": "<opaque content hash>"
   },
+  "signalsEvaluated": ["TI-05", "TI-06", "TI-07", "TI-08", "TI-09"],
+  "evaluationManifest": [
+    {
+      "signalId": "TI-05",
+      "detector": { "name": "diff-token-scan", "version": "0.1.0" },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "<opaque configuration hash>"
+    },
+    {
+      "signalId": "TI-06",
+      "detector": { "name": "diff-name-status", "version": "0.1.0" },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "<same opaque configuration hash>"
+    },
+    {
+      "signalId": "TI-07",
+      "detector": { "name": "diff-token-scan", "version": "0.1.0" },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "<same opaque configuration hash>"
+    },
+    {
+      "signalId": "TI-08",
+      "detector": { "name": "diff-path-scan", "version": "0.1.0" },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "<same opaque configuration hash>"
+    },
+    {
+      "signalId": "TI-09",
+      "detector": { "name": "config-diff-scan", "version": "0.1.0" },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "<same opaque configuration hash>"
+    }
+  ],
+  "provenance": "recorded",
   "signals": [
     {
       "signalId": "TI-05",
@@ -324,7 +357,9 @@ fabricated values.
       "matchDigest": "<opaque hash of the normalized matched lines>",
       "note": null
     }
-  ]
+  ],
+  "signalsTruncated": false,
+  "note": null
 }
 ```
 
@@ -394,25 +429,81 @@ The proposed shadow signals are complementary, not a replacement:
   persist only normalized facts and digests, never raw output, and record
   unknown values as `null`.
 
-## Interaction with #16 outcome-based calibration
+## Promotion governance and metrics (#23)
 
-`rigor outcome` records the human-reported disposition of a task (accepted,
-rejected, reverted, escaped defect) with linked attempt, verification, and
-review identifiers. Joining shadow events to outcomes by task ID yields
-per-signal false-positive evidence before any enforcement exists:
+Joining versioned shadow events to human classifications yields reviewable
+per-signal evidence before activation. The metrics have deliberately separate
+names and denominators:
 
-- a signal that fired on a task later accepted with no test-related review
-  finding is false-positive evidence for that signal;
-- a signal that fired on a task later reverted or carrying an escaped defect
-  is (weaker) true-positive evidence;
-- per-signal precision estimates, with explicit numerators and denominators
-  in the style of `rigor retrospect`, are the precondition for
-  [#23](https://github.com/xhnagata/rigor/issues/23) proposing any
-  enforcement.
+- **firing rate** is `fired / evaluated`;
+- **false-discovery proportion among classified firings** is
+  `humanClassified.falsePositive / (truePositive + falsePositive)`;
+- **review coverage** is `(truePositive + falsePositive + uncertain) / fired`.
 
-This document deliberately chooses no enforcement threshold, no minimum
-sample size, and no promotion rule; those are calibration decisions that must
-be made against collected evidence, not designed in advance of it.
+Uncertain classifications count toward review coverage but not the
+false-discovery proportion. `falsePositive / evaluated` is not called a
+false-positive rate. There is currently no false-negative measurement: that
+requires a separately selected, labeled audit sample of non-firing events.
+
+The built-in numbers are **human-approved conservative governance risk floors,
+not empirically calibrated values**:
+
+| Effect   | Minimum evaluated | Minimum human-classified firings | Maximum false-discovery proportion |
+| -------- | ----------------: | -------------------------------: | ---------------------------------: |
+| advisory |                25 |                                5 |                               0.50 |
+| review   |                50 |                               10 |                               0.20 |
+| stop     |               100 |                               20 |                               0.05 |
+
+`advisory` records an `advisory-warning` with zero gating effect. `review`
+records `required-human-review`; `stop` records `immediate-stop`. Signal
+disposition, requested enforcement effect, and recorded outcome are separate
+fields.
+
+`rigor test-integrity-promote --input <json>` strictly validates cited file
+digests, schemas, event/classification linkage, declared per-stratum counts,
+logical-ID uniqueness, classifications, detector versions, candidate-set
+versions, configuration digests, policy/schema bindings, and these floors.
+Malformed, contradictory, duplicate, unversioned legacy, or synthetic-fixture
+evidence is ineligible. It writes only an inert
+`rigor.test-integrity-promotion.v1` with `status: "proposed"` and
+`approvalEffect: "none"`. Its canonical `proposalDigest` excludes activation
+and replay linkage.
+
+`rigor test-integrity-replay --proposal <artifact> [--evidence-root <dir>]`
+deterministically compares the immutable proposal to recorded versioned events
+and records per-signal/per-stratum evaluated, fired, and would-fire counts. The
+canonical active registry path is `.rigor/test-integrity-active.json`; it is a
+policy-protected Git subject and is intentionally absent from the shipped tree.
+Absence means an empty active set. An entry is refused unless the proposal
+still meets its evidence floor, current detector/candidate-set/configuration,
+policy and schemas match, and an exactly linked replay report exists.
+
+Waivers are append-on-create `rigor.test-integrity-waiver.v1` records bound to
+one original enforcement-outcome digest, one signal-occurrence digest, the
+promotion digest, head SHA, bounded scope/reason, expiry, and an external
+review reference. They downgrade only the effective outcome to
+`recorded-and-waived`; they never delete or hide the original. Human approvals,
+classifications, and waivers are unattested local declarations, not proof of
+identity or authorization.
+
+Rollback is fail closed. When a recorded rollback condition is met, the
+activation evaluator returns `frozen(requires-review)`; it does not silently
+deactivate or continue enforcing. Deactivation requires a separately reviewed
+protected registry change, with tombstones retained.
+
+### Trust and anti-bypass boundary
+
+These mechanisms provide deterministic structural consistency and same-diff
+tamper detection only when trusted CI runs a trusted verifier over pinned base
+and head SHAs. CI reads the base-side registry independently and escalates to
+at least required human review when the registry, signal/promotion schemas or
+configuration, enforcement source, `dist/rigor.cjs`, or its pinned CI copy
+changes in the evaluated diff. It re-derives changed paths from Git. This does
+not authenticate empirical provenance or human identity, cannot resist a
+repository administrator, and relies on protected GitHub review/branch
+controls for authority. Artifact writers are append-on-create; durable
+append-only audit semantics come from protected Git history, not filesystem
+permissions or timestamps.
 
 ## High-confidence shadow-mode candidates (#22)
 
@@ -429,7 +520,7 @@ expected value, the implemented set is:
 3. **TI-09** verification-adjacent config or script changed — covers the A7
    indirection outside `.rigor/policy.json`.
 4. **TI-07** net assertion-token decline — the only cheap signal aimed at A4;
-   collected precisely because its false-positive rate is expected to be high
+   collected precisely because its false-discovery proportion is expected to be high
    and must be measured.
 5. **TI-08** snapshot churn counts — high expected false positives (B4);
    shadow mode exists to quantify them.
@@ -450,12 +541,13 @@ check).
 [#22](https://github.com/xhnagata/rigor/issues/22) implements the five
 high-confidence candidates as deterministic detectors over a unified Git diff
 between a contract-base commit and the head (a committed sha or the dirty
-worktree). Two commands manage the evidence, and neither reads or affects the
+worktree). Two commands manage shadow event/classification evidence, and
+neither reads or affects the
 verification, attempt, review, or CI code paths:
 
 - `rigor test-integrity-scan --task <id> --base <40hex> [--head <40hex>]
 [--attempt <path>] [--verification <path>] [--note <string>]` runs the five
-  detectors and writes an append-only `rigor.test-integrity-event.v1` under
+  detectors and writes an append-on-create `rigor.test-integrity-event.v1` under
   `.rigor/evidence/<task>/test-integrity/`. With `--head` omitted the base is
   compared to the dirty worktree, and the event records `diff.headSha: null`
   with an opaque `diff.worktreeDigest`. A dirty-worktree scan diffs tracked
@@ -481,9 +573,8 @@ verification, attempt, review, or CI code paths:
 `rigor retrospect` gains a `testIntegrity` section aggregating events, malformed
 event/classification counts, and per-signal `{ evaluated, fired, unreviewed,
 humanClassified: { truePositive, falsePositive, uncertain } }` with explicit
-denominators; `evaluated` is the number of scans that considered the signal
-(the false-positive denominator), and `unreviewed` counts fired signals with no
-human verdict.
+denominators; `evaluated` is the firing-rate denominator, and `unreviewed`
+counts fired signals with no human verdict.
 
 Detectors are `diff-token-scan`/`diff-name-status`/`diff-path-scan`/
 `config-diff-scan`, all version `0.1.0`, and every signal entry carries
@@ -520,8 +611,11 @@ noise-masking style as `src/fingerprint.ts` — so no raw matched content or
 secret ever persists. An event carries at most 32 signals and records
 `signalsTruncated` rather than silently dropping any; a scan that fires nothing
 still writes an event with an empty `signals` array and the full
-`signalsEvaluated` list, which is the denominator for false-positive
-measurement.
+`signalsEvaluated` list, which is the firing-rate denominator. New events also
+carry `provenance: "recorded"` plus a per-signal evaluation manifest naming the
+detector/version, candidate-set version, and configuration digest. The four
+pre-manifest events remain readable historical denominators but are ineligible
+for promotion.
 
 ## What must never be advertised
 
@@ -548,6 +642,7 @@ shadow events, or the implemented #13 mechanism:
 The threat-model row "New regressions hidden by deleting or weakening tests"
 and the [MVP limitations](mvp-limitations.md) entry for
 [#3](https://github.com/xhnagata/rigor/issues/3) remain accurate: the MVP
-reliably flags deleted tests and mutation or removal of configured checks;
-everything beyond that in this catalog is proposed, unimplemented, and —
-even once implemented — bounded to the non-semantic claims stated above.
+reliably flags deleted tests and mutation or removal of configured checks.
+TI-05..TI-09 shadow collection and promotion governance are implemented, but
+the active set is empty and even a future version-bound activation remains
+bounded to the non-semantic claims above.

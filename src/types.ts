@@ -52,6 +52,16 @@ export const TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA =
   "rigor.test-integrity-classification-input.v1" as const;
 export const TEST_INTEGRITY_CLASSIFICATION_SCHEMA =
   "rigor.test-integrity-classification.v1" as const;
+export const TEST_INTEGRITY_PROMOTION_INPUT_SCHEMA =
+  "rigor.test-integrity-promotion-input.v1" as const;
+export const TEST_INTEGRITY_PROMOTION_SCHEMA =
+  "rigor.test-integrity-promotion.v1" as const;
+export const TEST_INTEGRITY_REPLAY_SCHEMA =
+  "rigor.test-integrity-replay.v1" as const;
+export const TEST_INTEGRITY_WAIVER_INPUT_SCHEMA =
+  "rigor.test-integrity-waiver-input.v1" as const;
+export const TEST_INTEGRITY_WAIVER_SCHEMA =
+  "rigor.test-integrity-waiver.v1" as const;
 export const EVALUATION_MANIFEST_SCHEMA =
   "rigor.evaluation-manifest.v1" as const;
 export const EVALUATION_REPORT_SCHEMA = "rigor.evaluation-report.v1" as const;
@@ -739,9 +749,134 @@ export interface TestIntegrityEvent {
     worktreeDigest: string | null;
   };
   signalsEvaluated: TestIntegritySignalId[];
+  /** Required on newly recorded events. Its absence marks a legacy event as
+   * unversioned and therefore promotion-ineligible. */
+  evaluationManifest?: Array<{
+    signalId: TestIntegritySignalId;
+    detector: { name: string; version: string };
+    candidateSetVersion: string;
+    configurationDigest: string;
+  }>;
+  provenance?: "recorded" | "synthetic-test-fixture";
   signals: TestIntegritySignal[];
   signalsTruncated: boolean;
   note: string | null;
+}
+
+export type TestIntegrityEffect = "stop" | "review" | "advisory";
+
+export interface TestIntegrityEvidenceRef {
+  path: string;
+  digest: string;
+}
+
+export interface TestIntegrityPromotionSignal {
+  signalId: TestIntegritySignalId;
+  detector: { name: string; version: string };
+  evaluatedCandidateSet: {
+    version: string;
+    configurationDigest: string;
+  };
+  requestedEffect: TestIntegrityEffect;
+  evidence: {
+    events: TestIntegrityEvidenceRef[];
+    classifications: TestIntegrityEvidenceRef[];
+  };
+  stratum: {
+    evaluated: number;
+    fired: number;
+    humanClassified: {
+      truePositive: number;
+      falsePositive: number;
+      uncertain: number;
+    };
+  };
+  rollbackConditions: Array<{
+    metric: "false-discovery-proportion" | "review-coverage";
+    operator: "greater-than" | "less-than";
+    threshold: number;
+    minimumClassifiedFired: number;
+  }>;
+}
+
+export interface TestIntegrityPromotionInput {
+  schemaVersion: typeof TEST_INTEGRITY_PROMOTION_INPUT_SCHEMA;
+  taskId: string;
+  policyHash: string;
+  schemaBindings: {
+    event: typeof TEST_INTEGRITY_EVENT_SCHEMA;
+    classification: typeof TEST_INTEGRITY_CLASSIFICATION_SCHEMA;
+    promotion: typeof TEST_INTEGRITY_PROMOTION_SCHEMA;
+    replay: typeof TEST_INTEGRITY_REPLAY_SCHEMA;
+  };
+  signals: TestIntegrityPromotionSignal[];
+  approval: {
+    declaredBy: "human";
+    declaration: "approved-for-proposal";
+    note: string;
+    identityAttested: false;
+  };
+}
+
+export interface TestIntegrityPromotion
+  extends Omit<TestIntegrityPromotionInput, "schemaVersion"> {
+  schemaVersion: typeof TEST_INTEGRITY_PROMOTION_SCHEMA;
+  artifactId: string;
+  createdAt: string;
+  proposalDigest: string;
+  criteria: Record<TestIntegrityEffect, PromotionCriterion>;
+  status: "proposed";
+  approvalEffect: "none";
+}
+
+export interface PromotionCriterion {
+  minimumEvaluated: number;
+  minimumHumanClassifiedFired: number;
+  maximumFalseDiscoveryProportion: number;
+}
+
+export interface TestIntegrityReplayReport {
+  schemaVersion: typeof TEST_INTEGRITY_REPLAY_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  proposalArtifactId: string;
+  proposalDigest: string;
+  evidenceRootDigest: string;
+  replayDigest: string;
+  signals: Array<{
+    signalId: TestIntegritySignalId;
+    requestedEffect: TestIntegrityEffect;
+    detector: { name: string; version: string };
+    candidateSetVersion: string;
+    evaluated: number;
+    fired: number;
+    wouldFire: number;
+  }>;
+}
+
+export interface TestIntegrityWaiverInput {
+  schemaVersion: typeof TEST_INTEGRITY_WAIVER_INPUT_SCHEMA;
+  taskId: string;
+  enforcementOutcomeDigest: string;
+  signalOccurrenceDigest: string;
+  promotionDigest: string;
+  headSha: string;
+  scope: string;
+  reason: string;
+  expiresAt: string;
+  declaredBy: "human";
+  identityAttested: false;
+  externalReviewReference: string;
+}
+
+export interface TestIntegrityWaiver
+  extends Omit<TestIntegrityWaiverInput, "schemaVersion"> {
+  schemaVersion: typeof TEST_INTEGRITY_WAIVER_SCHEMA;
+  artifactId: string;
+  createdAt: string;
+  status: "recorded-and-waived";
+  approvalEffect: "single-outcome-downgrade";
 }
 
 export interface TestIntegrityClassificationInput {

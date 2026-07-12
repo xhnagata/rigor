@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "rigor.consultation.v2",
+  "artifactId": "consultation_ce47adf8-8106-4935-a619-1a1738565e41",
+  "taskId": "GH-23",
+  "createdAt": "2026-07-12T20:58:46.029Z",
+  "sessionArtifactId": "consultation-session_56a431ac-2fe8-414c-9b29-8c8a4319abe7",
+  "sessionHash": "f8e5728bf5d96b5508c3507f3fc70790b38e6b6f26b6830f8bf3e1b314eeabdf",
+  "provider": "codex-plugin-cc",
+  "mode": "adversarial-review",
+  "requestedDecision": "Adversarially review the planned approach for rigor issue #23 before implementation: ship the versioned test-integrity promotion framework (promotion criteria with explicit numerator/denominator evidence requirements, stop/review/advisory enforcement levels, policy/schema version binding, human waiver evidence, replay/shadow comparison gate) with an EMPTY default promoted set, because the recorded shadow dataset (4 events, TI-05..TI-09 evaluated=4, fired=0, humanClassified=0, outcomes=0) empirically qualifies zero signals. Identify: (1) whether this vacuous-satisfaction reading of the acceptance criteria is defensible or an improper end-run around the issue's human-approval prerequisite; (2) design flaws in the anti-bypass requirement (enforcement must not be disabled by editing promotion/signal config or deleting checks in the same unapproved change); (3) schema/evidence-integrity risks (pooling across detector-version strata, unattested human declarations, waiver misuse); (4) anything in the contract acceptance criteria that is untestable or self-contradictory. Separate facts, options, a recommendation, uncertainty, and decisions that must remain human.",
+  "transmissionDecision": "allowed",
+  "beforeTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "afterTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "beforeHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "afterHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "changedPathsBefore": [],
+  "changedPathsAfter": [],
+  "usageStatus": "unavailable",
+  "status": "completed",
+  "outcome": "revise",
+  "findingCount": 13,
+  "requiredActions": [
+    "Keep active promotion state in a specifically protected registry outside .rigor/evidence/** (which codePaths excludes), compare it independently across pinned base/head commits, and execute the anti-bypass decision with a verifier the evaluated change cannot replace.",
+    "Scope all claims to structural consistency of cited unsigned records plus external protected review for activation/waiver authority; never claim the evaluator proves empirical provenance or human identity.",
+    "Add an event-level per-signal evaluation manifest (detector name/version, candidate-set version, configuration digest) for future events; treat the four existing non-firing denominators as unversioned and ineligible for version-bound promotion.",
+    "Define separate metrics (firing rate, review coverage, precision/false-discovery proportion, uncertainty treatment, labeled non-firing audit sample for false negatives); do not call falsePositive/evaluated a conventional false-positive rate.",
+    "Label any shipped numeric criteria as human-approved conservative governance risk floors, not empirically calibrated values, and record the human decision amending the docs' no-threshold stance.",
+    "Replace absolute append-only claims with append-on-create plus base/head tamper detection; reject duplicate logical identities, preserve tombstones, rely on protected Git history for durable audit semantics.",
+    "Define a canonical proposal digest excluding activation/replay linkage; replay the immutable proposal against immutable committed inputs; create a separate activation referencing both; express before-enablement ordering via Git ancestry or external review state, not createdAt.",
+    "Make rollback conditions trigger a fail-closed freeze/review state requiring a separately protected activation change to deactivate; bind every waiver to one outcome digest, signal occurrence, promotion version, repository state, scope, reason, expiry, and external review.",
+    "Specify the full protected subject for anti-bypass (trusted bundle/source-tree digest and canonical registry paths) and bind evaluation to pinned base/head SHAs with a recheck immediately before the recorded outcome.",
+    "Do not use current retrospective totals as promotion authority: the promotion gate must strictly validate schemas and linkage, reject duplicate logical IDs and contradictory classifications, verify cited event digests, and report malformed evidence as promotion-ineligible.",
+    "Mark fixture provenance explicitly and make production promotion validation reject synthetic/test evidence; retain synthetic data solely for deterministic tests.",
+    "Separate signal disposition, enforcement effect, and recorded outcome in terminology; define advisory as a zero-gating-effect recorded outcome.",
+    "Rewrite absolute claims (necessarily cites, cannot be bypassed, exactly as before) as testable invariants over a named trust model: strict citation/link validation, differential golden tests with no active records, base/head tamper cases, explicit reliance on protected GitHub controls."
+  ],
+  "findings": [
+    {
+      "severity": "critical",
+      "evidenceLocation": {
+        "path": "src/ci.ts",
+        "line": 70
+      },
+      "reproducibility": "always",
+      "requiredAction": "Keep active promotion state in a specifically protected registry outside .rigor/evidence/** (which codePaths excludes), compare it independently across pinned base/head commits, and execute the anti-bypass decision with a verifier the evaluated change cannot replace.",
+      "confidence": "high"
+    },
+    {
+      "severity": "critical",
+      "evidenceLocation": {
+        "path": "docs/test-integrity.md",
+        "line": 469
+      },
+      "reproducibility": "always",
+      "requiredAction": "Scope all claims to structural consistency of cited unsigned records plus external protected review for activation/waiver authority; never claim the evaluator proves empirical provenance or human identity.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "schemas/test-integrity-event.v1.schema.json",
+        "line": 52
+      },
+      "reproducibility": "always",
+      "requiredAction": "Add an event-level per-signal evaluation manifest (detector name/version, candidate-set version, configuration digest) for future events; treat the four existing non-firing denominators as unversioned and ineligible for version-bound promotion.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "docs/test-integrity.md",
+        "line": 397
+      },
+      "reproducibility": "always",
+      "requiredAction": "Define separate metrics (firing rate, review coverage, precision/false-discovery proportion, uncertainty treatment, labeled non-firing audit sample for false negatives); do not call falsePositive/evaluated a conventional false-positive rate.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "docs/test-integrity.md",
+        "line": 408
+      },
+      "reproducibility": "always",
+      "requiredAction": "Label any shipped numeric criteria as human-approved conservative governance risk floors, not empirically calibrated values, and record the human decision amending the docs' no-threshold stance.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "src/util.ts",
+        "line": 42
+      },
+      "reproducibility": "always",
+      "requiredAction": "Replace absolute append-only claims with append-on-create plus base/head tamper detection; reject duplicate logical identities, preserve tombstones, rely on protected Git history for durable audit semantics.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "docs/test-integrity.md",
+        "line": 341
+      },
+      "reproducibility": "always",
+      "requiredAction": "Define a canonical proposal digest excluding activation/replay linkage; replay the immutable proposal against immutable committed inputs; create a separate activation referencing both; express before-enablement ordering via Git ancestry or external review state, not createdAt.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "docs/test-integrity.md",
+        "line": 473
+      },
+      "reproducibility": "always",
+      "requiredAction": "Make rollback conditions trigger a fail-closed freeze/review state requiring a separately protected activation change to deactivate; bind every waiver to one outcome digest, signal occurrence, promotion version, repository state, scope, reason, expiry, and external review.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "src/ci.ts",
+        "line": 142
+      },
+      "reproducibility": "always",
+      "requiredAction": "Specify the full protected subject for anti-bypass (trusted bundle/source-tree digest and canonical registry paths) and bind evaluation to pinned base/head SHAs with a recheck immediately before the recorded outcome.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "src/artifacts.ts",
+        "line": 486
+      },
+      "reproducibility": "always",
+      "requiredAction": "Do not use current retrospective totals as promotion authority: the promotion gate must strictly validate schemas and linkage, reject duplicate logical IDs and contradictory classifications, verify cited event digests, and report malformed evidence as promotion-ineligible.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "schemas/test-integrity-event.v1.schema.json",
+        "line": 5
+      },
+      "reproducibility": "always",
+      "requiredAction": "Mark fixture provenance explicitly and make production promotion validation reject synthetic/test evidence; retain synthetic data solely for deterministic tests.",
+      "confidence": "high"
+    },
+    {
+      "severity": "low",
+      "evidenceLocation": {
+        "path": "docs/test-integrity.md",
+        "line": 72
+      },
+      "reproducibility": "always",
+      "requiredAction": "Separate signal disposition, enforcement effect, and recorded outcome in terminology; define advisory as a zero-gating-effect recorded outcome.",
+      "confidence": "high"
+    },
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "docs/architecture.md",
+        "line": 11
+      },
+      "reproducibility": "not-reproduced",
+      "requiredAction": "Rewrite absolute claims (necessarily cites, cannot be bypassed, exactly as before) as testable invariants over a named trust model: strict citation/link validation, differential golden tests with no active records, base/head tamper cases, explicit reliance on protected GitHub controls.",
+      "confidence": "high"
+    }
+  ],
+  "modelStatus": "unavailable",
+  "reasoningEffortStatus": "unavailable"
+}

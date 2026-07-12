@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/test-integrity-promotion-input.v1.schema.json",
+  "title": "Rigor test-integrity promotion input v1",
+  "description": "Input for an inert, version-bound promotion proposal. Approval is an unattested local human declaration and has no activation effect.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "policyHash",
+    "schemaBindings",
+    "signals",
+    "approval"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.test-integrity-promotion-input.v1" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "policyHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "schemaBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "classification", "promotion", "replay"],
+      "properties": {
+        "event": { "const": "rigor.test-integrity-event.v1" },
+        "classification": { "const": "rigor.test-integrity-classification.v1" },
+        "promotion": { "const": "rigor.test-integrity-promotion.v1" },
+        "replay": { "const": "rigor.test-integrity-replay.v1" }
+      }
+    },
+    "signals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signalId",
+          "detector",
+          "evaluatedCandidateSet",
+          "requestedEffect",
+          "evidence",
+          "stratum",
+          "rollbackConditions"
+        ],
+        "properties": {
+          "signalId": { "enum": ["TI-05", "TI-06", "TI-07", "TI-08", "TI-09"] },
+          "detector": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "version"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "version": { "type": "string", "minLength": 1, "maxLength": 32 }
+            }
+          },
+          "evaluatedCandidateSet": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["version", "configurationDigest"],
+            "properties": {
+              "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "configurationDigest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          "requestedEffect": { "enum": ["stop", "review", "advisory"] },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["events", "classifications"],
+            "properties": {
+              "events": { "$ref": "#/$defs/evidenceRefs" },
+              "classifications": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": { "$ref": "#/$defs/evidenceRef" }
+              }
+            }
+          },
+          "stratum": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["evaluated", "fired", "humanClassified"],
+            "properties": {
+              "evaluated": { "type": "integer", "minimum": 0 },
+              "fired": { "type": "integer", "minimum": 0 },
+              "humanClassified": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["truePositive", "falsePositive", "uncertain"],
+                "properties": {
+                  "truePositive": { "type": "integer", "minimum": 0 },
+                  "falsePositive": { "type": "integer", "minimum": 0 },
+                  "uncertain": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          },
+          "rollbackConditions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "metric",
+                "operator",
+                "threshold",
+                "minimumClassifiedFired"
+              ],
+              "properties": {
+                "metric": {
+                  "enum": ["false-discovery-proportion", "review-coverage"]
+                },
+                "operator": { "enum": ["greater-than", "less-than"] },
+                "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+                "minimumClassifiedFired": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["declaredBy", "declaration", "note", "identityAttested"],
+      "properties": {
+        "declaredBy": { "const": "human" },
+        "declaration": { "const": "approved-for-proposal" },
+        "note": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "identityAttested": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/evidenceRef" }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

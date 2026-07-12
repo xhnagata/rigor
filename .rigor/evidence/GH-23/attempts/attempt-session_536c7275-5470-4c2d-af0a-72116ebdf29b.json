@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_536c7275-5470-4c2d-af0a-72116ebdf29b",
+  "taskId": "GH-23",
+  "createdAt": "2026-07-12T21:02:23.439Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_bea42730-dcba-4a8e-88cb-70b26bfeec56",
+  "routingPlanHash": "7aa9bbfe8a621d2bbba7f33b91f5ed65fd0d8b0ece2b0acfb5670daa0d3953bc",
+  "contractArtifactId": "contract_6e8bc099-c97c-49a6-9aa6-5949254bbf55",
+  "contractHash": "01cca075c8c218d52e53327c3349ebe53c460ca523bc947fee13ccd61238dee5",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 2,
+    "maxDurationMs": 14400000,
+    "maxRelativeCost": 40
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "beforeTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "changedPathsBefore": [],
+  "selection": {
+    "provider": "codex-plugin-cc",
+    "model": "gpt-5",
+    "capabilityClass": "frontier"
+  }
+}

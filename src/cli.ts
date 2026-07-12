@@ -81,7 +81,22 @@ import {
   parseTestIntegrityEvent,
   scanTestIntegrity,
 } from "./test-integrity.js";
-import { artifactId, readJson, record, taskId, textField } from "./util.js";
+import {
+  buildPromotionReplay,
+  createPromotionProposal,
+  createWaiver,
+  parsePromotion,
+  parsePromotionInput,
+  parseWaiverInput,
+} from "./test-integrity-promotion.js";
+import {
+  artifactId,
+  hash,
+  readJson,
+  record,
+  taskId,
+  textField,
+} from "./util.js";
 import { ESCALATION_DECISION_INPUT_SCHEMA } from "./types.js";
 import {
   parseConsultationDecisionInput,
@@ -141,7 +156,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|eval-report|eval-replay|calibration-proposal|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|eval-report|eval-replay|calibration-proposal|test-integrity-scan|test-integrity-classify|test-integrity-promote|test-integrity-replay|test-integrity-waive|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -613,6 +628,60 @@ export async function main(
       classification,
     );
     output({ ...classification, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-promote") {
+    const input = parsePromotionInput(await readJson(option(args, "--input")!));
+    if (input.policyHash !== hash(policy))
+      throw new RigorError(
+        "Promotion policyHash does not match the current policy",
+        EXIT.policyViolation,
+      );
+    const evidenceRoot = path.resolve(
+      root,
+      option(args, "--evidence-root", false) ?? ".",
+    );
+    const proposal = await createPromotionProposal(input, evidenceRoot);
+    const saved = await saveCollectionArtifact(
+      root,
+      proposal.taskId,
+      "test-integrity",
+      "test-integrity-promotion",
+      proposal,
+    );
+    output({ ...proposal, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-replay") {
+    const proposal = parsePromotion(
+      await readJson(option(args, "--proposal")!),
+    );
+    const evidenceRoot = path.resolve(
+      root,
+      option(args, "--evidence-root", false) ?? ".rigor/evidence",
+    );
+    const replay = await buildPromotionReplay(proposal, evidenceRoot);
+    const saved = await saveCollectionArtifact(
+      root,
+      proposal.taskId,
+      "test-integrity",
+      "test-integrity-replay",
+      replay,
+    );
+    output({ ...replay, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-waive") {
+    const input = parseWaiverInput(await readJson(option(args, "--input")!));
+    const waiver = createWaiver(input);
+    const saved = await saveCollectionArtifact(
+      root,
+      waiver.taskId,
+      "test-integrity",
+      "test-integrity-waiver",
+      waiver,
+    );
+    output({ ...waiver, saved });
     return EXIT.success;
   }
   if (command === "ci") {

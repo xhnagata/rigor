@@ -25,6 +25,9 @@ import {
   REVIEW_SCHEMA,
   TEST_INTEGRITY_CLASSIFICATION_SCHEMA,
   TEST_INTEGRITY_EVENT_SCHEMA,
+  TEST_INTEGRITY_PROMOTION_SCHEMA,
+  TEST_INTEGRITY_REPLAY_SCHEMA,
+  TEST_INTEGRITY_WAIVER_SCHEMA,
   VERIFY_SCHEMA,
   type CheckFacts,
   type Contract,
@@ -427,7 +430,7 @@ interface VerdictEntry {
 }
 
 /**
- * Aggregates the append-only test-integrity shadow evidence into per-signal
+ * Aggregates append-on-create test-integrity shadow evidence into per-signal
  * denominators: how often each signal was evaluated (the scan denominator),
  * how often it fired, how many fired occurrences remain unreviewed, and the
  * human classification tally. Never throws on a malformed file; counts it,
@@ -478,6 +481,12 @@ async function aggregateTestIntegrity(root: string): Promise<unknown> {
         if (!collectClassification(parsed, verdictEntries))
           malformedClassifications += 1;
         else classificationCount += 1;
+      } else if (
+        parsed.schemaVersion === TEST_INTEGRITY_PROMOTION_SCHEMA ||
+        parsed.schemaVersion === TEST_INTEGRITY_REPLAY_SCHEMA ||
+        parsed.schemaVersion === TEST_INTEGRITY_WAIVER_SCHEMA
+      ) {
+        continue;
       } else if (!collectEvent(parsed, events)) {
         malformedEvents += 1;
       }

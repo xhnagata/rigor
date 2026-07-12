@@ -6,6 +6,21 @@ import { matches } from "./paths.js";
 import { parsePolicy } from "./schema.js";
 import { policyWeakening } from "./setup.js";
 import { hash, readJson, record } from "./util.js";
+import {
+  ACTIVE_REGISTRY_PATH,
+  antiBypassOutcome,
+  enforcePromotedSignals,
+  evaluateActivation,
+  parsePromotion,
+} from "./test-integrity-promotion.js";
+import { CURRENT_DETECTORS } from "./test-integrity-promotion.js";
+import { scanTestIntegrity } from "./test-integrity.js";
+import {
+  TEST_INTEGRITY_PROMOTION_SCHEMA,
+  TEST_INTEGRITY_REPLAY_SCHEMA,
+  type TestIntegrityPromotion,
+  type TestIntegrityReplayReport,
+} from "./types.js";
 
 async function evidenceFiles(root: string): Promise<string[]> {
   const base = path.join(root, ".rigor", "evidence");
@@ -68,6 +83,14 @@ export async function ciVerify(
     }
   }
   const changedPaths = await diffPaths(root, baseSha, headSha);
+  // The trusted CI bundle derives this from pinned commits. It never loads the
+  // head registry as authority when a protected subject changes in the same
+  // range. A repository review must clear the escalation separately.
+  const baseRegistry = await showFile(root, baseSha, ACTIVE_REGISTRY_PATH);
+  const headRegistry = await showFile(root, headSha, ACTIVE_REGISTRY_PATH);
+  const testIntegrityReviewRequired =
+    antiBypassOutcome(changedPaths) === "required-human-review" ||
+    baseRegistry !== headRegistry;
   const codePaths = changedPaths.filter(
     (item) => !item.startsWith(".rigor/evidence/"),
   );
@@ -92,6 +115,8 @@ export async function ciVerify(
   const contracts = new Map<string, ReturnType<typeof parseContract>>();
   const verifications: Record<string, unknown>[] = [];
   const reviews: Record<string, unknown>[] = [];
+  const promotions: TestIntegrityPromotion[] = [];
+  const replays: TestIntegrityReplayReport[] = [];
   for (const file of files) {
     try {
       const value = await readJson(file);
@@ -102,6 +127,10 @@ export async function ciVerify(
       } else if (item.schemaVersion === "rigor.verification.v1")
         verifications.push(item);
       else if (item.schemaVersion === "rigor.review.v1") reviews.push(item);
+      else if (item.schemaVersion === TEST_INTEGRITY_PROMOTION_SCHEMA)
+        promotions.push(parsePromotion(item));
+      else if (item.schemaVersion === TEST_INTEGRITY_REPLAY_SCHEMA)
+        replays.push(item as unknown as TestIntegrityReplayReport);
     } catch {
       failures.push(`invalid evidence file: ${path.relative(root, file)}`);
     }
@@ -139,6 +168,51 @@ export async function ciVerify(
     failures.push(
       "no linked passing evidence covers the independently derived change set and head policy",
     );
+  if (testIntegrityReviewRequired && !linked)
+    failures.push(
+      "test-integrity anti-bypass: protected registry/configuration/verifier change requires linked human review",
+    );
+  if (baseRegistry !== null && baseRegistry === headRegistry) {
+    let registry: unknown;
+    try {
+      registry = JSON.parse(baseRegistry) as unknown;
+    } catch {
+      registry = { malformed: true };
+    }
+    const activations = evaluateActivation(
+      registry,
+      promotions,
+      replays,
+      CURRENT_DETECTORS,
+      hash(headPolicy),
+    );
+    if (activations.some((item) => item.state === "active")) {
+      const event = await scanTestIntegrity(
+        root,
+        {
+          task: "CI",
+          base: baseSha,
+          head: headSha,
+          attemptArtifactId: null,
+          verificationArtifactId: null,
+          note: null,
+        },
+        new Date(0),
+      );
+      const outcome = enforcePromotedSignals(event, activations);
+      if (outcome.original.gate === "immediate-stop")
+        failures.push("test-integrity enforcement outcome: immediate-stop");
+      else if (outcome.original.gate === "required-human-review")
+        failures.push(
+          "test-integrity enforcement outcome: required-human-review",
+        );
+      // advisory-warning intentionally has zero gating effect.
+    }
+    if (activations.some((item) => item.state === "frozen(requires-review)"))
+      failures.push(
+        "test-integrity promotion is frozen by rollback conditions and requires review",
+      );
+  }
   for (const check of headPolicy.checks) {
     let result;
     try {

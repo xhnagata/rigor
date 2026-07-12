@@ -39,11 +39,11 @@ import {
 import { artifactId, hash, record, taskId, textField } from "./util.js";
 
 export const DETECTOR_VERSION = "0.1.0";
+export const CANDIDATE_SET_VERSION = "ti-05-ti-09.v1";
 
 /** The five signal IDs this detector evaluates on every scan. This list is the
  * denominator recorded on each event (`signalsEvaluated`) so retrospect can
- * measure a false-positive rate against the number of scans, not only the
- * scans that happened to fire. */
+ * measure firing rate against all scans, not only scans that fired. */
 export const EVALUATED_SIGNALS: readonly TestIntegritySignalId[] = [
   "TI-05",
   "TI-06",
@@ -94,6 +94,15 @@ export const CONFIG_GLOBS: readonly string[] = [
   "**/Makefile",
   ".github/workflows/**",
 ] as const;
+
+/** Version-bound digest of the built-in detector configuration. */
+export const DETECTOR_CONFIGURATION_DIGEST = hash({
+  detectorVersion: DETECTOR_VERSION,
+  candidateSetVersion: CANDIDATE_SET_VERSION,
+  testPaths: TEST_PATH_GLOBS,
+  snapshots: SNAPSHOT_GLOBS,
+  configPaths: CONFIG_GLOBS,
+});
 
 /** TI-05 marker tokens. Each requires enough shape (a trailing `(` or a
  * bracketed/attribute form) that a plain identifier or prose containing the
@@ -410,7 +419,7 @@ export interface EventMetadata {
   note: string | null;
 }
 
-/** Assembles the append-only shadow event. `mode`/`enforcement` are fixed;
+/** Assembles the append-on-create shadow event. `mode`/`enforcement` are fixed;
  * absent linkage is explicit null, never fabricated. */
 export function buildTestIntegrityEvent(
   meta: EventMetadata,
@@ -448,10 +457,25 @@ export function buildTestIntegrityEvent(
       worktreeDigest: meta.headSha === null ? meta.worktreeDigest : null,
     },
     signalsEvaluated: [...EVALUATED_SIGNALS],
+    evaluationManifest: EVALUATED_SIGNALS.map((signalId) => ({
+      signalId,
+      detector: { name: detectorName(signalId), version: DETECTOR_VERSION },
+      candidateSetVersion: CANDIDATE_SET_VERSION,
+      configurationDigest: DETECTOR_CONFIGURATION_DIGEST,
+    })),
+    provenance: "recorded",
     signals: signals.slice(0, MAX_SIGNALS),
     signalsTruncated: truncated,
     note: meta.note,
   };
+}
+
+function detectorName(signalId: TestIntegritySignalId): string {
+  if (signalId === "TI-05") return "diff-token-scan";
+  if (signalId === "TI-06") return "diff-name-status";
+  if (signalId === "TI-07") return "diff-token-scan";
+  if (signalId === "TI-08") return "diff-path-scan";
+  return "config-diff-scan";
 }
 
 /** Parses package.json text into its `scripts` map, or null when absent or
