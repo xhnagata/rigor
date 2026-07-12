@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_eef435dc-cc30-4418-abcb-70dba7d87070",
+  "taskId": "REL-0-8-0",
+  "createdAt": "2026-07-12T06:21:13.242Z",
+  "preflightArtifactId": "preflight_20f89267-cc02-4657-8a8f-09168b37c9e0",
+  "preflightHash": "7551112e4035fd558ac7292865312087195b3c6f1dd2f0d2b43fe94f95a455dd",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.8.0",
+    "CHANGELOG.md has a 0.8.0 - 2026-07-12 section containing the former Unreleased entry and no Unreleased heading remains",
+    "no source, schema, workflow, or dist change is included",
+    "the recorded required check git diff --check passes; npm run test:all, npm run bench, and claude plugin validate . --strict are rerun and reported in the pull request",
+    "rigor release-check passes on the merged main commit before tagging"
+  ],
+  "allowedPaths": [
+    "CHANGELOG.md",
+    "package.json",
+    ".claude-plugin/plugin.json"
+  ],
+  "constraints": [
+    "release metadata only; human-authored, no routing or attempts",
+    "tag v0.8.0 and the GitHub release are created only after the release-check gate passes on the merged main SHA",
+    "no direct push to main; the release commit lands through a pull request with required checks green"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
