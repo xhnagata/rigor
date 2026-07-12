@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_3ba52eb3-8794-4eef-9deb-f106982bb54b",
+  "taskId": "GH-24",
+  "createdAt": "2026-07-12T00:51:33.147Z",
+  "preflightArtifactId": "preflight_1c8e04bd-b11b-4bb2-951c-890ea83cb8df",
+  "preflightHash": "e77b05fe5b430f133bff08456c4ede7fc9937f29c15a1f010dd61c0e70a9b50b",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "docs/adr/0001-provenance-trust-model.md gives every proposed claim a producer and an independent verifier across release tag, source commit, dist/rigor.cjs, plugin distribution, local evidence, CI evidence, workflow identity, and Claude/Codex runtime model identity.",
+    "The ADR states which controls add security beyond current CI re-derivation and rejects checksum-beside-artifact, bundle-only attestation, and unauthenticated SLSA formats as sufficient provenance.",
+    "Keyless GitHub OIDC/Sigstore, GitHub Artifact Attestations, and SLSA-compatible options are evaluated against requirements with an adopted option and recorded rejected alternatives.",
+    "Missing consumer enforcement (no confirmed pre-activation verification point in the ordinary Claude Code marketplace flow) is documented as a blocker for #26, not hidden.",
+    "Implementation is split into independently testable follow-ups: #25 producer provenance and #26 consumer enforcement, with explicit completion and blocked conditions.",
+    "docs/threat-model.md, docs/architecture.md, docs/release.md, and docs/mvp-limitations.md reference the ADR without claiming an implemented attestation, SLSA Build Level, runtime model attestation, or consumer verifier.",
+    "CHANGELOG.md documents the ADR under an Unreleased heading following the one-entry-per-issue convention.",
+    "npm run test:all (format, lint, typecheck, tests, plugin structure validation, local link checks), npm run bench, and claude plugin validate . --strict pass on the merged tree."
+  ],
+  "allowedPaths": [
+    ".gitignore",
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "constraints": [
+    "Documentation-only change: do not modify src/**, dist/**, schemas/**, bin/**, hooks/**, agents/**, skills/**, test/**, .rigor/** (except task evidence), or .github/**.",
+    "Do not create keys, secrets, attestations, GitHub workflows, or GitHub configuration, and do not increase any workflow permission.",
+    "Do not claim a SLSA Build Level, an implemented attestation, a consumer verifier, or provider-attested runtime model identity anywhere in the docs.",
+    "Do not present a checksum distributed beside an artifact as independent proof, and do not describe a bundle-only attestation as plugin-distribution integrity.",
+    "Do not delete or weaken existing threat-model rows, trust boundaries, or tests; merged main content must be preserved.",
+    "Configured model identity remains recorded as unverified; attestation issuance alone must not be described as completing #26."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

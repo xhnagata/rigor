@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_7c3a9801-a8e3-4419-ab64-33426ea58859",
+  "taskId": "GH-24",
+  "contractArtifactId": "contract_3ba52eb3-8794-4eef-9deb-f106982bb54b",
+  "createdAt": "2026-07-12T00:54:36.881Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "4625f1066aa00687299c96b08caee7e7a76007a4",
+  "treeHash": "e1bac987a584af82b15e6f813f3cb80589c81237fba1c96e01b8c35453b3dedc",
+  "changedPaths": [
+    ".gitignore",
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 7,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_0496abfa-cd62-4c84-9033-7b33d895e60f",
+  "taskId": "GH-24",
+  "createdAt": "2026-07-12T00:55:02.811Z",
+  "sessionArtifactId": "attempt-session_ff076d24-63e5-4bab-91b8-114b3ab0dd9f",
+  "sessionHash": "35850a520b0e4c67d378b480a3c5ac1de749f1ee1a500436c153f819687d2f6c",
+  "routingPlanArtifactId": "routing-plan_84b075ae-5bc4-4d0b-b691-b615d56bf8e0",
+  "routingPlanHash": "9d4e55d5b16a60ba3380ac512e3be46da907de6a96dff576104f0d0f1314c0b2",
+  "contractArtifactId": "contract_3ba52eb3-8794-4eef-9deb-f106982bb54b",
+  "contractHash": "a6aa4732580183448f6bf3e983f60274c180aaa073cde269bc09107e7744a646",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-sonnet-5",
+  "capabilityClass": "standard",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T00:52:10.523Z",
+  "completedAt": "2026-07-12T00:55:02.811Z",
+  "durationMs": 172288,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "4625f1066aa00687299c96b08caee7e7a76007a4",
+  "afterHead": "4625f1066aa00687299c96b08caee7e7a76007a4",
+  "beforeTreeHash": "0c4525137b9ffb6b01961610f065ad019a06d4e480f0ea9f623c3a2a7a25d9de",
+  "afterTreeHash": "e1bac987a584af82b15e6f813f3cb80589c81237fba1c96e01b8c35453b3dedc",
+  "changedPathsBefore": [
+    ".gitignore",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "changedPaths": [
+    ".gitignore",
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_7c3a9801-a8e3-4419-ab64-33426ea58859",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  },
+  "externalSessionId": "a68f7122b187a070b"
+}
