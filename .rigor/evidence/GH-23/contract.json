@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_6e8bc099-c97c-49a6-9aa6-5949254bbf55",
+  "taskId": "GH-23",
+  "createdAt": "2026-07-12T20:49:39.181Z",
+  "preflightArtifactId": "preflight_0aea2d43-d45c-41ab-97d4-b8fe02048202",
+  "preflightHash": "ab5ecf0d487d90fabaf2737087579acf10f09b01389d80997773df32c72707d4",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A versioned promotion artifact schema (rigor.test-integrity-promotion.v1) records, per promoted signal: signal id, detector version and evaluated-candidate set, empirical evidence from shadow operation with explicit numerators and denominators (evaluated, fired, human-classified true-positive/false-positive/uncertain counts, reported per detector-version stratum and never pooled across a detector or candidate-set change), the promotion criteria applied, the assigned enforcement level (stop, review, or advisory), an explicit policy/schema version binding, rollback conditions, and a human approval declaration recorded as unattested local evidence",
+    "Promotion criteria defaults are defined, conservative, and documented: a minimum evaluated-sample denominator, a minimum count of human-classified fired observations, and a maximum acceptable false-positive proportion per enforcement level, such that the currently recorded shadow dataset (4 events, TI-05..TI-09 evaluated=4, fired=0, humanClassified=0) qualifies zero signals; the shipped default promoted set is empty and all existing behavior is backward-compatible",
+    "A deterministic promotion-gate evaluator validates any promotion record against its cited evidence and refuses to treat as active any record whose evidence does not meet the promotion criteria, whose detector version or evaluated-candidate set does not match the current detectors, whose schema/policy version binding does not match, or whose required linked replay report is absent; every enforced signal therefore necessarily cites empirical evidence from shadow operation",
+    "Enforcement distinguishes immediate stop, required human review, and advisory warning as distinct recorded outcomes, and with no active promotion records the verification, attempt, review, release-check, and CI code paths behave exactly as before with all pre-existing tests passing unmodified",
+    "Enforcement cannot be bypassed by deleting tests/checks or altering the signal or promotion configuration in the same unapproved change: the evaluator detects when the change under evaluation itself modifies promotion records, signal configuration, or the enforcement implementation, and in that case escalates to the stricter outcome (at minimum required human review) instead of applying the modified configuration",
+    "A human waiver is preserved as explicit reviewed evidence: a versioned waiver artifact recorded beside the enforcement outcome downgrades a specific fired enforcement to recorded-and-waived without deleting or hiding the original outcome, is append-only, and is labeled a human-reported declaration, never attested identity",
+    "A deterministic replay command re-evaluates recorded shadow test-integrity events against a proposed promotion record and reports what would have fired at each enforcement level with explicit denominators (shadow comparison), and a promotion record is not treated as active without a linked replay report generated before enablement",
+    "Replay fixtures cover at least: a qualifying promotion that activates, a non-qualifying promotion refused for insufficient evidence, a waiver applied to a fired enforcement, a rollback (deactivation) of a previously active promotion, and a false-positive-dominated sample that is refused promotion",
+    "docs/test-integrity.md documents the promotion criteria, enforcement levels, rollback conditions, waiver semantics, version binding, the fact that no signal is promoted today for lack of empirical evidence, and the remaining semantic blind spots, without weakening the what-must-never-be-advertised section",
+    "dist/rigor.cjs is rebuilt from the final source and committed, and .rigor/rigor-ci.cjs is updated only as a byte-identical copy of the rebuilt dist/rigor.cjs so the ci-bundle drift check passes",
+    "The recorded required check git diff --check passes; npm run test:all, npm run bench, and claude plugin validate . --strict are rerun by the orchestrator and their results reported in the pull request"
+  ],
+  "allowedPaths": [
+    "src/**",
+    "schemas/**",
+    "test/**",
+    "docs/**",
+    "skills/**",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs",
+    ".rigor/rigor-ci.cjs"
+  ],
+  "constraints": [
+    "implement only issue #23 scope: promotion criteria, enforcement binding, waiver evidence, replay/shadow comparison, and documentation; do not change the TI-05..TI-09 detector semantics, do not add new signal collection, and do not implement TI-10 through TI-16",
+    "the shipped default promoted set is empty: do not promote or enforce any signal in this change, because the recorded shadow dataset (zero fired signals, zero human classifications, zero recorded outcomes) provides no empirical basis; promotion machinery must make under-evidenced promotion impossible, not perform one",
+    "policy defaults are conservative and backward-compatible: no change to .rigor/policy.json, .github/workflows/**, or CODEOWNERS; .rigor/rigor-ci.cjs may change only as a byte-identical copy of the rebuilt dist/rigor.cjs",
+    "do not weaken, skip, or delete existing tests; existing enforcement semantics (fingerprints, weakeningSignals, progress, policy protection, verification, CI gate) must remain unchanged when no promotion record is active",
+    "no new runtime dependencies; keep artifacts bounded (counts, enumerated strings, repository-relative paths, opaque digests) with no raw matched source text or secrets",
+    "human approval declarations, classifications, and waivers are recorded declarations for calibration and audit, never attested identity or authorization; keep the catalog's prohibited-claims section intact",
+    "implementation is delegated to Codex (GPT) at the owner's explicit direction; the configured execution identity is unverified; the implementation agent must not approve its own changes",
+    "no GitHub write beyond pushing the task branch and opening the pull request; merge requires the human-approval path recorded in the preflight"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

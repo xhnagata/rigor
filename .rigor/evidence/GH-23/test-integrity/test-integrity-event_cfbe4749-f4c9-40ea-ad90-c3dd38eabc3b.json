@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "rigor.test-integrity-event.v1",
+  "artifactId": "test-integrity-event_cfbe4749-f4c9-40ea-ad90-c3dd38eabc3b",
+  "taskId": "GH-23",
+  "createdAt": "2026-07-12T21:27:20.301Z",
+  "mode": "shadow",
+  "enforcement": "none",
+  "attemptArtifactId": "attempt_2dd7435e-d588-4f46-ba3e-d4e3e86e3272",
+  "verificationArtifactId": "verification_8d8b7759-1bfb-49a2-a46a-a9ef0a8dae97",
+  "diff": {
+    "baseSha": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+    "headSha": null,
+    "worktreeDigest": "4a19a06d65b2bcc973a1ae67f95263019291e842e89297d7d882b40bea935696"
+  },
+  "signalsEvaluated": [
+    "TI-05",
+    "TI-06",
+    "TI-07",
+    "TI-08",
+    "TI-09"
+  ],
+  "evaluationManifest": [
+    {
+      "signalId": "TI-05",
+      "detector": {
+        "name": "diff-token-scan",
+        "version": "0.1.0"
+      },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "b305eacd9747570223df20ed356565d6ddff02d84bac67bda1fb4863d685d308"
+    },
+    {
+      "signalId": "TI-06",
+      "detector": {
+        "name": "diff-name-status",
+        "version": "0.1.0"
+      },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "b305eacd9747570223df20ed356565d6ddff02d84bac67bda1fb4863d685d308"
+    },
+    {
+      "signalId": "TI-07",
+      "detector": {
+        "name": "diff-token-scan",
+        "version": "0.1.0"
+      },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "b305eacd9747570223df20ed356565d6ddff02d84bac67bda1fb4863d685d308"
+    },
+    {
+      "signalId": "TI-08",
+      "detector": {
+        "name": "diff-path-scan",
+        "version": "0.1.0"
+      },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "b305eacd9747570223df20ed356565d6ddff02d84bac67bda1fb4863d685d308"
+    },
+    {
+      "signalId": "TI-09",
+      "detector": {
+        "name": "config-diff-scan",
+        "version": "0.1.0"
+      },
+      "candidateSetVersion": "ti-05-ti-09.v1",
+      "configurationDigest": "b305eacd9747570223df20ed356565d6ddff02d84bac67bda1fb4863d685d308"
+    }
+  ],
+  "provenance": "recorded",
+  "signals": [],
+  "signalsTruncated": false,
+  "note": null
+}

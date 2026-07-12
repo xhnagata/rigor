@@ -16,6 +16,15 @@ import {
   parseTestIntegrityEvent,
 } from "../src/test-integrity.js";
 import type { TestIntegrityEvent, TestIntegritySignal } from "../src/types.js";
+import {
+  CURRENT_SCHEMA_BINDINGS,
+  PROMOTION_CRITERIA,
+  createWaiver,
+  parsePromotion,
+  parsePromotionInput,
+  parseWaiverInput,
+} from "../src/test-integrity-promotion.js";
+import { hash } from "../src/util.js";
 
 test("policy round trips", () =>
   assert.deepEqual(parsePolicy(defaultPolicy("repo")), defaultPolicy("repo")));
@@ -211,6 +220,170 @@ test("test-integrity parsers fail closed on an unknown schema", () => {
       classifiedBy: "human",
     }),
   );
+});
+
+test("promotion input matches its schema and round-trips", async () => {
+  const input = {
+    schemaVersion: "rigor.test-integrity-promotion-input.v1",
+    taskId: "GH-23",
+    policyHash: "a".repeat(64),
+    schemaBindings: CURRENT_SCHEMA_BINDINGS,
+    signals: [
+      {
+        signalId: "TI-05",
+        detector: { name: "diff-token-scan", version: "0.1.0" },
+        evaluatedCandidateSet: {
+          version: "ti-05-ti-09.v1",
+          configurationDigest: "b".repeat(64),
+        },
+        requestedEffect: "advisory",
+        evidence: {
+          events: [{ path: "event.json", digest: "c".repeat(64) }],
+          classifications: [],
+        },
+        stratum: {
+          evaluated: 25,
+          fired: 5,
+          humanClassified: {
+            truePositive: 5,
+            falsePositive: 0,
+            uncertain: 0,
+          },
+        },
+        rollbackConditions: [
+          {
+            metric: "false-discovery-proportion",
+            operator: "greater-than",
+            threshold: 0.5,
+            minimumClassifiedFired: 5,
+          },
+        ],
+      },
+    ],
+    approval: {
+      declaredBy: "human",
+      declaration: "approved-for-proposal",
+      note: "Unattested local declaration",
+      identityAttested: false,
+    },
+  };
+  const schema = await loadSchema(
+    "test-integrity-promotion-input.v1.schema.json",
+  );
+  assert.deepEqual(validate(input, schema), []);
+  assert.deepEqual(parsePromotionInput(input), input);
+});
+
+test("waiver input matches its schema and round-trips", async () => {
+  const input = {
+    schemaVersion: "rigor.test-integrity-waiver-input.v1",
+    taskId: "GH-23",
+    enforcementOutcomeDigest: "a".repeat(64),
+    signalOccurrenceDigest: "b".repeat(64),
+    promotionDigest: "c".repeat(64),
+    headSha: "d".repeat(40),
+    scope: "one occurrence",
+    reason: "reviewed exception",
+    expiresAt: "2030-01-01T00:00:00.000Z",
+    declaredBy: "human",
+    identityAttested: false,
+    externalReviewReference: "protected-review:123",
+  };
+  const schema = await loadSchema("test-integrity-waiver-input.v1.schema.json");
+  assert.deepEqual(validate(input, schema), []);
+  assert.deepEqual(parseWaiverInput(input), input);
+});
+
+test("promotion artifact matches its schema and round-trips", async () => {
+  const input = parsePromotionInput({
+    schemaVersion: "rigor.test-integrity-promotion-input.v1",
+    taskId: "GH-23",
+    policyHash: "a".repeat(64),
+    schemaBindings: CURRENT_SCHEMA_BINDINGS,
+    signals: [
+      {
+        signalId: "TI-05",
+        detector: { name: "diff-token-scan", version: "0.1.0" },
+        evaluatedCandidateSet: {
+          version: "ti-05-ti-09.v1",
+          configurationDigest: "b".repeat(64),
+        },
+        requestedEffect: "advisory",
+        evidence: {
+          events: [{ path: "event.json", digest: "c".repeat(64) }],
+          classifications: [],
+        },
+        stratum: {
+          evaluated: 25,
+          fired: 5,
+          humanClassified: {
+            truePositive: 5,
+            falsePositive: 0,
+            uncertain: 0,
+          },
+        },
+        rollbackConditions: [
+          {
+            metric: "false-discovery-proportion",
+            operator: "greater-than",
+            threshold: 0.5,
+            minimumClassifiedFired: 5,
+          },
+        ],
+      },
+    ],
+    approval: {
+      declaredBy: "human",
+      declaration: "approved-for-proposal",
+      note: "Unattested local declaration",
+      identityAttested: false,
+    },
+  });
+  const core = {
+    taskId: input.taskId,
+    policyHash: input.policyHash,
+    schemaBindings: input.schemaBindings,
+    signals: input.signals,
+    approval: input.approval,
+    criteria: PROMOTION_CRITERIA,
+    status: "proposed",
+    approvalEffect: "none",
+  };
+  const proposal = {
+    ...input,
+    schemaVersion: "rigor.test-integrity-promotion.v1",
+    artifactId: "test-integrity-promotion_fixture",
+    createdAt: new Date(0).toISOString(),
+    proposalDigest: hash(core),
+    criteria: PROMOTION_CRITERIA,
+    status: "proposed",
+    approvalEffect: "none",
+  };
+  const schema = await loadSchema("test-integrity-promotion.v1.schema.json");
+  assert.deepEqual(validate(proposal, schema), []);
+  assert.deepEqual(parsePromotion(proposal), proposal);
+});
+
+test("waiver artifact matches its schema", async () => {
+  const waiver = createWaiver(
+    parseWaiverInput({
+      schemaVersion: "rigor.test-integrity-waiver-input.v1",
+      taskId: "GH-23",
+      enforcementOutcomeDigest: "a".repeat(64),
+      signalOccurrenceDigest: "b".repeat(64),
+      promotionDigest: "c".repeat(64),
+      headSha: "d".repeat(40),
+      scope: "one occurrence",
+      reason: "reviewed exception",
+      expiresAt: "2030-01-01T00:00:00.000Z",
+      declaredBy: "human",
+      identityAttested: false,
+      externalReviewReference: "protected-review:123",
+    }),
+    new Date("2029-01-01T00:00:00.000Z"),
+  );
+  const schema = await loadSchema("test-integrity-waiver.v1.schema.json");
+  assert.deepEqual(validate(waiver, schema), []);
 });
 
 async function loadEvaluationFixture(name: string): Promise<unknown> {

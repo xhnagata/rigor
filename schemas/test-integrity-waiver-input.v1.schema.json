@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/test-integrity-waiver-input.v1.schema.json",
+  "title": "Rigor test-integrity waiver input v1",
+  "description": "Unattested human-reported declaration bound to one original enforcement outcome and signal occurrence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "enforcementOutcomeDigest",
+    "signalOccurrenceDigest",
+    "promotionDigest",
+    "headSha",
+    "scope",
+    "reason",
+    "expiresAt",
+    "declaredBy",
+    "identityAttested",
+    "externalReviewReference"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.test-integrity-waiver-input.v1" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "enforcementOutcomeDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signalOccurrenceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "promotionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "headSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "scope": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "declaredBy": { "const": "human" },
+    "identityAttested": { "const": false },
+    "externalReviewReference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    }
+  }
+}

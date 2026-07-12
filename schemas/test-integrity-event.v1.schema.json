@@ -54,6 +54,43 @@
       "items": { "enum": ["TI-05", "TI-06", "TI-07", "TI-08", "TI-09"] },
       "maxItems": 5
     },
+    "evaluationManifest": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signalId",
+          "detector",
+          "candidateSetVersion",
+          "configurationDigest"
+        ],
+        "properties": {
+          "signalId": { "enum": ["TI-05", "TI-06", "TI-07", "TI-08", "TI-09"] },
+          "detector": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "version"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "version": { "type": "string", "minLength": 1, "maxLength": 32 }
+            }
+          },
+          "candidateSetVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "configurationDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "provenance": { "enum": ["recorded", "synthetic-test-fixture"] },
     "signals": {
       "type": "array",
       "maxItems": 32,

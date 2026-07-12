@@ -34,9 +34,9 @@ __export(cli_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(cli_exports);
-var import_node_path12 = __toESM(require("node:path"), 1);
+var import_node_path13 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
-var import_promises11 = require("node:fs/promises");
+var import_promises12 = require("node:fs/promises");
 
 // src/artifacts.ts
 var import_promises3 = require("node:fs/promises");
@@ -225,8 +225,8 @@ function parseUnifiedDiff(text) {
   let newPath = null;
   const flush = () => {
     if (current === null) return;
-    const path13 = newPath ?? oldPath ?? current.path;
-    current.path = path13 === null ? current.path : path13;
+    const path14 = newPath ?? oldPath ?? current.path;
+    current.path = path14 === null ? current.path : path14;
     if (current.changeType === "renamed" || current.changeType === "copied") {
       current.path = newPath ?? current.path;
     }
@@ -346,23 +346,23 @@ async function treeHash(root, excludedPrefixes = []) {
       (prefix) => file === prefix || file.startsWith(prefix)
     )
   ).sort();
-  const digest2 = (0, import_node_crypto.createHash)("sha256");
+  const digest3 = (0, import_node_crypto.createHash)("sha256");
   for (const file of files) {
-    digest2.update(`path\0${file}\0`);
+    digest3.update(`path\0${file}\0`);
     const target = import_node_path2.default.join(root, file);
     let info;
     try {
       info = await (0, import_promises.lstat)(target);
     } catch (error) {
       if (error.code === "ENOENT") {
-        digest2.update("deleted\0");
+        digest3.update("deleted\0");
         continue;
       }
       throw error;
     }
-    digest2.update(`mode\0${info.mode}\0`);
+    digest3.update(`mode\0${info.mode}\0`);
     if (info.isSymbolicLink()) {
-      digest2.update(`symlink\0${await (0, import_promises.readlink)(target)}\0`);
+      digest3.update(`symlink\0${await (0, import_promises.readlink)(target)}\0`);
       continue;
     }
     if (!info.isFile())
@@ -370,10 +370,10 @@ async function treeHash(root, excludedPrefixes = []) {
         `Cannot hash non-file repository path: ${file}`,
         EXIT.inputError
       );
-    for await (const chunk of (0, import_node_fs.createReadStream)(target)) digest2.update(chunk);
-    digest2.update("\0");
+    for await (const chunk of (0, import_node_fs.createReadStream)(target)) digest3.update(chunk);
+    digest3.update("\0");
   }
-  return digest2.digest("hex");
+  return digest3.digest("hex");
 }
 
 // src/util.ts
@@ -823,6 +823,11 @@ var AVAILABILITY_SCHEMA = "rigor.availability.v1";
 var TEST_INTEGRITY_EVENT_SCHEMA = "rigor.test-integrity-event.v1";
 var TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA = "rigor.test-integrity-classification-input.v1";
 var TEST_INTEGRITY_CLASSIFICATION_SCHEMA = "rigor.test-integrity-classification.v1";
+var TEST_INTEGRITY_PROMOTION_INPUT_SCHEMA = "rigor.test-integrity-promotion-input.v1";
+var TEST_INTEGRITY_PROMOTION_SCHEMA = "rigor.test-integrity-promotion.v1";
+var TEST_INTEGRITY_REPLAY_SCHEMA = "rigor.test-integrity-replay.v1";
+var TEST_INTEGRITY_WAIVER_INPUT_SCHEMA = "rigor.test-integrity-waiver-input.v1";
+var TEST_INTEGRITY_WAIVER_SCHEMA = "rigor.test-integrity-waiver.v1";
 var EVALUATION_MANIFEST_SCHEMA = "rigor.evaluation-manifest.v1";
 var EVALUATION_REPORT_SCHEMA = "rigor.evaluation-report.v1";
 var EVALUATION_REPLAY_SCHEMA = "rigor.evaluation-replay.v1";
@@ -1286,6 +1291,8 @@ async function aggregateTestIntegrity(root) {
         if (!collectClassification(parsed, verdictEntries))
           malformedClassifications += 1;
         else classificationCount += 1;
+      } else if (parsed.schemaVersion === TEST_INTEGRITY_PROMOTION_SCHEMA || parsed.schemaVersion === TEST_INTEGRITY_REPLAY_SCHEMA || parsed.schemaVersion === TEST_INTEGRITY_WAIVER_SCHEMA) {
+        continue;
       } else if (!collectEvent(parsed, events)) {
         malformedEvents += 1;
       }
@@ -1550,8 +1557,8 @@ async function loadPolicy(root) {
 }
 
 // src/ci.ts
-var import_promises5 = require("node:fs/promises");
-var import_node_path6 = __toESM(require("node:path"), 1);
+var import_promises7 = require("node:fs/promises");
+var import_node_path8 = __toESM(require("node:path"), 1);
 
 // src/setup.ts
 var import_promises4 = require("node:fs/promises");
@@ -1735,19 +1742,1321 @@ function policyWeakening(base, head) {
   return failures2;
 }
 
-// src/ci.ts
-async function evidenceFiles(root) {
-  const base = import_node_path6.default.join(root, ".rigor", "evidence");
+// src/test-integrity-promotion.ts
+var import_promises6 = require("node:fs/promises");
+var import_node_path7 = __toESM(require("node:path"), 1);
+
+// src/test-integrity.ts
+var import_promises5 = require("node:fs/promises");
+var import_node_path6 = __toESM(require("node:path"), 1);
+var DETECTOR_VERSION = "0.1.0";
+var CANDIDATE_SET_VERSION = "ti-05-ti-09.v1";
+var EVALUATED_SIGNALS = [
+  "TI-05",
+  "TI-06",
+  "TI-07",
+  "TI-08",
+  "TI-09"
+];
+var TEST_PATH_GLOBS = [
+  "test/**",
+  "tests/**",
+  "spec/**",
+  "**/__tests__/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/*_test.go",
+  "**/*_test.py",
+  "**/test_*.py"
+];
+var SNAPSHOT_GLOBS = [
+  "**/__snapshots__/**",
+  "**/*.snap"
+];
+var CONFIG_GLOBS = [
+  "**/tsconfig.json",
+  "**/tsconfig.*.json",
+  "**/.eslintrc",
+  "**/.eslintrc.*",
+  "**/eslint.config.*",
+  "**/.prettierrc",
+  "**/.prettierrc.*",
+  "**/prettier.config.*",
+  "**/vitest.config.*",
+  "**/jest.config.*",
+  "**/.mocharc",
+  "**/.mocharc.*",
+  "**/babel.config.*",
+  "**/.babelrc",
+  "**/.babelrc.*",
+  "**/Makefile",
+  ".github/workflows/**"
+];
+var DETECTOR_CONFIGURATION_DIGEST = hash({
+  detectorVersion: DETECTOR_VERSION,
+  candidateSetVersion: CANDIDATE_SET_VERSION,
+  testPaths: TEST_PATH_GLOBS,
+  snapshots: SNAPSHOT_GLOBS,
+  configPaths: CONFIG_GLOBS
+});
+var MARKER_TOKENS = [
+  ".skip(",
+  ".only(",
+  ".todo(",
+  "it.todo",
+  "describe.todo",
+  "xit(",
+  "xdescribe(",
+  "fit(",
+  "fdescribe(",
+  "@pytest.mark.skip",
+  "@unittest.skip",
+  "#[ignore]",
+  "t.Skip(",
+  "t.SkipNow("
+];
+var ASSERTION_TOKEN_RE = /expect\(|\bassert|\.should\b|\bshould\(|toBe\b|toEqual\b|toStrictEqual\b|toMatch\b|toContain\b|toThrow\b|toHaveBeen|\bok\(|\bnotOk\(|\brequire\.[A-Za-z]/gu;
+function isTestPath(file) {
+  return matches(file, [...TEST_PATH_GLOBS]);
+}
+function isSnapshotPath(file) {
+  return matches(file, [...SNAPSHOT_GLOBS]);
+}
+function isConfigPath(file) {
+  return matches(file, [...CONFIG_GLOBS]);
+}
+var ESC2 = String.fromCharCode(27);
+var ANSI_RE2 = new RegExp(`${ESC2}\\[[0-9;]*[a-zA-Z]`, "g");
+var UUID_RE2 = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+var ISO_TIMESTAMP_RE2 = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
+var DURATION_RE2 = /\b\d+(?:\.\d+)?(?:ms|s|m)\b/g;
+var HEX_RUN_RE2 = /\b[0-9a-fA-F]{8,}\b/g;
+function normalizeMatchedLine(line) {
+  return line.replace(ANSI_RE2, "").replace(UUID_RE2, "<uuid>").replace(ISO_TIMESTAMP_RE2, "<ts>").replace(DURATION_RE2, "<dur>").replace(HEX_RUN_RE2, "<hex>").replace(/\s+/gu, " ").trim();
+}
+function matchDigest(lines) {
+  const normalized = lines.map(normalizeMatchedLine).filter((line) => line.length > 0).sort();
+  return hash(normalized);
+}
+var MAX_PATHS = 25;
+function boundedPaths(paths) {
+  return [...new Set(paths)].sort().slice(0, MAX_PATHS);
+}
+function countMatches(line, tokens) {
+  let count = 0;
+  for (const token of tokens) {
+    let index = line.indexOf(token);
+    while (index !== -1) {
+      count += 1;
+      index = line.indexOf(token, index + token.length);
+    }
+  }
+  return count;
+}
+function countAssertions(line) {
+  const matched = line.match(ASSERTION_TOKEN_RE);
+  return matched === null ? 0 : matched.length;
+}
+function detectTi05(changes) {
+  let added = 0;
+  let removed = 0;
+  const paths = [];
+  const matched = [];
+  for (const change of changes) {
+    if (!isTestPath(change.path)) continue;
+    let fileAdded = 0;
+    for (const line of change.addedLines) {
+      const n = countMatches(line, MARKER_TOKENS);
+      if (n > 0) matched.push(line);
+      fileAdded += n;
+    }
+    for (const line of change.removedLines) {
+      const n = countMatches(line, MARKER_TOKENS);
+      if (n > 0) matched.push(line);
+      removed += n;
+    }
+    added += fileAdded;
+    if (fileAdded > 0) paths.push(change.path);
+  }
+  if (added === 0) return null;
+  return {
+    signalId: "TI-05",
+    threatClass: "skip-only-todo",
+    detector: "diff-token-scan",
+    value: {
+      addedMarkers: added,
+      removedMarkers: removed,
+      matchedPaths: paths.length
+    },
+    paths,
+    matchedLines: matched
+  };
+}
+function detectTi06(changes) {
+  const paths = [];
+  for (const change of changes) {
+    if (change.changeType !== "deleted") continue;
+    if (!isTestPath(change.path)) continue;
+    paths.push(change.path);
+  }
+  if (paths.length === 0) return null;
+  return {
+    signalId: "TI-06",
+    threatClass: "test-case-removal",
+    detector: "diff-name-status",
+    value: { deletedTestFiles: paths.length, matchedPaths: paths.length },
+    paths,
+    matchedLines: paths
+  };
+}
+function detectTi07(changes) {
+  let added = 0;
+  let removed = 0;
+  const paths = [];
+  const matched = [];
+  for (const change of changes) {
+    if (!isTestPath(change.path)) continue;
+    let touched = false;
+    for (const line of change.addedLines) {
+      const n = countAssertions(line);
+      if (n > 0) {
+        added += n;
+        matched.push(line);
+        touched = true;
+      }
+    }
+    for (const line of change.removedLines) {
+      const n = countAssertions(line);
+      if (n > 0) {
+        removed += n;
+        matched.push(line);
+        touched = true;
+      }
+    }
+    if (touched) paths.push(change.path);
+  }
+  const netRemoved = removed - added;
+  if (netRemoved <= 0) return null;
+  return {
+    signalId: "TI-07",
+    threatClass: "assertion-deletion",
+    detector: "diff-token-scan",
+    value: {
+      addedAssertions: added,
+      removedAssertions: removed,
+      netRemoved,
+      matchedPaths: paths.length
+    },
+    paths,
+    matchedLines: matched
+  };
+}
+function detectTi08(changes) {
+  const snapshotPaths = [];
+  let implementationFiles = 0;
+  for (const change of changes) {
+    if (isSnapshotPath(change.path)) {
+      snapshotPaths.push(change.path);
+      continue;
+    }
+    if (isTestPath(change.path) || isConfigPath(change.path)) continue;
+    implementationFiles += 1;
+  }
+  if (snapshotPaths.length === 0 || implementationFiles === 0) return null;
+  return {
+    signalId: "TI-08",
+    threatClass: "snapshot-churn",
+    detector: "diff-path-scan",
+    value: {
+      snapshotFiles: snapshotPaths.length,
+      implementationFiles,
+      matchedPaths: snapshotPaths.length
+    },
+    paths: snapshotPaths,
+    matchedLines: snapshotPaths
+  };
+}
+function scriptsDiffer(base, head) {
+  if (base === null || head === null) return base !== head;
+  return hash(base) !== hash(head);
+}
+function detectTi09(inputs) {
+  const configPaths = [];
+  let packageChanged = false;
+  for (const change of inputs.changes) {
+    if (change.path === "package.json" || change.path.endsWith("/package.json"))
+      packageChanged = true;
+    if (isConfigPath(change.path)) configPaths.push(change.path);
+  }
+  const scriptsChanged = packageChanged && scriptsDiffer(inputs.baseScripts, inputs.headScripts);
+  if (configPaths.length === 0 && !scriptsChanged) return null;
+  const paths = [...configPaths];
+  if (scriptsChanged) paths.push("package.json");
+  return {
+    signalId: "TI-09",
+    threatClass: "configured-check-weakening",
+    detector: "config-diff-scan",
+    value: {
+      changedConfigFiles: configPaths.length,
+      packageScriptsChanged: scriptsChanged ? 1 : 0,
+      matchedPaths: paths.length
+    },
+    paths,
+    matchedLines: paths
+  };
+}
+function detectSignals(inputs) {
+  const results = [
+    detectTi05(inputs.changes),
+    detectTi06(inputs.changes),
+    detectTi07(inputs.changes),
+    detectTi08(inputs.changes),
+    detectTi09(inputs)
+  ].filter((result) => result !== null);
+  return results.map((result) => ({
+    signalId: result.signalId,
+    threatClass: result.threatClass,
+    label: "advisory-interpretation",
+    computation: "deterministic",
+    detector: { name: result.detector, version: DETECTOR_VERSION },
+    value: result.value,
+    paths: boundedPaths(result.paths),
+    matchDigest: matchDigest(result.matchedLines),
+    note: null
+  }));
+}
+var MAX_SIGNALS = 32;
+function buildTestIntegrityEvent(meta, signals, now = /* @__PURE__ */ new Date()) {
+  if (!/^[0-9a-f]{40}$/u.test(meta.baseSha))
+    throw new RigorError(
+      "baseSha must be a 40-hex commit sha",
+      EXIT.inputError
+    );
+  if (meta.headSha !== null && !/^[0-9a-f]{40}$/u.test(meta.headSha))
+    throw new RigorError(
+      "headSha must be a 40-hex commit sha",
+      EXIT.inputError
+    );
+  if (meta.headSha === null && meta.worktreeDigest === null)
+    throw new RigorError(
+      "worktreeDigest is required when headSha is null",
+      EXIT.inputError
+    );
+  const truncated = signals.length > MAX_SIGNALS;
+  return {
+    schemaVersion: TEST_INTEGRITY_EVENT_SCHEMA,
+    artifactId: artifactId("test-integrity-event"),
+    taskId: meta.taskId,
+    createdAt: now.toISOString(),
+    mode: "shadow",
+    enforcement: "none",
+    attemptArtifactId: meta.attemptArtifactId,
+    verificationArtifactId: meta.verificationArtifactId,
+    diff: {
+      baseSha: meta.baseSha,
+      headSha: meta.headSha,
+      worktreeDigest: meta.headSha === null ? meta.worktreeDigest : null
+    },
+    signalsEvaluated: [...EVALUATED_SIGNALS],
+    evaluationManifest: EVALUATED_SIGNALS.map((signalId) => ({
+      signalId,
+      detector: { name: detectorName(signalId), version: DETECTOR_VERSION },
+      candidateSetVersion: CANDIDATE_SET_VERSION,
+      configurationDigest: DETECTOR_CONFIGURATION_DIGEST
+    })),
+    provenance: "recorded",
+    signals: signals.slice(0, MAX_SIGNALS),
+    signalsTruncated: truncated,
+    note: meta.note
+  };
+}
+function detectorName(signalId) {
+  if (signalId === "TI-05") return "diff-token-scan";
+  if (signalId === "TI-06") return "diff-name-status";
+  if (signalId === "TI-07") return "diff-token-scan";
+  if (signalId === "TI-08") return "diff-path-scan";
+  return "config-diff-scan";
+}
+function parseScripts(text) {
+  if (text === null) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed === null || typeof parsed !== "object") return null;
+    const scripts = parsed.scripts;
+    if (scripts === null || typeof scripts !== "object") return null;
+    const result = {};
+    for (const [key, value] of Object.entries(
+      scripts
+    ))
+      if (typeof value === "string") result[key] = value;
+    return result;
+  } catch {
+    return null;
+  }
+}
+var IGNORED_EVIDENCE = [".rigor/evidence/", ".rigor/events.jsonl"];
+async function scanTestIntegrity(root, options2, now = /* @__PURE__ */ new Date()) {
+  const baseSha = await resolveCommit(root, options2.base);
+  const headSha = options2.head === null ? null : await resolveCommit(root, options2.head);
+  const changes = await diffChanges(root, baseSha, headSha);
+  const baseScripts = parseScripts(
+    await showFile(root, baseSha, "package.json")
+  );
+  let headScripts;
+  if (headSha === null) {
+    let text = null;
+    try {
+      text = await (0, import_promises5.readFile)(import_node_path6.default.join(root, "package.json"), "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    headScripts = parseScripts(text);
+  } else {
+    headScripts = parseScripts(await showFile(root, headSha, "package.json"));
+  }
+  const signals = detectSignals({ changes, baseScripts, headScripts });
+  const worktreeDigest = headSha === null ? await treeHash(root, IGNORED_EVIDENCE) : null;
+  return buildTestIntegrityEvent(
+    {
+      taskId: options2.task,
+      baseSha,
+      headSha,
+      worktreeDigest,
+      attemptArtifactId: options2.attemptArtifactId,
+      verificationArtifactId: options2.verificationArtifactId,
+      note: options2.note
+    },
+    signals,
+    now
+  );
+}
+var VERDICTS = [
+  "true-positive",
+  "false-positive",
+  "uncertain"
+];
+var SIGNAL_IDS = EVALUATED_SIGNALS;
+function parseTestIntegrityEvent(value) {
+  const item = record(value, "test-integrity event");
+  if (item.schemaVersion !== TEST_INTEGRITY_EVENT_SCHEMA)
+    throw new RigorError(
+      "Unsupported test-integrity event schema",
+      EXIT.inputError
+    );
+  taskId(item.taskId);
+  textField(item.artifactId, "event.artifactId", 128);
+  if (!Array.isArray(item.signals))
+    throw new RigorError("event.signals must be an array", EXIT.inputError);
+  if (!Array.isArray(item.signalsEvaluated))
+    throw new RigorError(
+      "event.signalsEvaluated must be an array",
+      EXIT.inputError
+    );
+  return item;
+}
+function parseVerdictEntry(value, index) {
+  const item = record(value, `verdicts[${index}]`);
+  const signalId = textField(item.signalId, `verdicts[${index}].signalId`, 32);
+  if (!SIGNAL_IDS.includes(signalId))
+    throw new RigorError(
+      `verdicts[${index}].signalId is not a known signal`,
+      EXIT.inputError
+    );
+  if (typeof item.verdict !== "string" || !VERDICTS.includes(item.verdict))
+    throw new RigorError(
+      `verdicts[${index}].verdict is invalid`,
+      EXIT.inputError
+    );
+  const entry = {
+    signalId,
+    verdict: item.verdict
+  };
+  if (item.note !== void 0)
+    entry.note = textField(item.note, `verdicts[${index}].note`, 200);
+  return entry;
+}
+function parseClassificationInput(value) {
+  const item = record(value, "classification input");
+  if (item.schemaVersion !== TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported classification input schema",
+      EXIT.inputError
+    );
+  if (item.classifiedBy !== "human")
+    throw new RigorError("classifiedBy must be human", EXIT.inputError);
+  if (!Array.isArray(item.verdicts) || item.verdicts.length === 0)
+    throw new RigorError("verdicts must be a non-empty array", EXIT.inputError);
+  if (item.verdicts.length > MAX_SIGNALS)
+    throw new RigorError("too many verdicts", EXIT.inputError);
+  return {
+    schemaVersion: TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    eventArtifactId: textField(item.eventArtifactId, "eventArtifactId", 128),
+    verdicts: item.verdicts.map(parseVerdictEntry),
+    classifiedBy: "human"
+  };
+}
+function createClassification(input, event, now = /* @__PURE__ */ new Date()) {
+  if (input.taskId !== event.taskId)
+    throw new RigorError(
+      "Classification taskId does not match the event",
+      EXIT.policyViolation
+    );
+  if (input.eventArtifactId !== event.artifactId)
+    throw new RigorError(
+      "Classification eventArtifactId does not match the event",
+      EXIT.policyViolation
+    );
+  const firedSignals = new Set(event.signals.map((signal) => signal.signalId));
+  for (const verdict of input.verdicts)
+    if (!firedSignals.has(verdict.signalId))
+      throw new RigorError(
+        `verdict names a signal not present in the event: ${verdict.signalId}`,
+        EXIT.policyViolation
+      );
+  return {
+    schemaVersion: TEST_INTEGRITY_CLASSIFICATION_SCHEMA,
+    artifactId: artifactId("test-integrity-classification"),
+    taskId: event.taskId,
+    createdAt: now.toISOString(),
+    eventArtifactId: event.artifactId,
+    classifiedBy: "human",
+    verdicts: input.verdicts.map((verdict) => ({
+      signalId: verdict.signalId,
+      verdict: verdict.verdict,
+      note: verdict.note ?? null
+    }))
+  };
+}
+async function hasUnfinishedAttempt(root, task) {
+  const directory = import_node_path6.default.join(root, ".rigor", "evidence", task, "attempts");
+  let names;
+  try {
+    names = await (0, import_promises5.readdir)(directory);
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+  const sessions = /* @__PURE__ */ new Set();
+  const finished = /* @__PURE__ */ new Set();
+  for (const name of names.filter((entry) => entry.endsWith(".json"))) {
+    let item;
+    try {
+      item = record(
+        JSON.parse(
+          await (0, import_promises5.readFile)(import_node_path6.default.join(directory, name), "utf8")
+        ),
+        "attempt artifact"
+      );
+    } catch {
+      throw new RigorError(
+        `Invalid attempt artifact: ${name}`,
+        EXIT.inputError
+      );
+    }
+    if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
+      sessions.add(textField(item.artifactId, "artifactId", 128));
+    if (item.schemaVersion === ATTEMPT_SCHEMA)
+      finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
+  }
+  return [...sessions].some((id) => !finished.has(id));
+}
+
+// src/test-integrity-promotion.ts
+var PROMOTION_CRITERIA = Object.freeze({
+  advisory: Object.freeze({
+    minimumEvaluated: 25,
+    minimumHumanClassifiedFired: 5,
+    maximumFalseDiscoveryProportion: 0.5
+  }),
+  review: Object.freeze({
+    minimumEvaluated: 50,
+    minimumHumanClassifiedFired: 10,
+    maximumFalseDiscoveryProportion: 0.2
+  }),
+  stop: Object.freeze({
+    minimumEvaluated: 100,
+    minimumHumanClassifiedFired: 20,
+    maximumFalseDiscoveryProportion: 0.05
+  })
+});
+var ACTIVE_REGISTRY_PATH = ".rigor/test-integrity-active.json";
+var CURRENT_SCHEMA_BINDINGS = Object.freeze({
+  event: TEST_INTEGRITY_EVENT_SCHEMA,
+  classification: TEST_INTEGRITY_CLASSIFICATION_SCHEMA,
+  promotion: TEST_INTEGRITY_PROMOTION_SCHEMA,
+  replay: TEST_INTEGRITY_REPLAY_SCHEMA
+});
+var EFFECTS = ["stop", "review", "advisory"];
+var HEX64 = /^[0-9a-f]{64}$/u;
+var HEX40 = /^[0-9a-f]{40}$/u;
+function fail(message, policy = false) {
+  throw new RigorError(
+    message,
+    policy ? EXIT.policyViolation : EXIT.inputError
+  );
+}
+function exact(item, allowed, name) {
+  const extra = Object.keys(item).filter((key) => !allowed.includes(key));
+  if (extra.length > 0) fail(`${name} has unknown field: ${extra[0]}`);
+}
+function integer(value, name) {
+  if (!Number.isSafeInteger(value) || value < 0)
+    fail(`${name} must be a non-negative safe integer`);
+  return value;
+}
+function digest(value, name) {
+  const result = textField(value, name, 64);
+  if (!HEX64.test(result)) fail(`${name} must be a sha256 digest`);
+  return result;
+}
+function parseSignalId(value, name) {
+  const id = textField(value, name, 16);
+  if (!EVALUATED_SIGNALS.includes(id)) fail(`${name} is not supported`);
+  return id;
+}
+function parseEvidenceRefs(value, name) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 1e3)
+    fail(`${name} must be a bounded non-empty array`);
+  return value.map((raw, index) => {
+    const item = record(raw, `${name}[${index}]`);
+    exact(item, ["path", "digest"], `${name}[${index}]`);
+    const relative = textField(item.path, `${name}[${index}].path`, 300);
+    if (import_node_path7.default.isAbsolute(relative) || relative.split(/[\\/]/u).includes(".."))
+      fail(`${name}[${index}].path must be relative and contained`);
+    return {
+      path: relative,
+      digest: digest(item.digest, `${name}[${index}].digest`)
+    };
+  });
+}
+function parsePromotionSignal(raw, index) {
+  const name = `signals[${index}]`;
+  const item = record(raw, name);
+  exact(
+    item,
+    [
+      "signalId",
+      "detector",
+      "evaluatedCandidateSet",
+      "requestedEffect",
+      "evidence",
+      "stratum",
+      "rollbackConditions"
+    ],
+    name
+  );
+  const detector = record(item.detector, `${name}.detector`);
+  exact(detector, ["name", "version"], `${name}.detector`);
+  const candidate = record(
+    item.evaluatedCandidateSet,
+    `${name}.evaluatedCandidateSet`
+  );
+  exact(
+    candidate,
+    ["version", "configurationDigest"],
+    `${name}.evaluatedCandidateSet`
+  );
+  const evidence = record(item.evidence, `${name}.evidence`);
+  exact(evidence, ["events", "classifications"], `${name}.evidence`);
+  const stratum = record(item.stratum, `${name}.stratum`);
+  exact(stratum, ["evaluated", "fired", "humanClassified"], `${name}.stratum`);
+  const classified = record(
+    stratum.humanClassified,
+    `${name}.stratum.humanClassified`
+  );
+  exact(
+    classified,
+    ["truePositive", "falsePositive", "uncertain"],
+    `${name}.stratum.humanClassified`
+  );
+  if (!Array.isArray(item.rollbackConditions) || item.rollbackConditions.length === 0 || item.rollbackConditions.length > 8)
+    fail(`${name}.rollbackConditions must be a bounded non-empty array`);
+  const rollbackConditions = item.rollbackConditions.map(
+    (rawCondition, conditionIndex) => {
+      const conditionName = `${name}.rollbackConditions[${conditionIndex}]`;
+      const condition = record(rawCondition, conditionName);
+      exact(
+        condition,
+        ["metric", "operator", "threshold", "minimumClassifiedFired"],
+        conditionName
+      );
+      if (condition.metric !== "false-discovery-proportion" && condition.metric !== "review-coverage")
+        fail(`${conditionName}.metric is invalid`);
+      if (condition.operator !== "greater-than" && condition.operator !== "less-than")
+        fail(`${conditionName}.operator is invalid`);
+      if (typeof condition.threshold !== "number" || !Number.isFinite(condition.threshold) || condition.threshold < 0 || condition.threshold > 1)
+        fail(`${conditionName}.threshold must be between zero and one`);
+      return {
+        metric: condition.metric,
+        operator: condition.operator,
+        threshold: condition.threshold,
+        minimumClassifiedFired: integer(
+          condition.minimumClassifiedFired,
+          `${conditionName}.minimumClassifiedFired`
+        )
+      };
+    }
+  );
+  if (typeof item.requestedEffect !== "string" || !EFFECTS.includes(item.requestedEffect))
+    fail(`${name}.requestedEffect is invalid`);
+  return {
+    signalId: parseSignalId(item.signalId, `${name}.signalId`),
+    detector: {
+      name: textField(detector.name, `${name}.detector.name`, 64),
+      version: textField(detector.version, `${name}.detector.version`, 32)
+    },
+    evaluatedCandidateSet: {
+      version: textField(
+        candidate.version,
+        `${name}.evaluatedCandidateSet.version`,
+        64
+      ),
+      configurationDigest: digest(
+        candidate.configurationDigest,
+        `${name}.evaluatedCandidateSet.configurationDigest`
+      )
+    },
+    requestedEffect: item.requestedEffect,
+    evidence: {
+      events: parseEvidenceRefs(evidence.events, `${name}.evidence.events`),
+      classifications: Array.isArray(evidence.classifications) && evidence.classifications.length === 0 ? [] : parseEvidenceRefs(
+        evidence.classifications,
+        `${name}.evidence.classifications`
+      )
+    },
+    stratum: {
+      evaluated: integer(stratum.evaluated, `${name}.stratum.evaluated`),
+      fired: integer(stratum.fired, `${name}.stratum.fired`),
+      humanClassified: {
+        truePositive: integer(
+          classified.truePositive,
+          `${name}.stratum.humanClassified.truePositive`
+        ),
+        falsePositive: integer(
+          classified.falsePositive,
+          `${name}.stratum.humanClassified.falsePositive`
+        ),
+        uncertain: integer(
+          classified.uncertain,
+          `${name}.stratum.humanClassified.uncertain`
+        )
+      }
+    },
+    rollbackConditions
+  };
+}
+function parsePromotionInput(value) {
+  const item = record(value, "promotion input");
+  exact(
+    item,
+    [
+      "schemaVersion",
+      "taskId",
+      "policyHash",
+      "schemaBindings",
+      "signals",
+      "approval"
+    ],
+    "promotion input"
+  );
+  if (item.schemaVersion !== TEST_INTEGRITY_PROMOTION_INPUT_SCHEMA)
+    fail("Unsupported promotion input schema");
+  const bindings = record(item.schemaBindings, "schemaBindings");
+  exact(
+    bindings,
+    ["event", "classification", "promotion", "replay"],
+    "schemaBindings"
+  );
+  for (const [key, expected] of Object.entries(CURRENT_SCHEMA_BINDINGS))
+    if (bindings[key] !== expected)
+      fail(`schemaBindings.${key} is unsupported`);
+  if (!Array.isArray(item.signals) || item.signals.length === 0 || item.signals.length > EVALUATED_SIGNALS.length)
+    fail("signals must be a bounded non-empty array");
+  const signals = item.signals.map(parsePromotionSignal);
+  if (new Set(signals.map((signal) => signal.signalId)).size !== signals.length)
+    fail("signals contains a duplicate logical signal id");
+  const approval = record(item.approval, "approval");
+  exact(
+    approval,
+    ["declaredBy", "declaration", "note", "identityAttested"],
+    "approval"
+  );
+  if (approval.declaredBy !== "human" || approval.declaration !== "approved-for-proposal" || approval.identityAttested !== false)
+    fail("approval must be an unattested human proposal declaration");
+  return {
+    schemaVersion: TEST_INTEGRITY_PROMOTION_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    policyHash: digest(item.policyHash, "policyHash"),
+    schemaBindings: { ...CURRENT_SCHEMA_BINDINGS },
+    signals,
+    approval: {
+      declaredBy: "human",
+      declaration: "approved-for-proposal",
+      note: textField(approval.note, "approval.note", 500),
+      identityAttested: false
+    }
+  };
+}
+function classifiedCount(signal) {
+  const count = signal.stratum.humanClassified;
+  return count.truePositive + count.falsePositive + count.uncertain;
+}
+function promotionCriterionFailures(signal) {
+  const criterion = PROMOTION_CRITERIA[signal.requestedEffect];
+  const classified = classifiedCount(signal);
+  const decisive = signal.stratum.humanClassified.truePositive + signal.stratum.humanClassified.falsePositive;
+  const fdp = decisive === 0 ? 1 : signal.stratum.humanClassified.falsePositive / decisive;
+  const failures2 = [];
+  if (signal.stratum.evaluated < criterion.minimumEvaluated)
+    failures2.push("INSUFFICIENT_EVALUATED");
+  if (classified < criterion.minimumHumanClassifiedFired)
+    failures2.push("INSUFFICIENT_CLASSIFIED_FIRED");
+  if (fdp > criterion.maximumFalseDiscoveryProportion)
+    failures2.push("FALSE_DISCOVERY_PROPORTION_EXCEEDED");
+  if (signal.stratum.fired < classified)
+    failures2.push("CLASSIFIED_EXCEEDS_FIRED");
+  return failures2;
+}
+async function loadBoundReference(root, ref) {
+  const file = import_node_path7.default.resolve(root, ref.path);
+  await assertContainedPath(root, file);
+  const raw = await (0, import_promises6.readFile)(file, "utf8");
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    fail(`malformed evidence: ${ref.path}`, true);
+  }
+  if (hash(value) !== ref.digest)
+    fail(`evidence digest mismatch: ${ref.path}`, true);
+  return value;
+}
+function evaluationFor(event, signalId) {
+  return event.evaluationManifest?.find((entry) => entry.signalId === signalId);
+}
+async function validatePromotionEvidence(input, evidenceRoot, options2 = {}) {
+  const logicalEventIds = /* @__PURE__ */ new Map();
+  const logicalClassificationIds = /* @__PURE__ */ new Map();
+  for (const signal of input.signals) {
+    let evaluated = 0;
+    let fired = 0;
+    const eventIds = /* @__PURE__ */ new Set();
+    const classificationIds = /* @__PURE__ */ new Set();
+    const verdicts = { truePositive: 0, falsePositive: 0, uncertain: 0 };
+    const verdictByOccurrence = /* @__PURE__ */ new Map();
+    for (const ref of signal.evidence.events) {
+      const raw = await loadBoundReference(evidenceRoot, ref);
+      const event = parseTestIntegrityEvent(raw);
+      const previousDigest = logicalEventIds.get(event.artifactId);
+      if (eventIds.has(event.artifactId) || previousDigest !== void 0 && previousDigest !== ref.digest)
+        fail(`duplicate event logical id: ${event.artifactId}`, true);
+      logicalEventIds.set(event.artifactId, ref.digest);
+      if (event.provenance === "synthetic-test-fixture" && !options2.allowSynthetic)
+        fail("synthetic-provenance evidence is promotion-ineligible", true);
+      if (event.provenance !== "recorded" && event.provenance !== "synthetic-test-fixture")
+        fail("unversioned legacy evidence is promotion-ineligible", true);
+      const manifest = evaluationFor(event, signal.signalId);
+      if (!manifest) fail("event lacks a per-signal evaluation manifest", true);
+      if (event.evaluationManifest.filter(
+        (entry) => entry.signalId === signal.signalId
+      ).length !== 1)
+        fail("duplicate per-signal evaluation manifest identity", true);
+      if (event.signals.some(
+        (entry) => entry === null || typeof entry !== "object" || !EVALUATED_SIGNALS.includes(entry.signalId)
+      ))
+        fail("malformed signal occurrence", true);
+      if (event.signals.filter((entry) => entry.signalId === signal.signalId).length > 1)
+        fail("duplicate signal occurrence identity", true);
+      if (manifest.detector.name !== signal.detector.name || manifest.detector.version !== signal.detector.version || manifest.candidateSetVersion !== signal.evaluatedCandidateSet.version || manifest.configurationDigest !== signal.evaluatedCandidateSet.configurationDigest)
+        fail("detector-version or candidate-set stratum mismatch", true);
+      evaluated += 1;
+      eventIds.add(event.artifactId);
+      if (event.signals.some((entry) => entry.signalId === signal.signalId))
+        fired += 1;
+    }
+    for (const ref of signal.evidence.classifications) {
+      const raw = record(
+        await loadBoundReference(evidenceRoot, ref),
+        "classification evidence"
+      );
+      if (raw.schemaVersion !== TEST_INTEGRITY_CLASSIFICATION_SCHEMA)
+        fail("classification schema mismatch", true);
+      const classification = raw;
+      if (typeof classification.artifactId !== "string" || !Array.isArray(classification.verdicts) || classification.classifiedBy !== "human")
+        fail("malformed classification evidence", true);
+      const previousDigest = logicalClassificationIds.get(
+        classification.artifactId
+      );
+      if (classificationIds.has(classification.artifactId) || previousDigest !== void 0 && previousDigest !== ref.digest)
+        fail(
+          `duplicate classification logical id: ${classification.artifactId}`,
+          true
+        );
+      classificationIds.add(classification.artifactId);
+      logicalClassificationIds.set(classification.artifactId, ref.digest);
+      if (!eventIds.has(classification.eventArtifactId))
+        fail("classification is not linked to a cited event", true);
+      for (const verdict of classification.verdicts.filter(
+        (entry) => entry.signalId === signal.signalId
+      )) {
+        const key = `${classification.eventArtifactId}|${signal.signalId}`;
+        const previous = verdictByOccurrence.get(key);
+        if (previous !== void 0)
+          fail(
+            previous === verdict.verdict ? "duplicate classification logical occurrence" : "contradictory classifications",
+            true
+          );
+        verdictByOccurrence.set(key, verdict.verdict);
+        if (verdict.verdict === "true-positive") verdicts.truePositive += 1;
+        else if (verdict.verdict === "false-positive")
+          verdicts.falsePositive += 1;
+        else verdicts.uncertain += 1;
+      }
+    }
+    const actual = { evaluated, fired, humanClassified: verdicts };
+    if (hash(actual) !== hash(signal.stratum))
+      fail(
+        `declared stratum counts do not match cited evidence for ${signal.signalId}`,
+        true
+      );
+    const failures2 = promotionCriterionFailures(signal);
+    if (options2.requireCriteria !== false && failures2.length > 0)
+      fail(
+        `promotion criteria not met for ${signal.signalId}: ${failures2.join(",")}`,
+        true
+      );
+  }
+}
+function proposalCore(input) {
+  return {
+    taskId: input.taskId,
+    policyHash: input.policyHash,
+    schemaBindings: input.schemaBindings,
+    signals: input.signals,
+    approval: input.approval,
+    criteria: PROMOTION_CRITERIA,
+    status: "proposed",
+    approvalEffect: "none"
+  };
+}
+function parsePromotion(value) {
+  const item = record(value, "promotion proposal");
+  exact(
+    item,
+    [
+      "schemaVersion",
+      "artifactId",
+      "createdAt",
+      "taskId",
+      "policyHash",
+      "schemaBindings",
+      "signals",
+      "approval",
+      "proposalDigest",
+      "criteria",
+      "status",
+      "approvalEffect"
+    ],
+    "promotion proposal"
+  );
+  if (item.schemaVersion !== TEST_INTEGRITY_PROMOTION_SCHEMA || item.status !== "proposed" || item.approvalEffect !== "none")
+    fail("Unsupported or non-inert promotion proposal");
+  const parsedInput = parsePromotionInput({
+    schemaVersion: TEST_INTEGRITY_PROMOTION_INPUT_SCHEMA,
+    taskId: item.taskId,
+    policyHash: item.policyHash,
+    schemaBindings: item.schemaBindings,
+    signals: item.signals,
+    approval: item.approval
+  });
+  const proposalDigest = digest(item.proposalDigest, "proposalDigest");
+  if (proposalDigest !== hash(proposalCore(parsedInput)))
+    fail("proposalDigest does not match canonical proposal content", true);
+  if (hash(item.criteria) !== hash(PROMOTION_CRITERIA))
+    fail("proposal criteria do not match the built-in governance floors", true);
+  return {
+    ...parsedInput,
+    schemaVersion: TEST_INTEGRITY_PROMOTION_SCHEMA,
+    artifactId: textField(item.artifactId, "artifactId", 128),
+    createdAt: textField(item.createdAt, "createdAt", 40),
+    proposalDigest,
+    criteria: PROMOTION_CRITERIA,
+    status: "proposed",
+    approvalEffect: "none"
+  };
+}
+async function createPromotionProposal(input, evidenceRoot, now = /* @__PURE__ */ new Date(), options2 = {}) {
+  await validatePromotionEvidence(input, evidenceRoot, {
+    ...options2,
+    requireCriteria: true
+  });
+  return {
+    artifactId: artifactId("test-integrity-promotion"),
+    createdAt: now.toISOString(),
+    ...input,
+    schemaVersion: TEST_INTEGRITY_PROMOTION_SCHEMA,
+    proposalDigest: hash(proposalCore(input)),
+    criteria: PROMOTION_CRITERIA,
+    status: "proposed",
+    approvalEffect: "none"
+  };
+}
+async function jsonFiles(root) {
   const found = [];
   async function walk(dir) {
     let entries;
     try {
-      entries = await (0, import_promises5.readdir)(dir, { withFileTypes: true });
+      entries = await (0, import_promises6.readdir)(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
-      const full = import_node_path6.default.join(dir, entry.name);
+      const full = import_node_path7.default.join(dir, entry.name);
+      if (entry.isDirectory() && !entry.isSymbolicLink()) await walk(full);
+      else if (entry.isFile() && entry.name.endsWith(".json")) found.push(full);
+    }
+  }
+  await walk(root);
+  return found.sort();
+}
+async function buildPromotionReplay(proposal, evidenceRoot, now = /* @__PURE__ */ new Date()) {
+  const events = [];
+  const sourceDigests = [];
+  for (const file of await jsonFiles(evidenceRoot)) {
+    let raw;
+    try {
+      raw = await readJson(file);
+    } catch {
+      continue;
+    }
+    const item = record(raw, "evidence");
+    if (item.schemaVersion !== TEST_INTEGRITY_EVENT_SCHEMA) continue;
+    const event = parseTestIntegrityEvent(item);
+    if (!event.evaluationManifest) continue;
+    events.push(event);
+    sourceDigests.push({
+      path: import_node_path7.default.relative(evidenceRoot, file),
+      digest: hash(raw)
+    });
+  }
+  const signals = proposal.signals.map((signal) => {
+    const matching = events.filter((event) => {
+      const manifest = evaluationFor(event, signal.signalId);
+      return manifest?.detector.name === signal.detector.name && manifest.detector.version === signal.detector.version && manifest.candidateSetVersion === signal.evaluatedCandidateSet.version && manifest.configurationDigest === signal.evaluatedCandidateSet.configurationDigest;
+    });
+    const fired = matching.filter(
+      (event) => event.signals.some((entry) => entry.signalId === signal.signalId)
+    ).length;
+    return {
+      signalId: signal.signalId,
+      requestedEffect: signal.requestedEffect,
+      detector: signal.detector,
+      candidateSetVersion: signal.evaluatedCandidateSet.version,
+      evaluated: matching.length,
+      fired,
+      wouldFire: fired
+    };
+  });
+  const core = {
+    taskId: proposal.taskId,
+    proposalArtifactId: proposal.artifactId,
+    proposalDigest: proposal.proposalDigest,
+    evidenceRootDigest: hash(sourceDigests),
+    signals
+  };
+  return {
+    schemaVersion: TEST_INTEGRITY_REPLAY_SCHEMA,
+    artifactId: artifactId("test-integrity-replay"),
+    createdAt: now.toISOString(),
+    ...core,
+    replayDigest: hash(core)
+  };
+}
+var CURRENT_DETECTORS = Object.freeze(
+  Object.fromEntries(
+    EVALUATED_SIGNALS.map((signalId) => [
+      signalId,
+      {
+        name: signalId === "TI-05" ? "diff-token-scan" : signalId === "TI-06" ? "diff-name-status" : signalId === "TI-07" ? "diff-token-scan" : signalId === "TI-08" ? "diff-path-scan" : "config-diff-scan",
+        version: DETECTOR_VERSION,
+        candidateSetVersion: CANDIDATE_SET_VERSION,
+        configurationDigest: DETECTOR_CONFIGURATION_DIGEST
+      }
+    ])
+  )
+);
+function evaluateActivation(registryValue, proposals, replays, current, policyHash, schemaBindings = CURRENT_SCHEMA_BINDINGS) {
+  if (registryValue === null || registryValue === void 0) return [];
+  let registry;
+  try {
+    const item = record(registryValue, "active registry");
+    if (item.schemaVersion !== "rigor.test-integrity-active.v1" || !Array.isArray(item.entries))
+      throw new Error();
+    registry = item;
+  } catch {
+    return [
+      {
+        signalId: null,
+        state: "refused",
+        reasonCode: "MALFORMED_REGISTRY",
+        effect: null,
+        proposalDigest: null
+      }
+    ];
+  }
+  const seen = /* @__PURE__ */ new Set();
+  return registry.entries.map((entry) => {
+    if (!entry || typeof entry !== "object" || !EVALUATED_SIGNALS.includes(entry.signalId) || !HEX64.test(entry.proposalDigest ?? "") || !HEX64.test(entry.replayDigest ?? "") || entry.disposition !== "active" && entry.disposition !== "tombstone" || typeof entry.rollbackTriggered !== "boolean")
+      return {
+        signalId: null,
+        state: "refused",
+        reasonCode: "MALFORMED_REGISTRY",
+        effect: null,
+        proposalDigest: null
+      };
+    if (seen.has(entry.signalId))
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "DUPLICATE_LOGICAL_ID",
+        effect: null,
+        proposalDigest: entry.proposalDigest
+      };
+    seen.add(entry.signalId);
+    if (entry.disposition === "tombstone")
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "TOMBSTONED",
+        effect: null,
+        proposalDigest: entry.proposalDigest
+      };
+    let proposal;
+    try {
+      const rawProposal = proposals.find(
+        (candidate) => candidate?.proposalDigest === entry.proposalDigest
+      );
+      proposal = rawProposal === void 0 ? void 0 : parsePromotion(rawProposal);
+    } catch {
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "MISSING_PROPOSAL",
+        effect: null,
+        proposalDigest: entry.proposalDigest
+      };
+    }
+    if (!proposal)
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "MISSING_PROPOSAL",
+        effect: null,
+        proposalDigest: entry.proposalDigest
+      };
+    const signal = proposal.signals.find(
+      (candidate) => candidate.signalId === entry.signalId
+    );
+    if (!signal || promotionCriterionFailures(signal).length > 0)
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "EVIDENCE_BELOW_CRITERIA",
+        effect: signal?.requestedEffect ?? null,
+        proposalDigest: entry.proposalDigest
+      };
+    if (proposal.policyHash !== policyHash)
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "POLICY_BINDING_MISMATCH",
+        effect: signal.requestedEffect,
+        proposalDigest: entry.proposalDigest
+      };
+    if (hash(proposal.schemaBindings) !== hash(schemaBindings))
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "SCHEMA_BINDING_MISMATCH",
+        effect: signal.requestedEffect,
+        proposalDigest: entry.proposalDigest
+      };
+    const detector = current[entry.signalId];
+    if (!detector || detector.name !== signal.detector.name || detector.version !== signal.detector.version)
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "DETECTOR_VERSION_MISMATCH",
+        effect: signal.requestedEffect,
+        proposalDigest: entry.proposalDigest
+      };
+    if (detector.candidateSetVersion !== signal.evaluatedCandidateSet.version || detector.configurationDigest !== signal.evaluatedCandidateSet.configurationDigest)
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "CANDIDATE_SET_MISMATCH",
+        effect: signal.requestedEffect,
+        proposalDigest: entry.proposalDigest
+      };
+    const replay = replays.find(
+      (candidate) => candidate?.replayDigest === entry.replayDigest && candidate.proposalDigest === proposal.proposalDigest && candidate.proposalArtifactId === proposal.artifactId
+    );
+    const replayCore = replay && {
+      taskId: replay.taskId,
+      proposalArtifactId: replay.proposalArtifactId,
+      proposalDigest: replay.proposalDigest,
+      evidenceRootDigest: replay.evidenceRootDigest,
+      signals: replay.signals
+    };
+    if (!replay || replay.schemaVersion !== TEST_INTEGRITY_REPLAY_SCHEMA || replay.replayDigest !== hash(replayCore))
+      return {
+        signalId: entry.signalId,
+        state: "refused",
+        reasonCode: "MISSING_OR_UNLINKED_REPLAY",
+        effect: signal.requestedEffect,
+        proposalDigest: entry.proposalDigest
+      };
+    if (entry.rollbackTriggered)
+      return {
+        signalId: entry.signalId,
+        state: "frozen(requires-review)",
+        reasonCode: "ROLLBACK_CONDITION_MET",
+        effect: signal.requestedEffect,
+        proposalDigest: entry.proposalDigest
+      };
+    return {
+      signalId: entry.signalId,
+      state: "active",
+      reasonCode: null,
+      effect: signal.requestedEffect,
+      proposalDigest: entry.proposalDigest
+    };
+  });
+}
+function enforcePromotedSignals(event, activations) {
+  const occurrences = event.signals.flatMap(
+    (signal) => activations.filter(
+      (activation) => activation.state === "active" && activation.signalId === signal.signalId && activation.effect !== null && activation.proposalDigest !== null
+    ).map((activation) => ({
+      signalId: signal.signalId,
+      occurrenceDigest: hash({
+        eventArtifactId: event.artifactId,
+        signalId: signal.signalId,
+        matchDigest: signal.matchDigest
+      }),
+      effect: activation.effect,
+      promotionDigest: activation.proposalDigest
+    }))
+  );
+  const gate = occurrences.some(
+    (item) => item.effect === "stop"
+  ) ? "immediate-stop" : occurrences.some((item) => item.effect === "review") ? "required-human-review" : occurrences.some((item) => item.effect === "advisory") ? "advisory-warning" : "none";
+  const core = { gate, occurrences };
+  return {
+    original: { ...core, digest: hash(core) },
+    effectiveGate: gate,
+    waiver: null
+  };
+}
+function parseWaiverInput(value) {
+  const item = record(value, "waiver input");
+  exact(
+    item,
+    [
+      "schemaVersion",
+      "taskId",
+      "enforcementOutcomeDigest",
+      "signalOccurrenceDigest",
+      "promotionDigest",
+      "headSha",
+      "scope",
+      "reason",
+      "expiresAt",
+      "declaredBy",
+      "identityAttested",
+      "externalReviewReference"
+    ],
+    "waiver input"
+  );
+  if (item.schemaVersion !== TEST_INTEGRITY_WAIVER_INPUT_SCHEMA)
+    fail("Unsupported waiver input schema");
+  if (item.declaredBy !== "human" || item.identityAttested !== false)
+    fail("waiver must be an unattested human declaration");
+  const headSha = textField(item.headSha, "headSha", 40);
+  if (!HEX40.test(headSha)) fail("headSha must be a full commit sha");
+  const expiresAt = textField(item.expiresAt, "expiresAt", 40);
+  if (!Number.isFinite(Date.parse(expiresAt)))
+    fail("expiresAt must be an ISO date-time");
+  return {
+    schemaVersion: TEST_INTEGRITY_WAIVER_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    enforcementOutcomeDigest: digest(
+      item.enforcementOutcomeDigest,
+      "enforcementOutcomeDigest"
+    ),
+    signalOccurrenceDigest: digest(
+      item.signalOccurrenceDigest,
+      "signalOccurrenceDigest"
+    ),
+    promotionDigest: digest(item.promotionDigest, "promotionDigest"),
+    headSha,
+    scope: textField(item.scope, "scope", 300),
+    reason: textField(item.reason, "reason", 500),
+    expiresAt,
+    declaredBy: "human",
+    identityAttested: false,
+    externalReviewReference: textField(
+      item.externalReviewReference,
+      "externalReviewReference",
+      300
+    )
+  };
+}
+function createWaiver(input, now = /* @__PURE__ */ new Date()) {
+  if (Date.parse(input.expiresAt) <= now.getTime())
+    fail("waiver is already expired", true);
+  return {
+    ...input,
+    schemaVersion: TEST_INTEGRITY_WAIVER_SCHEMA,
+    artifactId: artifactId("test-integrity-waiver"),
+    createdAt: now.toISOString(),
+    status: "recorded-and-waived",
+    approvalEffect: "single-outcome-downgrade"
+  };
+}
+var ANTI_BYPASS_PATHS = [
+  ACTIVE_REGISTRY_PATH,
+  "src/ci.ts",
+  "src/cli.ts",
+  "src/test-integrity.ts",
+  "src/test-integrity-promotion.ts",
+  "src/types.ts",
+  "schemas/test-integrity-",
+  "dist/rigor.cjs",
+  ".rigor/rigor-ci.cjs"
+];
+function antiBypassOutcome(changedPaths) {
+  return changedPaths.some(
+    (changed) => ANTI_BYPASS_PATHS.some(
+      (subject) => subject.endsWith("-") ? changed.startsWith(subject) : changed === subject
+    )
+  ) ? "required-human-review" : null;
+}
+
+// src/ci.ts
+async function evidenceFiles(root) {
+  const base = import_node_path8.default.join(root, ".rigor", "evidence");
+  const found = [];
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await (0, import_promises7.readdir)(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = import_node_path8.default.join(dir, entry.name);
       if (entry.isDirectory() && !entry.isSymbolicLink()) await walk(full);
       else if (entry.isFile() && entry.name.endsWith(".json")) found.push(full);
     }
@@ -1788,6 +3097,9 @@ async function ciVerify(root, baseSha, headSha) {
     }
   }
   const changedPaths = await diffPaths(root, baseSha, headSha);
+  const baseRegistry = await showFile(root, baseSha, ACTIVE_REGISTRY_PATH);
+  const headRegistry = await showFile(root, headSha, ACTIVE_REGISTRY_PATH);
+  const testIntegrityReviewRequired = antiBypassOutcome(changedPaths) === "required-human-review" || baseRegistry !== headRegistry;
   const codePaths = changedPaths.filter(
     (item) => !item.startsWith(".rigor/evidence/")
   );
@@ -1809,6 +3121,8 @@ async function ciVerify(root, baseSha, headSha) {
   const contracts = /* @__PURE__ */ new Map();
   const verifications = [];
   const reviews = [];
+  const promotions = [];
+  const replays = [];
   for (const file of files) {
     try {
       const value = await readJson(file);
@@ -1819,8 +3133,12 @@ async function ciVerify(root, baseSha, headSha) {
       } else if (item.schemaVersion === "rigor.verification.v1")
         verifications.push(item);
       else if (item.schemaVersion === "rigor.review.v1") reviews.push(item);
+      else if (item.schemaVersion === TEST_INTEGRITY_PROMOTION_SCHEMA)
+        promotions.push(parsePromotion(item));
+      else if (item.schemaVersion === TEST_INTEGRITY_REPLAY_SCHEMA)
+        replays.push(item);
     } catch {
-      failures2.push(`invalid evidence file: ${import_node_path6.default.relative(root, file)}`);
+      failures2.push(`invalid evidence file: ${import_node_path8.default.relative(root, file)}`);
     }
   }
   let linked = false;
@@ -1846,6 +3164,50 @@ async function ciVerify(root, baseSha, headSha) {
     failures2.push(
       "no linked passing evidence covers the independently derived change set and head policy"
     );
+  if (testIntegrityReviewRequired && !linked)
+    failures2.push(
+      "test-integrity anti-bypass: protected registry/configuration/verifier change requires linked human review"
+    );
+  if (baseRegistry !== null && baseRegistry === headRegistry) {
+    let registry;
+    try {
+      registry = JSON.parse(baseRegistry);
+    } catch {
+      registry = { malformed: true };
+    }
+    const activations = evaluateActivation(
+      registry,
+      promotions,
+      replays,
+      CURRENT_DETECTORS,
+      hash(headPolicy)
+    );
+    if (activations.some((item) => item.state === "active")) {
+      const event = await scanTestIntegrity(
+        root,
+        {
+          task: "CI",
+          base: baseSha,
+          head: headSha,
+          attemptArtifactId: null,
+          verificationArtifactId: null,
+          note: null
+        },
+        /* @__PURE__ */ new Date(0)
+      );
+      const outcome = enforcePromotedSignals(event, activations);
+      if (outcome.original.gate === "immediate-stop")
+        failures2.push("test-integrity enforcement outcome: immediate-stop");
+      else if (outcome.original.gate === "required-human-review")
+        failures2.push(
+          "test-integrity enforcement outcome: required-human-review"
+        );
+    }
+    if (activations.some((item) => item.state === "frozen(requires-review)"))
+      failures2.push(
+        "test-integrity promotion is frozen by rollback conditions and requires review"
+      );
+  }
   for (const check of headPolicy.checks) {
     let result;
     try {
@@ -2311,8 +3673,8 @@ async function governanceVerify(policy, options2, read) {
 }
 
 // src/hook.ts
-var import_node_path7 = __toESM(require("node:path"), 1);
-var import_promises6 = require("node:fs/promises");
+var import_node_path9 = __toESM(require("node:path"), 1);
+var import_promises8 = require("node:fs/promises");
 async function userPromptHook(input, cwd = process.cwd()) {
   if (input === null || typeof input !== "object" || Array.isArray(input))
     return {
@@ -2326,7 +3688,7 @@ async function userPromptHook(input, cwd = process.cwd()) {
     return null;
   }
   try {
-    await (0, import_promises6.access)(import_node_path7.default.join(root, ".rigor"));
+    await (0, import_promises8.access)(import_node_path9.default.join(root, ".rigor"));
   } catch {
     return null;
   }
@@ -2405,9 +3767,9 @@ function evaluate(policy, intent, git2, now = /* @__PURE__ */ new Date()) {
 }
 
 // src/release.ts
-var import_promises7 = require("node:fs/promises");
+var import_promises9 = require("node:fs/promises");
 var import_node_os = __toESM(require("node:os"), 1);
-var import_node_path8 = __toESM(require("node:path"), 1);
+var import_node_path10 = __toESM(require("node:path"), 1);
 var RELEASE_SCHEMA = "rigor.release.v1";
 function isRecord2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -2583,7 +3945,7 @@ async function releaseCiFact(read, ref, sha, requiredChecks) {
 }
 async function readJsonVersion(file) {
   try {
-    const parsed = JSON.parse(await (0, import_promises7.readFile)(file, "utf8"));
+    const parsed = JSON.parse(await (0, import_promises9.readFile)(file, "utf8"));
     if (isRecord2(parsed) && typeof parsed.version === "string")
       return parsed.version;
   } catch {
@@ -2592,7 +3954,7 @@ async function readJsonVersion(file) {
 }
 async function readChangelogVersions(root) {
   try {
-    const text = await (0, import_promises7.readFile)(import_node_path8.default.join(root, "CHANGELOG.md"), "utf8");
+    const text = await (0, import_promises9.readFile)(import_node_path10.default.join(root, "CHANGELOG.md"), "utf8");
     const versions = [];
     for (const match of text.matchAll(/^##\s+(\d+\.\d+\.\d+)\b/gmu))
       if (match[1]) versions.push(match[1]);
@@ -2602,7 +3964,7 @@ async function readChangelogVersions(root) {
   }
 }
 async function bundleMatchesFreshBuild(root) {
-  const temp = import_node_path8.default.join(
+  const temp = import_node_path10.default.join(
     import_node_os.default.tmpdir(),
     `rigor-release-bundle-${String(process.pid)}.cjs`
   );
@@ -2615,21 +3977,21 @@ async function bundleMatchesFreshBuild(root) {
     );
     if (result.code !== 0) return false;
     const [fresh, committed] = await Promise.all([
-      (0, import_promises7.readFile)(temp),
-      (0, import_promises7.readFile)(import_node_path8.default.join(root, "dist", "rigor.cjs"))
+      (0, import_promises9.readFile)(temp),
+      (0, import_promises9.readFile)(import_node_path10.default.join(root, "dist", "rigor.cjs"))
     ]);
     return fresh.equals(committed);
   } catch {
     return false;
   } finally {
-    await (0, import_promises7.rm)(temp, { force: true }).catch(() => void 0);
+    await (0, import_promises9.rm)(temp, { force: true }).catch(() => void 0);
   }
 }
 async function ciBundleFact(root) {
   try {
     const [dist, ci] = await Promise.all([
-      (0, import_promises7.readFile)(import_node_path8.default.join(root, "dist", "rigor.cjs")),
-      (0, import_promises7.readFile)(import_node_path8.default.join(root, ".rigor", "rigor-ci.cjs"))
+      (0, import_promises9.readFile)(import_node_path10.default.join(root, "dist", "rigor.cjs")),
+      (0, import_promises9.readFile)(import_node_path10.default.join(root, ".rigor", "rigor-ci.cjs"))
     ]);
     return dist.equals(ci);
   } catch {
@@ -2637,9 +3999,9 @@ async function ciBundleFact(root) {
   }
 }
 async function releaseVerify(root, options2, read) {
-  const packageVersion = await readJsonVersion(import_node_path8.default.join(root, "package.json"));
+  const packageVersion = await readJsonVersion(import_node_path10.default.join(root, "package.json"));
   const manifestVersion = await readJsonVersion(
-    import_node_path8.default.join(root, ".claude-plugin", "plugin.json")
+    import_node_path10.default.join(root, ".claude-plugin", "plugin.json")
   );
   const facts = await gitFacts(root);
   const branchResult = await run(
@@ -2715,7 +4077,7 @@ function oneOf(value, values, name) {
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
 }
-function integer(value, name, minimum, maximum) {
+function integer2(value, name, minimum, maximum) {
   if (!Number.isInteger(value) || value < minimum || value > maximum)
     throw new RigorError(`${name} is out of range`, EXIT.inputError);
   return value;
@@ -2750,14 +4112,14 @@ function parseSignals(value) {
 function parseBudget(value) {
   const budget = record(value, "budget");
   return {
-    maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
-    maxDurationMs: integer(
+    maxAttempts: integer2(budget.maxAttempts, "maxAttempts", 1, 20),
+    maxDurationMs: integer2(
       budget.maxDurationMs,
       "maxDurationMs",
       1e3,
       864e5
     ),
-    maxRelativeCost: integer(
+    maxRelativeCost: integer2(
       budget.maxRelativeCost,
       "maxRelativeCost",
       1,
@@ -2860,7 +4222,7 @@ function parseCandidate(value, index) {
     ).map(
       (purpose) => oneOf(purpose, purposes, `candidates[${index}].purpose`)
     ),
-    relativeCost: integer(
+    relativeCost: integer2(
       item.relativeCost,
       `candidates[${index}].relativeCost`,
       1,
@@ -3050,7 +4412,7 @@ function parseRoutingPlan(value) {
         confidenceLevels,
         "assessment.confidence"
       ),
-      evidenceCount: integer(
+      evidenceCount: integer2(
         raw.evidenceCount,
         "assessment.evidenceCount",
         0,
@@ -3099,7 +4461,7 @@ function parseRoutingPlan(value) {
         capabilityClasses,
         "selection.capabilityClass"
       ),
-      relativeCost: integer(
+      relativeCost: integer2(
         selection.relativeCost,
         "selection.relativeCost",
         1,
@@ -3122,14 +4484,14 @@ function parseRoutingPlan(value) {
       )
     },
     budget: {
-      maxAttempts: integer(budget.maxAttempts, "maxAttempts", 1, 20),
-      maxDurationMs: integer(
+      maxAttempts: integer2(budget.maxAttempts, "maxAttempts", 1, 20),
+      maxDurationMs: integer2(
         budget.maxDurationMs,
         "maxDurationMs",
         1e3,
         864e5
       ),
-      maxRelativeCost: integer(
+      maxRelativeCost: integer2(
         budget.maxRelativeCost,
         "maxRelativeCost",
         1,
@@ -3793,8 +5155,8 @@ async function finishConsultation(root, session, input, now = /* @__PURE__ */ ne
 }
 
 // src/attempt.ts
-var import_promises8 = require("node:fs/promises");
-var import_node_path9 = __toESM(require("node:path"), 1);
+var import_promises10 = require("node:fs/promises");
+var import_node_path11 = __toESM(require("node:path"), 1);
 var ignoredEvidence2 = [".rigor/evidence/", ".rigor/events.jsonl"];
 var capabilities = [
   "economy",
@@ -3823,10 +5185,10 @@ function filteredChangedPaths2(paths) {
   );
 }
 async function attemptState(root, task) {
-  const directory = import_node_path9.default.join(root, ".rigor", "evidence", task, "attempts");
+  const directory = import_node_path11.default.join(root, ".rigor", "evidence", task, "attempts");
   let names;
   try {
-    names = await (0, import_promises8.readdir)(directory);
+    names = await (0, import_promises10.readdir)(directory);
   } catch (error) {
     if (error.code === "ENOENT")
       return { count: 0, unfinished: [], finishedAttempts: [] };
@@ -3840,7 +5202,7 @@ async function attemptState(root, task) {
     try {
       item = record(
         JSON.parse(
-          await (0, import_promises8.readFile)(import_node_path9.default.join(directory, name), "utf8")
+          await (0, import_promises10.readFile)(import_node_path11.default.join(directory, name), "utf8")
         ),
         "attempt artifact"
       );
@@ -4231,7 +5593,7 @@ function boolean(value, name) {
     throw new RigorError(`${name} must be a boolean`, EXIT.inputError);
   return value;
 }
-function integer2(value, name, min, max) {
+function integer3(value, name, min, max) {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max)
     throw new RigorError(`${name} is out of range`, EXIT.inputError);
   return value;
@@ -4254,16 +5616,16 @@ function parseUsageInput(value) {
     )
   };
   if (item.inputTokens !== void 0)
-    usage.inputTokens = integer2(item.inputTokens, "usage.inputTokens", 0, 1e12);
+    usage.inputTokens = integer3(item.inputTokens, "usage.inputTokens", 0, 1e12);
   if (item.outputTokens !== void 0)
-    usage.outputTokens = integer2(
+    usage.outputTokens = integer3(
       item.outputTokens,
       "usage.outputTokens",
       0,
       1e12
     );
   if (item.totalTokens !== void 0)
-    usage.totalTokens = integer2(item.totalTokens, "usage.totalTokens", 0, 1e12);
+    usage.totalTokens = integer3(item.totalTokens, "usage.totalTokens", 0, 1e12);
   if (item.reasoningEffort !== void 0)
     usage.reasoningEffort = textField(
       item.reasoningEffort,
@@ -4304,23 +5666,23 @@ function parseOutcomeInput(value) {
       item.acceptedWithoutModelCodeChanges,
       "acceptedWithoutModelCodeChanges"
     ),
-    humanCorrectionMinutes: integer2(
+    humanCorrectionMinutes: integer3(
       item.humanCorrectionMinutes,
       "humanCorrectionMinutes",
       0,
       1e5
     ),
-    escalationCount: integer2(item.escalationCount, "escalationCount", 0, 100),
+    escalationCount: integer3(item.escalationCount, "escalationCount", 0, 100),
     reviewFindings: {
-      critical: integer2(
+      critical: integer3(
         findings2.critical,
         "reviewFindings.critical",
         0,
         1e4
       ),
-      high: integer2(findings2.high, "reviewFindings.high", 0, 1e4),
-      medium: integer2(findings2.medium, "reviewFindings.medium", 0, 1e4),
-      low: integer2(findings2.low, "reviewFindings.low", 0, 1e4)
+      high: integer3(findings2.high, "reviewFindings.high", 0, 1e4),
+      medium: integer3(findings2.medium, "reviewFindings.medium", 0, 1e4),
+      low: integer3(findings2.low, "reviewFindings.low", 0, 1e4)
     },
     revertStatus: oneOf5(
       item.revertStatus,
@@ -4335,7 +5697,7 @@ function parseOutcomeInput(value) {
     usage: parseUsageInput(item.usage)
   };
   if (item.retryCount !== void 0)
-    input.retryCount = integer2(item.retryCount, "retryCount", 0, 100);
+    input.retryCount = integer3(item.retryCount, "retryCount", 0, 100);
   if (item.commit !== void 0) {
     const commit = textField(item.commit, "commit", 64);
     if (!/^[0-9a-f]{7,64}$/u.test(commit))
@@ -4509,7 +5871,7 @@ function oneOf6(value, allowed, name) {
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
 }
-function integer3(value, name, minimum = 0, maximum = 1e9) {
+function integer4(value, name, minimum = 0, maximum = 1e9) {
   if (!Number.isInteger(value) || value < minimum || value > maximum)
     throw new RigorError(`${name} is out of range`, EXIT.inputError);
   return value;
@@ -4519,7 +5881,7 @@ function bool3(value, name) {
     throw new RigorError(`${name} must be boolean`, EXIT.inputError);
   return value;
 }
-function digest(value, name) {
+function digest2(value, name) {
   const result = textField(value, name, 128);
   if (!/^[a-f0-9]{64}$/u.test(result))
     throw new RigorError(`${name} must be a SHA-256 digest`, EXIT.inputError);
@@ -4529,17 +5891,17 @@ function attemptFact(value, name) {
   const item = record(value, name);
   const failureFingerprint = item.failureFingerprint;
   if (failureFingerprint !== null)
-    digest(failureFingerprint, `${name}.failureFingerprint`);
+    digest2(failureFingerprint, `${name}.failureFingerprint`);
   return {
     artifactId: textField(item.artifactId, `${name}.artifactId`, 128),
-    artifactHash: digest(item.artifactHash, `${name}.artifactHash`),
+    artifactHash: digest2(item.artifactHash, `${name}.artifactHash`),
     routingPlanArtifactId: textField(
       item.routingPlanArtifactId,
       `${name}.routingPlanArtifactId`,
       128
     ),
-    routingPlanHash: digest(item.routingPlanHash, `${name}.routingPlanHash`),
-    sequence: integer3(item.sequence, `${name}.sequence`, 1, 20),
+    routingPlanHash: digest2(item.routingPlanHash, `${name}.routingPlanHash`),
+    sequence: integer4(item.sequence, `${name}.sequence`, 1, 20),
     capabilityClass: oneOf6(
       item.capabilityClass,
       capabilities2,
@@ -4552,8 +5914,8 @@ function attemptFact(value, name) {
     ),
     progress: oneOf6(item.progress, progressStatuses, `${name}.progress`),
     failureFingerprint,
-    durationMs: integer3(item.durationMs, `${name}.durationMs`),
-    relativeCost: integer3(item.relativeCost, `${name}.relativeCost`, 0)
+    durationMs: integer4(item.durationMs, `${name}.durationMs`),
+    relativeCost: integer4(item.relativeCost, `${name}.relativeCost`, 0)
   };
 }
 function parseEscalationDecisionInput(value) {
@@ -4580,12 +5942,12 @@ function parseEscalationDecisionInput(value) {
     purpose: oneOf6(item.purpose, purposes3, "purpose"),
     contract: {
       artifactId: textField(contract.artifactId, "contract.artifactId", 128),
-      artifactHash: digest(contract.artifactHash, "contract.artifactHash")
+      artifactHash: digest2(contract.artifactHash, "contract.artifactHash")
     },
     routingPlan: {
       artifactId: textField(plan.artifactId, "routingPlan.artifactId", 128),
-      artifactHash: digest(plan.artifactHash, "routingPlan.artifactHash"),
-      modelProfilesHash: digest(
+      artifactHash: digest2(plan.artifactHash, "routingPlan.artifactHash"),
+      modelProfilesHash: digest2(
         plan.modelProfilesHash,
         "routingPlan.modelProfilesHash"
       )
@@ -4600,7 +5962,7 @@ function parseEscalationDecisionInput(value) {
     ),
     failureCategory: oneOf6(item.failureCategory, failures, "failureCategory"),
     progress: oneOf6(item.progress, progressStatuses, "progress"),
-    fingerprintRepetitions: integer3(
+    fingerprintRepetitions: integer4(
       item.fingerprintRepetitions,
       "fingerprintRepetitions",
       0,
@@ -4611,20 +5973,20 @@ function parseEscalationDecisionInput(value) {
       capabilities2,
       "currentCapabilityClass"
     ),
-    attemptCount: integer3(item.attemptCount, "attemptCount", 1, 20),
-    elapsedMs: integer3(item.elapsedMs, "elapsedMs"),
-    consumedRelativeCost: integer3(
+    attemptCount: integer4(item.attemptCount, "attemptCount", 1, 20),
+    elapsedMs: integer4(item.elapsedMs, "elapsedMs"),
+    consumedRelativeCost: integer4(
       item.consumedRelativeCost,
       "consumedRelativeCost"
     ),
     budget: {
-      maxAttempts: integer3(budget.maxAttempts, "budget.maxAttempts", 1, 20),
-      maxDurationMs: integer3(
+      maxAttempts: integer4(budget.maxAttempts, "budget.maxAttempts", 1, 20),
+      maxDurationMs: integer4(
         budget.maxDurationMs,
         "budget.maxDurationMs",
         1e3
       ),
-      maxRelativeCost: integer3(
+      maxRelativeCost: integer4(
         budget.maxRelativeCost,
         "budget.maxRelativeCost",
         1
@@ -4668,13 +6030,13 @@ function parseEscalationDecisionInput(value) {
       )
     },
     thresholds: {
-      unchangedAttemptsBeforeDirect: integer3(
+      unchangedAttemptsBeforeDirect: integer4(
         rawThresholds.unchangedAttemptsBeforeDirect,
         "thresholds.unchangedAttemptsBeforeDirect",
         2,
         20
       ),
-      infrastructureRetries: integer3(
+      infrastructureRetries: integer4(
         rawThresholds.infrastructureRetries,
         "thresholds.infrastructureRetries",
         0,
@@ -4920,8 +6282,8 @@ function selectEscalation(input, profiles, availability2) {
 }
 
 // src/evaluation.ts
-var import_promises9 = require("node:fs/promises");
-var import_node_path10 = __toESM(require("node:path"), 1);
+var import_promises11 = require("node:fs/promises");
+var import_node_path12 = __toESM(require("node:path"), 1);
 var CAPABILITY_CLASSES = [
   "economy",
   "standard",
@@ -4941,7 +6303,7 @@ function oneOf7(value, values, name) {
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
 }
-function integer4(value, name, min, max) {
+function integer5(value, name, min, max) {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max)
     throw new RigorError(`${name} is out of range`, EXIT.inputError);
   return value;
@@ -5086,7 +6448,7 @@ function parseEvaluationManifest(value) {
   });
   return {
     schemaVersion: EVALUATION_MANIFEST_SCHEMA,
-    manifestVersion: integer4(
+    manifestVersion: integer5(
       item.manifestVersion,
       "manifestVersion",
       1,
@@ -5128,8 +6490,8 @@ function parseCalibrationProposalInput(value) {
       "evidence.reportHashes must not be empty",
       EXIT.inputError
     );
-  for (const [index, digest2] of reportHashes.entries())
-    if (!/^[a-f0-9]{64}$/u.test(digest2))
+  for (const [index, digest3] of reportHashes.entries())
+    if (!/^[a-f0-9]{64}$/u.test(digest3))
       throw new RigorError(
         `evidence.reportHashes[${index}] must be a SHA-256 digest`,
         EXIT.inputError
@@ -5251,13 +6613,13 @@ function verifyCalibrationEvidence(evidence, manifest, reports) {
       );
     return { schemaVersion: item.schemaVersion, digest: hash(item) };
   });
-  for (const digest2 of evidence.reportHashes) {
+  for (const digest3 of evidence.reportHashes) {
     const backed = parsed.some(
-      (item) => item.schemaVersion === EVALUATION_REPORT_SCHEMA && item.digest === digest2
+      (item) => item.schemaVersion === EVALUATION_REPORT_SCHEMA && item.digest === digest3
     );
     if (!backed)
       throw new RigorError(
-        `evidence.reportHashes entry ${digest2} is not the canonical hash of any supplied --report file`,
+        `evidence.reportHashes entry ${digest3} is not the canonical hash of any supplied --report file`,
         EXIT.inputError
       );
   }
@@ -5286,7 +6648,7 @@ async function readRecord(root, file) {
     throw new RigorError("Path escapes the evidence root", EXIT.inputError);
   let text;
   try {
-    text = await (0, import_promises9.readFile)(file, "utf8");
+    text = await (0, import_promises11.readFile)(file, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return void 0;
     throw error;
@@ -5301,7 +6663,7 @@ async function readCollection(root, directory, schemaVersion, wellFormed) {
     return { valid: [], malformed: 1 };
   let names;
   try {
-    names = await (0, import_promises9.readdir)(directory);
+    names = await (0, import_promises11.readdir)(directory);
   } catch (error) {
     if (error.code === "ENOENT")
       return { valid: [], malformed: 0 };
@@ -5311,7 +6673,7 @@ async function readCollection(root, directory, schemaVersion, wellFormed) {
   let malformed = 0;
   for (const name of names.filter((file) => file.endsWith(".json")).sort()) {
     try {
-      const parsed = await readRecord(root, import_node_path10.default.join(directory, name));
+      const parsed = await readRecord(root, import_node_path12.default.join(directory, name));
       if (parsed === void 0 || parsed.schemaVersion !== schemaVersion || !wellFormed(parsed))
         malformed += 1;
       else valid.push(parsed);
@@ -5322,7 +6684,7 @@ async function readCollection(root, directory, schemaVersion, wellFormed) {
   return { valid, malformed };
 }
 async function loadTask(root, task) {
-  const directory = import_node_path10.default.join(root, task);
+  const directory = import_node_path12.default.join(root, task);
   if (!await containedInRoot(root, directory))
     return {
       outcome: null,
@@ -5338,7 +6700,7 @@ async function loadTask(root, task) {
   let outcomeAbsent = false;
   let outcomeMalformed = false;
   try {
-    const parsed = await readRecord(root, import_node_path10.default.join(directory, "outcome.json"));
+    const parsed = await readRecord(root, import_node_path12.default.join(directory, "outcome.json"));
     if (parsed === void 0) outcomeAbsent = true;
     else if (parsed.schemaVersion !== OUTCOME_SCHEMA || !outcomeFieldsWellFormed(parsed))
       outcomeMalformed = true;
@@ -5348,13 +6710,13 @@ async function loadTask(root, task) {
   }
   const attempts = await readCollection(
     root,
-    import_node_path10.default.join(directory, "attempts"),
+    import_node_path12.default.join(directory, "attempts"),
     ATTEMPT_SCHEMA,
     attemptFieldsWellFormed
   );
   const plans = await readCollection(
     root,
-    import_node_path10.default.join(directory, "routing"),
+    import_node_path12.default.join(directory, "routing"),
     ROUTING_PLAN_SCHEMA,
     planFieldsWellFormed
   );
@@ -5623,7 +6985,7 @@ function renderSplit(split, state) {
 }
 async function resolveEvidenceRoot(root) {
   try {
-    return await (0, import_promises9.realpath)(root);
+    return await (0, import_promises11.realpath)(root);
   } catch (error) {
     if (error.code === "ENOENT") return root;
     throw error;
@@ -5850,500 +7212,6 @@ async function buildReplayReport(root, manifest, profiles, options2, now = /* @_
   };
 }
 
-// src/test-integrity.ts
-var import_promises10 = require("node:fs/promises");
-var import_node_path11 = __toESM(require("node:path"), 1);
-var DETECTOR_VERSION = "0.1.0";
-var EVALUATED_SIGNALS = [
-  "TI-05",
-  "TI-06",
-  "TI-07",
-  "TI-08",
-  "TI-09"
-];
-var TEST_PATH_GLOBS = [
-  "test/**",
-  "tests/**",
-  "spec/**",
-  "**/__tests__/**",
-  "**/*.test.*",
-  "**/*.spec.*",
-  "**/*_test.go",
-  "**/*_test.py",
-  "**/test_*.py"
-];
-var SNAPSHOT_GLOBS = [
-  "**/__snapshots__/**",
-  "**/*.snap"
-];
-var CONFIG_GLOBS = [
-  "**/tsconfig.json",
-  "**/tsconfig.*.json",
-  "**/.eslintrc",
-  "**/.eslintrc.*",
-  "**/eslint.config.*",
-  "**/.prettierrc",
-  "**/.prettierrc.*",
-  "**/prettier.config.*",
-  "**/vitest.config.*",
-  "**/jest.config.*",
-  "**/.mocharc",
-  "**/.mocharc.*",
-  "**/babel.config.*",
-  "**/.babelrc",
-  "**/.babelrc.*",
-  "**/Makefile",
-  ".github/workflows/**"
-];
-var MARKER_TOKENS = [
-  ".skip(",
-  ".only(",
-  ".todo(",
-  "it.todo",
-  "describe.todo",
-  "xit(",
-  "xdescribe(",
-  "fit(",
-  "fdescribe(",
-  "@pytest.mark.skip",
-  "@unittest.skip",
-  "#[ignore]",
-  "t.Skip(",
-  "t.SkipNow("
-];
-var ASSERTION_TOKEN_RE = /expect\(|\bassert|\.should\b|\bshould\(|toBe\b|toEqual\b|toStrictEqual\b|toMatch\b|toContain\b|toThrow\b|toHaveBeen|\bok\(|\bnotOk\(|\brequire\.[A-Za-z]/gu;
-function isTestPath(file) {
-  return matches(file, [...TEST_PATH_GLOBS]);
-}
-function isSnapshotPath(file) {
-  return matches(file, [...SNAPSHOT_GLOBS]);
-}
-function isConfigPath(file) {
-  return matches(file, [...CONFIG_GLOBS]);
-}
-var ESC2 = String.fromCharCode(27);
-var ANSI_RE2 = new RegExp(`${ESC2}\\[[0-9;]*[a-zA-Z]`, "g");
-var UUID_RE2 = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-var ISO_TIMESTAMP_RE2 = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
-var DURATION_RE2 = /\b\d+(?:\.\d+)?(?:ms|s|m)\b/g;
-var HEX_RUN_RE2 = /\b[0-9a-fA-F]{8,}\b/g;
-function normalizeMatchedLine(line) {
-  return line.replace(ANSI_RE2, "").replace(UUID_RE2, "<uuid>").replace(ISO_TIMESTAMP_RE2, "<ts>").replace(DURATION_RE2, "<dur>").replace(HEX_RUN_RE2, "<hex>").replace(/\s+/gu, " ").trim();
-}
-function matchDigest(lines) {
-  const normalized = lines.map(normalizeMatchedLine).filter((line) => line.length > 0).sort();
-  return hash(normalized);
-}
-var MAX_PATHS = 25;
-function boundedPaths(paths) {
-  return [...new Set(paths)].sort().slice(0, MAX_PATHS);
-}
-function countMatches(line, tokens) {
-  let count = 0;
-  for (const token of tokens) {
-    let index = line.indexOf(token);
-    while (index !== -1) {
-      count += 1;
-      index = line.indexOf(token, index + token.length);
-    }
-  }
-  return count;
-}
-function countAssertions(line) {
-  const matched = line.match(ASSERTION_TOKEN_RE);
-  return matched === null ? 0 : matched.length;
-}
-function detectTi05(changes) {
-  let added = 0;
-  let removed = 0;
-  const paths = [];
-  const matched = [];
-  for (const change of changes) {
-    if (!isTestPath(change.path)) continue;
-    let fileAdded = 0;
-    for (const line of change.addedLines) {
-      const n = countMatches(line, MARKER_TOKENS);
-      if (n > 0) matched.push(line);
-      fileAdded += n;
-    }
-    for (const line of change.removedLines) {
-      const n = countMatches(line, MARKER_TOKENS);
-      if (n > 0) matched.push(line);
-      removed += n;
-    }
-    added += fileAdded;
-    if (fileAdded > 0) paths.push(change.path);
-  }
-  if (added === 0) return null;
-  return {
-    signalId: "TI-05",
-    threatClass: "skip-only-todo",
-    detector: "diff-token-scan",
-    value: {
-      addedMarkers: added,
-      removedMarkers: removed,
-      matchedPaths: paths.length
-    },
-    paths,
-    matchedLines: matched
-  };
-}
-function detectTi06(changes) {
-  const paths = [];
-  for (const change of changes) {
-    if (change.changeType !== "deleted") continue;
-    if (!isTestPath(change.path)) continue;
-    paths.push(change.path);
-  }
-  if (paths.length === 0) return null;
-  return {
-    signalId: "TI-06",
-    threatClass: "test-case-removal",
-    detector: "diff-name-status",
-    value: { deletedTestFiles: paths.length, matchedPaths: paths.length },
-    paths,
-    matchedLines: paths
-  };
-}
-function detectTi07(changes) {
-  let added = 0;
-  let removed = 0;
-  const paths = [];
-  const matched = [];
-  for (const change of changes) {
-    if (!isTestPath(change.path)) continue;
-    let touched = false;
-    for (const line of change.addedLines) {
-      const n = countAssertions(line);
-      if (n > 0) {
-        added += n;
-        matched.push(line);
-        touched = true;
-      }
-    }
-    for (const line of change.removedLines) {
-      const n = countAssertions(line);
-      if (n > 0) {
-        removed += n;
-        matched.push(line);
-        touched = true;
-      }
-    }
-    if (touched) paths.push(change.path);
-  }
-  const netRemoved = removed - added;
-  if (netRemoved <= 0) return null;
-  return {
-    signalId: "TI-07",
-    threatClass: "assertion-deletion",
-    detector: "diff-token-scan",
-    value: {
-      addedAssertions: added,
-      removedAssertions: removed,
-      netRemoved,
-      matchedPaths: paths.length
-    },
-    paths,
-    matchedLines: matched
-  };
-}
-function detectTi08(changes) {
-  const snapshotPaths = [];
-  let implementationFiles = 0;
-  for (const change of changes) {
-    if (isSnapshotPath(change.path)) {
-      snapshotPaths.push(change.path);
-      continue;
-    }
-    if (isTestPath(change.path) || isConfigPath(change.path)) continue;
-    implementationFiles += 1;
-  }
-  if (snapshotPaths.length === 0 || implementationFiles === 0) return null;
-  return {
-    signalId: "TI-08",
-    threatClass: "snapshot-churn",
-    detector: "diff-path-scan",
-    value: {
-      snapshotFiles: snapshotPaths.length,
-      implementationFiles,
-      matchedPaths: snapshotPaths.length
-    },
-    paths: snapshotPaths,
-    matchedLines: snapshotPaths
-  };
-}
-function scriptsDiffer(base, head) {
-  if (base === null || head === null) return base !== head;
-  return hash(base) !== hash(head);
-}
-function detectTi09(inputs) {
-  const configPaths = [];
-  let packageChanged = false;
-  for (const change of inputs.changes) {
-    if (change.path === "package.json" || change.path.endsWith("/package.json"))
-      packageChanged = true;
-    if (isConfigPath(change.path)) configPaths.push(change.path);
-  }
-  const scriptsChanged = packageChanged && scriptsDiffer(inputs.baseScripts, inputs.headScripts);
-  if (configPaths.length === 0 && !scriptsChanged) return null;
-  const paths = [...configPaths];
-  if (scriptsChanged) paths.push("package.json");
-  return {
-    signalId: "TI-09",
-    threatClass: "configured-check-weakening",
-    detector: "config-diff-scan",
-    value: {
-      changedConfigFiles: configPaths.length,
-      packageScriptsChanged: scriptsChanged ? 1 : 0,
-      matchedPaths: paths.length
-    },
-    paths,
-    matchedLines: paths
-  };
-}
-function detectSignals(inputs) {
-  const results = [
-    detectTi05(inputs.changes),
-    detectTi06(inputs.changes),
-    detectTi07(inputs.changes),
-    detectTi08(inputs.changes),
-    detectTi09(inputs)
-  ].filter((result) => result !== null);
-  return results.map((result) => ({
-    signalId: result.signalId,
-    threatClass: result.threatClass,
-    label: "advisory-interpretation",
-    computation: "deterministic",
-    detector: { name: result.detector, version: DETECTOR_VERSION },
-    value: result.value,
-    paths: boundedPaths(result.paths),
-    matchDigest: matchDigest(result.matchedLines),
-    note: null
-  }));
-}
-var MAX_SIGNALS = 32;
-function buildTestIntegrityEvent(meta, signals, now = /* @__PURE__ */ new Date()) {
-  if (!/^[0-9a-f]{40}$/u.test(meta.baseSha))
-    throw new RigorError(
-      "baseSha must be a 40-hex commit sha",
-      EXIT.inputError
-    );
-  if (meta.headSha !== null && !/^[0-9a-f]{40}$/u.test(meta.headSha))
-    throw new RigorError(
-      "headSha must be a 40-hex commit sha",
-      EXIT.inputError
-    );
-  if (meta.headSha === null && meta.worktreeDigest === null)
-    throw new RigorError(
-      "worktreeDigest is required when headSha is null",
-      EXIT.inputError
-    );
-  const truncated = signals.length > MAX_SIGNALS;
-  return {
-    schemaVersion: TEST_INTEGRITY_EVENT_SCHEMA,
-    artifactId: artifactId("test-integrity-event"),
-    taskId: meta.taskId,
-    createdAt: now.toISOString(),
-    mode: "shadow",
-    enforcement: "none",
-    attemptArtifactId: meta.attemptArtifactId,
-    verificationArtifactId: meta.verificationArtifactId,
-    diff: {
-      baseSha: meta.baseSha,
-      headSha: meta.headSha,
-      worktreeDigest: meta.headSha === null ? meta.worktreeDigest : null
-    },
-    signalsEvaluated: [...EVALUATED_SIGNALS],
-    signals: signals.slice(0, MAX_SIGNALS),
-    signalsTruncated: truncated,
-    note: meta.note
-  };
-}
-function parseScripts(text) {
-  if (text === null) return null;
-  try {
-    const parsed = JSON.parse(text);
-    if (parsed === null || typeof parsed !== "object") return null;
-    const scripts = parsed.scripts;
-    if (scripts === null || typeof scripts !== "object") return null;
-    const result = {};
-    for (const [key, value] of Object.entries(
-      scripts
-    ))
-      if (typeof value === "string") result[key] = value;
-    return result;
-  } catch {
-    return null;
-  }
-}
-var IGNORED_EVIDENCE = [".rigor/evidence/", ".rigor/events.jsonl"];
-async function scanTestIntegrity(root, options2, now = /* @__PURE__ */ new Date()) {
-  const baseSha = await resolveCommit(root, options2.base);
-  const headSha = options2.head === null ? null : await resolveCommit(root, options2.head);
-  const changes = await diffChanges(root, baseSha, headSha);
-  const baseScripts = parseScripts(
-    await showFile(root, baseSha, "package.json")
-  );
-  let headScripts;
-  if (headSha === null) {
-    let text = null;
-    try {
-      text = await (0, import_promises10.readFile)(import_node_path11.default.join(root, "package.json"), "utf8");
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-    headScripts = parseScripts(text);
-  } else {
-    headScripts = parseScripts(await showFile(root, headSha, "package.json"));
-  }
-  const signals = detectSignals({ changes, baseScripts, headScripts });
-  const worktreeDigest = headSha === null ? await treeHash(root, IGNORED_EVIDENCE) : null;
-  return buildTestIntegrityEvent(
-    {
-      taskId: options2.task,
-      baseSha,
-      headSha,
-      worktreeDigest,
-      attemptArtifactId: options2.attemptArtifactId,
-      verificationArtifactId: options2.verificationArtifactId,
-      note: options2.note
-    },
-    signals,
-    now
-  );
-}
-var VERDICTS = [
-  "true-positive",
-  "false-positive",
-  "uncertain"
-];
-var SIGNAL_IDS = EVALUATED_SIGNALS;
-function parseTestIntegrityEvent(value) {
-  const item = record(value, "test-integrity event");
-  if (item.schemaVersion !== TEST_INTEGRITY_EVENT_SCHEMA)
-    throw new RigorError(
-      "Unsupported test-integrity event schema",
-      EXIT.inputError
-    );
-  taskId(item.taskId);
-  textField(item.artifactId, "event.artifactId", 128);
-  if (!Array.isArray(item.signals))
-    throw new RigorError("event.signals must be an array", EXIT.inputError);
-  if (!Array.isArray(item.signalsEvaluated))
-    throw new RigorError(
-      "event.signalsEvaluated must be an array",
-      EXIT.inputError
-    );
-  return item;
-}
-function parseVerdictEntry(value, index) {
-  const item = record(value, `verdicts[${index}]`);
-  const signalId = textField(item.signalId, `verdicts[${index}].signalId`, 32);
-  if (!SIGNAL_IDS.includes(signalId))
-    throw new RigorError(
-      `verdicts[${index}].signalId is not a known signal`,
-      EXIT.inputError
-    );
-  if (typeof item.verdict !== "string" || !VERDICTS.includes(item.verdict))
-    throw new RigorError(
-      `verdicts[${index}].verdict is invalid`,
-      EXIT.inputError
-    );
-  const entry = {
-    signalId,
-    verdict: item.verdict
-  };
-  if (item.note !== void 0)
-    entry.note = textField(item.note, `verdicts[${index}].note`, 200);
-  return entry;
-}
-function parseClassificationInput(value) {
-  const item = record(value, "classification input");
-  if (item.schemaVersion !== TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA)
-    throw new RigorError(
-      "Unsupported classification input schema",
-      EXIT.inputError
-    );
-  if (item.classifiedBy !== "human")
-    throw new RigorError("classifiedBy must be human", EXIT.inputError);
-  if (!Array.isArray(item.verdicts) || item.verdicts.length === 0)
-    throw new RigorError("verdicts must be a non-empty array", EXIT.inputError);
-  if (item.verdicts.length > MAX_SIGNALS)
-    throw new RigorError("too many verdicts", EXIT.inputError);
-  return {
-    schemaVersion: TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA,
-    taskId: taskId(item.taskId),
-    eventArtifactId: textField(item.eventArtifactId, "eventArtifactId", 128),
-    verdicts: item.verdicts.map(parseVerdictEntry),
-    classifiedBy: "human"
-  };
-}
-function createClassification(input, event, now = /* @__PURE__ */ new Date()) {
-  if (input.taskId !== event.taskId)
-    throw new RigorError(
-      "Classification taskId does not match the event",
-      EXIT.policyViolation
-    );
-  if (input.eventArtifactId !== event.artifactId)
-    throw new RigorError(
-      "Classification eventArtifactId does not match the event",
-      EXIT.policyViolation
-    );
-  const firedSignals = new Set(event.signals.map((signal) => signal.signalId));
-  for (const verdict of input.verdicts)
-    if (!firedSignals.has(verdict.signalId))
-      throw new RigorError(
-        `verdict names a signal not present in the event: ${verdict.signalId}`,
-        EXIT.policyViolation
-      );
-  return {
-    schemaVersion: TEST_INTEGRITY_CLASSIFICATION_SCHEMA,
-    artifactId: artifactId("test-integrity-classification"),
-    taskId: event.taskId,
-    createdAt: now.toISOString(),
-    eventArtifactId: event.artifactId,
-    classifiedBy: "human",
-    verdicts: input.verdicts.map((verdict) => ({
-      signalId: verdict.signalId,
-      verdict: verdict.verdict,
-      note: verdict.note ?? null
-    }))
-  };
-}
-async function hasUnfinishedAttempt(root, task) {
-  const directory = import_node_path11.default.join(root, ".rigor", "evidence", task, "attempts");
-  let names;
-  try {
-    names = await (0, import_promises10.readdir)(directory);
-  } catch (error) {
-    if (error.code === "ENOENT") return false;
-    throw error;
-  }
-  const sessions = /* @__PURE__ */ new Set();
-  const finished = /* @__PURE__ */ new Set();
-  for (const name of names.filter((entry) => entry.endsWith(".json"))) {
-    let item;
-    try {
-      item = record(
-        JSON.parse(
-          await (0, import_promises10.readFile)(import_node_path11.default.join(directory, name), "utf8")
-        ),
-        "attempt artifact"
-      );
-    } catch {
-      throw new RigorError(
-        `Invalid attempt artifact: ${name}`,
-        EXIT.inputError
-      );
-    }
-    if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
-      sessions.add(textField(item.artifactId, "artifactId", 128));
-    if (item.schemaVersion === ATTEMPT_SCHEMA)
-      finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
-  }
-  return [...sessions].some((id) => !finished.has(id));
-}
-
 // src/review-selection.ts
 var risks2 = ["low", "medium", "high", "critical"];
 var confidences = ["low", "medium", "high"];
@@ -6365,7 +7233,7 @@ function bool4(value, name) {
     throw new RigorError(`${name} must be boolean`, EXIT.inputError);
   return value;
 }
-function integer5(value, name, minimum) {
+function integer6(value, name, minimum) {
   if (!Number.isInteger(value) || value < minimum || value > 20)
     throw new RigorError(`${name} is out of range`, EXIT.inputError);
   return value;
@@ -6420,7 +7288,7 @@ function parseConsultationDecisionInput(value) {
       "assessmentConfidence"
     ),
     failureProgress: oneOf8(item.failureProgress, progress, "failureProgress"),
-    fingerprintRepetitions: integer5(
+    fingerprintRepetitions: integer6(
       item.fingerprintRepetitions,
       "fingerprintRepetitions",
       0
@@ -6441,7 +7309,7 @@ function parseConsultationDecisionInput(value) {
       "pluginAvailability"
     ),
     policy: {
-      unchangedFailureThreshold: integer5(
+      unchangedFailureThreshold: integer6(
         policy.unchangedFailureThreshold,
         "policy.unchangedFailureThreshold",
         2
@@ -6567,13 +7435,13 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|eval-report|eval-replay|calibration-proposal|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|eval-report|eval-replay|calibration-proposal|test-integrity-scan|test-integrity-classify|test-integrity-promote|test-integrity-replay|test-integrity-waive|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
   const root = await findGitRoot(cwd);
   if (command === "setup" || command === "upgrade") {
-    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path12.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
+    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path13.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
     output(await setup(root, bundle));
     return EXIT.success;
   }
@@ -6876,12 +7744,12 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     const manifest = parseEvaluationManifest(
       await readJson(option(args, "--manifest"))
     );
-    const evidenceRoot = import_node_path12.default.resolve(cwd, option(args, "--evidence-root"));
+    const evidenceRoot = import_node_path13.default.resolve(cwd, option(args, "--evidence-root"));
     const report = await buildEvaluationReport(evidenceRoot, manifest);
     const outPath = option(args, "--out", false);
     if (outPath !== void 0)
-      await (0, import_promises11.writeFile)(
-        import_node_path12.default.resolve(cwd, outPath),
+      await (0, import_promises12.writeFile)(
+        import_node_path13.default.resolve(cwd, outPath),
         `${JSON.stringify(report, null, 2)}
 `
       );
@@ -6892,7 +7760,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     const manifest = parseEvaluationManifest(
       await readJson(option(args, "--manifest"))
     );
-    const evidenceRoot = import_node_path12.default.resolve(cwd, option(args, "--evidence-root"));
+    const evidenceRoot = import_node_path13.default.resolve(cwd, option(args, "--evidence-root"));
     const profiles = parseModelProfiles(
       await readJson(option(args, "--profiles"))
     );
@@ -7000,6 +7868,60 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output({ ...classification, saved });
     return EXIT.success;
   }
+  if (command === "test-integrity-promote") {
+    const input = parsePromotionInput(await readJson(option(args, "--input")));
+    if (input.policyHash !== hash(policy))
+      throw new RigorError(
+        "Promotion policyHash does not match the current policy",
+        EXIT.policyViolation
+      );
+    const evidenceRoot = import_node_path13.default.resolve(
+      root,
+      option(args, "--evidence-root", false) ?? "."
+    );
+    const proposal = await createPromotionProposal(input, evidenceRoot);
+    const saved = await saveCollectionArtifact(
+      root,
+      proposal.taskId,
+      "test-integrity",
+      "test-integrity-promotion",
+      proposal
+    );
+    output({ ...proposal, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-replay") {
+    const proposal = parsePromotion(
+      await readJson(option(args, "--proposal"))
+    );
+    const evidenceRoot = import_node_path13.default.resolve(
+      root,
+      option(args, "--evidence-root", false) ?? ".rigor/evidence"
+    );
+    const replay = await buildPromotionReplay(proposal, evidenceRoot);
+    const saved = await saveCollectionArtifact(
+      root,
+      proposal.taskId,
+      "test-integrity",
+      "test-integrity-replay",
+      replay
+    );
+    output({ ...replay, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-waive") {
+    const input = parseWaiverInput(await readJson(option(args, "--input")));
+    const waiver = createWaiver(input);
+    const saved = await saveCollectionArtifact(
+      root,
+      waiver.taskId,
+      "test-integrity",
+      "test-integrity-waiver",
+      waiver
+    );
+    output({ ...waiver, saved });
+    return EXIT.success;
+  }
   if (command === "ci") {
     const result = await ciVerify(
       root,
@@ -7011,7 +7933,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   }
   throw new RigorError(`Unknown command: ${command}`, EXIT.inputError);
 }
-var entryName = import_node_process.default.argv[1] ? import_node_path12.default.basename(import_node_process.default.argv[1]) : "";
+var entryName = import_node_process.default.argv[1] ? import_node_path13.default.basename(import_node_process.default.argv[1]) : "";
 var isEntry = entryName === "rigor.cjs" || entryName === "rigor-ci.cjs" || entryName === "cli.ts";
 if (isEntry) {
   main().then((code) => {

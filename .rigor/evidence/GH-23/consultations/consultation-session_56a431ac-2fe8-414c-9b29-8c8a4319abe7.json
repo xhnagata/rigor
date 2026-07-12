@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "rigor.consultation-session.v1",
+  "artifactId": "consultation-session_56a431ac-2fe8-414c-9b29-8c8a4319abe7",
+  "taskId": "GH-23",
+  "createdAt": "2026-07-12T20:50:47.255Z",
+  "preflightArtifactId": "preflight_0aea2d43-d45c-41ab-97d4-b8fe02048202",
+  "preflightHash": "ab5ecf0d487d90fabaf2737087579acf10f09b01389d80997773df32c72707d4",
+  "provider": "codex-plugin-cc",
+  "mode": "adversarial-review",
+  "requestedDecision": "Adversarially review the planned approach for rigor issue #23 before implementation: ship the versioned test-integrity promotion framework (promotion criteria with explicit numerator/denominator evidence requirements, stop/review/advisory enforcement levels, policy/schema version binding, human waiver evidence, replay/shadow comparison gate) with an EMPTY default promoted set, because the recorded shadow dataset (4 events, TI-05..TI-09 evaluated=4, fired=0, humanClassified=0, outcomes=0) empirically qualifies zero signals. Identify: (1) whether this vacuous-satisfaction reading of the acceptance criteria is defensible or an improper end-run around the issue's human-approval prerequisite; (2) design flaws in the anti-bypass requirement (enforcement must not be disabled by editing promotion/signal config or deleting checks in the same unapproved change); (3) schema/evidence-integrity risks (pooling across detector-version strata, unattested human declarations, waiver misuse); (4) anything in the contract acceptance criteria that is untestable or self-contradictory. Separate facts, options, a recommendation, uncertainty, and decisions that must remain human.",
+  "transmissionDecision": "allowed",
+  "beforeHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "beforeTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "changedPathsBefore": []
+}

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_0aea2d43-d45c-41ab-97d4-b8fe02048202",
+  "taskId": "GH-23",
+  "createdAt": "2026-07-12T20:48:01.839Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "9384de71cdde9760bbbfda892be75449fce95dea623eb26cfd78b185d0857dff",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-23",
+    "head": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/**",
+    "schemas/**",
+    "src/**",
+    "test/**"
+  ],
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "protectedPaths": [
+    ".rigor/rigor-ci.cjs"
+  ],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ],
+  "reasons": [
+    {
+      "ruleId": "governance",
+      "path": ".rigor/rigor-ci.cjs",
+      "reason": "Governance and enforcement changes can weaken controls."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/**",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/**",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/**",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}
