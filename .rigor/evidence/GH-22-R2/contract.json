@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_e17f597c-78f6-4120-a12b-c8475d013ab5",
+  "taskId": "GH-22-R2",
+  "createdAt": "2026-07-12T06:14:02.982Z",
+  "preflightArtifactId": "preflight_50f62871-c73f-4e0c-96ff-a1b9e32671f4",
+  "preflightHash": "44f0511d5c9e7ba032096c2993a395437bee0d07ccd2b8ee03ccda860834855a",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "TI-09 signal entries list only real repository-relative paths: the scripts-change case records package.json, and no event path contains a # fragment; the TI-09 fire test asserts this",
+    "docs/test-integrity.md or docs/orchestration.md states that a dirty-worktree scan diffs tracked files against the base only, so untracked files are invisible to the detectors while worktreeDigest still covers them, and that TI-09 parses the root package.json scripts only",
+    "the classify-guard documentation states that the guard reads unsigned local evidence, can be bypassed by fabricating a finalized attempt artifact, and that classifiedBy therefore remains an unattested declaration satisfying no control",
+    "the what-must-never-be-advertised section remains unweakened",
+    "dist/rigor.cjs is rebuilt from the final source",
+    "the recorded required check git diff --check passes; npm run test:all, npm run bench, and claude plugin validate . --strict are rerun and reported in the pull request"
+  ],
+  "allowedPaths": [
+    "src/cli.ts",
+    "src/types.ts",
+    "src/artifacts.ts",
+    "src/test-integrity.ts",
+    "src/schema.ts",
+    "src/git.ts",
+    "schemas/test-integrity-event.v1.schema.json",
+    "schemas/test-integrity-classification-input.v1.schema.json",
+    "schemas/test-integrity-classification.v1.schema.json",
+    "test/test-integrity.test.ts",
+    "test/schema.test.ts",
+    "test/artifacts.test.ts",
+    "test/outcome.test.ts",
+    "docs/test-integrity.md",
+    "docs/orchestration.md",
+    "docs/architecture.md",
+    "docs/threat-model.md",
+    "docs/mvp-limitations.md",
+    "skills/orchestrate/SKILL.md",
+    "skills/attempt/SKILL.md",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "remediation of independent-review findings 7, 9, and 11 only; no new feature, signal, or enforcement change",
+    "do not modify .rigor/policy.json, .rigor/rigor-ci.cjs, or .github/workflows/**",
+    "do not weaken, skip, or delete existing tests",
+    "allowedPaths intentionally cover the full GH-22 worktree diff so this contract's verification can cover the complete pull-request change set"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

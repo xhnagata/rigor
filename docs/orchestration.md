@@ -224,3 +224,30 @@ rigor outcome \
 The command copies provider, model, capability class, and the linked attempt, verification, and review identifiers rather than trusting the input to repeat them. It fails closed on inconsistent claims: an `accepted` outcome requires a completed attempt and a linked passing verification; a `reverted` or escaped-defect outcome must be `accepted`; a `rejected` outcome cannot be accepted without model code changes; `retryCount` must match `attempt.sequence - 1` when an attempt is linked and is required otherwise. Token counts, provider cost, reasoning effort, and model identity are stored as measured-or-unavailable: when `usage.status` is not `recorded` the numeric fields must be absent and are persisted as `null`. Configured model identity is independent of metering and is always recorded with `attestation: "unverified"`; provider cost is a reported measurement, not a Rigor-verified charge, and `relativeCost` from routing remains an abstract weight, never a provider invoice or measured money.
 
 `rigor retrospect` keeps its event counts and adds an aggregation read purely from each task's `outcome.json`. It never throws on a malformed outcome file; it counts those under `malformedOutcomes`. `outcomeTotals` reports accepted, rejected, reverted, escaped-defect, and data-completeness counts (usage status, model-identity presence, provider-cost presence, elapsed presence, attempt and verification linkage). `candidates` reports one entry per distinct candidate key (`model`, else `provider/capabilityClass` when attempt-linked, else `unlinked`), each with an explicit success-rate numerator and denominator, retries per outcome, average elapsed time over the outcomes that recorded it, human-intervention minutes, and its own data-completeness counts. Every rate exposes its denominator and every missing-data count is reported, so the metrics never hide unavailable measurements behind a bare total.
+
+## Test-integrity shadow collection
+
+`rigor test-integrity-scan` records advisory test-weakening signals as append-only `rigor.test-integrity-event.v1` evidence. It is shadow-only: a fired signal never alters verification, `progress.status`, review, or merge, and the event fixes `mode: "shadow"` and `enforcement: "none"` so a later schema version cannot silently reinterpret v1 records as enforcement decisions. Run it after verification, linking the attempt and verification so the event can later be joined to outcomes:
+
+```sh
+rigor test-integrity-scan \
+  --task APP-123 \
+  --base <contract-base-sha> \
+  --head <head-sha> \
+  --attempt .rigor/evidence/APP-123/attempts/attempt_ID.json \
+  --verification .rigor/evidence/APP-123/verification.json
+```
+
+The command diffs `base..head` (or `base..worktree` when `--head` is omitted and the tree is dirty, recording `diff.headSha: null` with an opaque `diff.worktreeDigest`; the worktree diff sees tracked files only, so untracked files are invisible to the detectors even though `worktreeDigest` covers them), runs five deterministic detectors — TI-05 skip/only/todo markers, TI-06 test-file deletion without a rename pair, TI-07 net assertion-token decline, TI-08 snapshot churn alongside implementation changes, and TI-09 verification-adjacent config or `package.json` script changes — and writes the event under `.rigor/evidence/<task>/test-integrity/`. A linked `--attempt`/`--verification` whose task ID does not match `--task` exits `2`; when omitted the linkage fields are explicit `null`. Each fired signal stores only bounded counts, at most 25 repository-relative paths, and an opaque `matchDigest`; no raw matched source text is ever persisted. The built-in globs, token lists, rename threshold, and detector version are documented in [test-integrity.md](test-integrity.md). It never reads or affects the verification/attempt/review/CI code paths.
+
+`rigor test-integrity-classify` records a human verdict on an event's fired signals:
+
+```sh
+rigor test-integrity-classify \
+  --event .rigor/evidence/APP-123/test-integrity/test-integrity-event_ID.json \
+  --input /tmp/classification-input.json
+```
+
+The input (`rigor.test-integrity-classification-input.v1`) carries `verdicts` of `true-positive`/`false-positive`/`uncertain` per signal and a constant `classifiedBy: "human"`. Event linkage (task ID, event artifact ID) is copied from the event artifact rather than trusted from the input, and a verdict may only name a signal the event actually fired; either mismatch fails closed with exit `2`. The command refuses (exit `2`) while the event's task has an unfinished attempt session, so a delegated model cannot confirm its own observation mid-attempt. The guard reads unsigned local evidence, so an actor that can write the evidence directory could fabricate a finalized attempt artifact to bypass it — one more reason `classifiedBy` is a recorded declaration, not attested identity, and satisfies no control.
+
+`rigor retrospect` gains a `testIntegrity` section: total events, malformed event and classification counts (never fatal, exactly like `malformedOutcomes`), and per-signal `{ evaluated, fired, unreviewed, humanClassified: { truePositive, falsePositive, uncertain } }`. `evaluated` is the number of scans that considered the signal — the false-positive denominator — and `unreviewed` counts fired signals with no human verdict, so the metrics never overstate precision from the scans that happened to fire. These are inputs to the [#16](https://github.com/xhnagata/rigor/issues/16) outcome-based calibration, not an enforcement gate.

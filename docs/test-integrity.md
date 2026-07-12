@@ -18,18 +18,27 @@ passes without the acceptance criteria being met, and classifies which signals
 of that weakening are deterministic facts, which are tool-derived
 measurements, and which remain advisory interpretations.
 
-Only four of the signals below are implemented today: the configured-check
-protection enforced by policy and CI, and the three `weakeningSignals`
-mechanisms recorded by [#13](https://github.com/xhnagata/rigor/issues/13)
-failure fingerprinting (a check disappearing between attempts, a dropped
-observed test total, and the fail-closed `incomparable` result when resolved
-checks lack parseable test counts — see
-[orchestration.md](orchestration.md)). Every other signal in this catalog is
-proposed and unimplemented. Nothing here adds a detector, a schema file, or an
-enforcement gate; enforcement is explicitly deferred until false-positive
-evidence has been collected in shadow mode
-([#22](https://github.com/xhnagata/rigor/issues/22)) and calibrated against
-outcomes ([#16](https://github.com/xhnagata/rigor/issues/16)).
+Four signals are enforced today: the configured-check protection enforced by
+policy and CI, and the three `weakeningSignals` mechanisms recorded by
+[#13](https://github.com/xhnagata/rigor/issues/13) failure fingerprinting (a
+check disappearing between attempts, a dropped observed test total, and the
+fail-closed `incomparable` result when resolved checks lack parseable test
+counts — see [orchestration.md](orchestration.md)).
+
+Five more — TI-05, TI-06, TI-07, TI-08, and TI-09 — are now implemented as
+**shadow-mode collection** in
+[#22](https://github.com/xhnagata/rigor/issues/22): the `rigor
+test-integrity-scan` command records them as `rigor.test-integrity-event.v1`
+evidence, and `rigor test-integrity-classify` records human verdicts on them.
+Shadow collection is record-only: a fired signal changes no verification,
+progress, review, or merge outcome (`mode` is always `shadow`, `enforcement`
+always `none`). Every other signal in this catalog remains proposed and
+unimplemented. Enforcement is still explicitly deferred for the shadow signals
+too — it will not be proposed until per-signal false-positive evidence has been
+collected in shadow mode and calibrated against outcomes
+([#16](https://github.com/xhnagata/rigor/issues/16)), a decision left to
+[#23](https://github.com/xhnagata/rigor/issues/23). See
+[Implemented shadow collection](#implemented-shadow-collection) below.
 
 ## Classification vocabulary
 
@@ -68,9 +77,11 @@ evidence:
 1. **Rejected** — not collected at all; the reason is recorded below.
 2. **Advisory only** — may be surfaced to a human or model reviewer as
    something to look at; never recorded as a weakening claim, never a gate.
-3. **Shadow candidate (#22)** — recorded as a `rigor.test-integrity-event.v1`
-   event without any effect on verification, progress, review, or merge, so
-   false-positive rates can be measured against outcomes.
+3. **Shadow candidate (#22, implemented)** — recorded as a
+   `rigor.test-integrity-event.v1` event by `rigor test-integrity-scan`
+   without any effect on verification, progress, review, or merge, so
+   false-positive rates can be measured against outcomes. TI-05, TI-06, TI-07,
+   TI-08, and TI-09 are on this rung.
 4. **Conditional shadow** — shadow collection only where the repository
    already runs the required tool as a configured check; never a Rigor
    default.
@@ -211,24 +222,24 @@ is advisory.
 
 ## Signal classification
 
-| Signal                                                                | Label                    | Confidence when fired                                       | Language/framework dependence                                          | False-positive risk                                        | Required context                                                                     | Enforcement level        |
-| --------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------ |
-| TI-01 configured-check definition changed in `.rigor/policy.json`     | deterministic fact       | high — the verification surface itself changed              | none                                                                   | low; any policy edit is intentionally high-friction        | base policy loaded independently by CI                                               | gate (implemented)       |
-| TI-02 check disappeared from verification vs prior attempt (#13)      | deterministic fact       | high — the verification surface shrank                      | none                                                                   | low; check removal between attempts is rare and reviewable | prior finished attempt's `CheckFacts`                                                | gate (implemented)       |
-| TI-03 observed test total dropped vs prior attempt (#13)              | deterministic fact       | high that the total dropped; reason unknown                 | medium — requires a recognized summary format (`node:test`, jest-like) | medium; legitimate deletions (B2, B6) also drop totals     | prior finished attempt's `CheckFacts` with parseable `testStats`                     | gate (implemented)       |
-| TI-04 resolved check without parseable test counts (#13, fail-closed) | deterministic fact       | high that confirmation is absent; not evidence of weakening | medium — depends on runner output format                               | n/a — it withholds `reduced` rather than accusing          | prior and current `CheckFacts`                                                       | gate (implemented)       |
-| TI-05 skip/only/todo markers added in changed test-path files         | advisory interpretation  | medium; trigger is deterministic, meaning is not            | high — per-framework token list                                        | medium (B5 quarantines; tokens in strings/comments)        | configured test-path globs and token list                                            | shadow candidate (#22)   |
-| TI-06 test-path file deleted without a rename pair                    | advisory interpretation  | medium; deletion is a fact, weakening is not                | low — path-glob level                                                  | medium (B2 legitimate deletions)                           | configured test-path globs; fixed rename-detection threshold                         | shadow candidate (#22)   |
-| TI-07 net assertion-token decline across changed test-path files      | advisory interpretation  | low–medium; token counts approximate assertions             | high — per-language/framework token list                               | high (helper extraction, refactors)                        | configured test-path globs and assertion-token list                                  | shadow candidate (#22)   |
-| TI-08 snapshot files regenerated alongside implementation changes     | advisory interpretation  | low; churn is a fact, intent is not                         | medium — snapshot path conventions                                     | high (B4 intentional updates)                              | snapshot path conventions                                                            | shadow candidate (#22)   |
-| TI-09 verification-adjacent config or script changed                  | advisory interpretation  | medium; the change is a fact, weakening is not              | medium — per-ecosystem config file list                                | medium (routine dependency/config maintenance)             | configured list of verification-adjacent files; JSON parse of `package.json` scripts | shadow candidate (#22)   |
-| TI-10 AST-level assertion count decline                               | tool-derived measurement | medium given a correct parser                               | high — one parser per language                                         | medium (assertion helpers, macro-generated tests)          | per-language parser pinned by the repository                                         | advisory only (deferred) |
-| TI-11 coverage percentage decline                                     | tool-derived measurement | medium given a pinned tool and scope                        | high — tool- and configuration-specific                                | medium (moved lines, changed scope, tool nondeterminism)   | repository-configured coverage tool, baseline, and threshold                         | conditional shadow       |
-| TI-12 mutation-score decline                                          | tool-derived measurement | — (rejected)                                                | high                                                                   | high                                                       | mutation tool, pinned configuration, long runtime budget                             | rejected                 |
-| TI-13 tolerance-matcher argument widened                              | advisory interpretation  | low–medium; direction is matcher-specific                   | high — per-matcher direction semantics                                 | medium (justified re-tuning)                               | configured matcher list with per-matcher direction table                             | advisory only            |
-| TI-14 mock/stub token added in changed test-path files                | advisory interpretation  | low; mocking is normal practice                             | high — per-framework mock idioms                                       | high                                                       | configured mock-token list                                                           | advisory only            |
-| TI-15 assertion matcher replaced by a weaker one                      | advisory interpretation  | low–medium; strength ordering is framework-specific         | high — per-framework substitution-pair table                           | medium (legitimate matcher changes)                        | configured matcher-strength pairs                                                    | advisory only            |
-| TI-16 LLM verdict on test quality as an authoritative check           | advisory interpretation  | — (rejected as a check)                                     | n/a                                                                    | unmeasurable a priori                                      | n/a                                                                                  | rejected as a check      |
+| Signal                                                                | Label                    | Confidence when fired                                       | Language/framework dependence                                          | False-positive risk                                        | Required context                                                                     | Enforcement level                   |
+| --------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
+| TI-01 configured-check definition changed in `.rigor/policy.json`     | deterministic fact       | high — the verification surface itself changed              | none                                                                   | low; any policy edit is intentionally high-friction        | base policy loaded independently by CI                                               | gate (implemented)                  |
+| TI-02 check disappeared from verification vs prior attempt (#13)      | deterministic fact       | high — the verification surface shrank                      | none                                                                   | low; check removal between attempts is rare and reviewable | prior finished attempt's `CheckFacts`                                                | gate (implemented)                  |
+| TI-03 observed test total dropped vs prior attempt (#13)              | deterministic fact       | high that the total dropped; reason unknown                 | medium — requires a recognized summary format (`node:test`, jest-like) | medium; legitimate deletions (B2, B6) also drop totals     | prior finished attempt's `CheckFacts` with parseable `testStats`                     | gate (implemented)                  |
+| TI-04 resolved check without parseable test counts (#13, fail-closed) | deterministic fact       | high that confirmation is absent; not evidence of weakening | medium — depends on runner output format                               | n/a — it withholds `reduced` rather than accusing          | prior and current `CheckFacts`                                                       | gate (implemented)                  |
+| TI-05 skip/only/todo markers added in changed test-path files         | advisory interpretation  | medium; trigger is deterministic, meaning is not            | high — per-framework token list                                        | medium (B5 quarantines; tokens in strings/comments)        | configured test-path globs and token list                                            | shadow candidate (implemented, #22) |
+| TI-06 test-path file deleted without a rename pair                    | advisory interpretation  | medium; deletion is a fact, weakening is not                | low — path-glob level                                                  | medium (B2 legitimate deletions)                           | configured test-path globs; fixed rename-detection threshold                         | shadow candidate (implemented, #22) |
+| TI-07 net assertion-token decline across changed test-path files      | advisory interpretation  | low–medium; token counts approximate assertions             | high — per-language/framework token list                               | high (helper extraction, refactors)                        | configured test-path globs and assertion-token list                                  | shadow candidate (implemented, #22) |
+| TI-08 snapshot files regenerated alongside implementation changes     | advisory interpretation  | low; churn is a fact, intent is not                         | medium — snapshot path conventions                                     | high (B4 intentional updates)                              | snapshot path conventions                                                            | shadow candidate (implemented, #22) |
+| TI-09 verification-adjacent config or script changed                  | advisory interpretation  | medium; the change is a fact, weakening is not              | medium — per-ecosystem config file list                                | medium (routine dependency/config maintenance)             | configured list of verification-adjacent files; JSON parse of `package.json` scripts | shadow candidate (implemented, #22) |
+| TI-10 AST-level assertion count decline                               | tool-derived measurement | medium given a correct parser                               | high — one parser per language                                         | medium (assertion helpers, macro-generated tests)          | per-language parser pinned by the repository                                         | advisory only (deferred)            |
+| TI-11 coverage percentage decline                                     | tool-derived measurement | medium given a pinned tool and scope                        | high — tool- and configuration-specific                                | medium (moved lines, changed scope, tool nondeterminism)   | repository-configured coverage tool, baseline, and threshold                         | conditional shadow                  |
+| TI-12 mutation-score decline                                          | tool-derived measurement | — (rejected)                                                | high                                                                   | high                                                       | mutation tool, pinned configuration, long runtime budget                             | rejected                            |
+| TI-13 tolerance-matcher argument widened                              | advisory interpretation  | low–medium; direction is matcher-specific                   | high — per-matcher direction semantics                                 | medium (justified re-tuning)                               | configured matcher list with per-matcher direction table                             | advisory only                       |
+| TI-14 mock/stub token added in changed test-path files                | advisory interpretation  | low; mocking is normal practice                             | high — per-framework mock idioms                                       | high                                                       | configured mock-token list                                                           | advisory only                       |
+| TI-15 assertion matcher replaced by a weaker one                      | advisory interpretation  | low–medium; strength ordering is framework-specific         | high — per-framework substitution-pair table                           | medium (legitimate matcher changes)                        | configured matcher-strength pairs                                                    | advisory only                       |
+| TI-16 LLM verdict on test quality as an authoritative check           | advisory interpretation  | — (rejected as a check)                                     | n/a                                                                    | unmeasurable a priori                                      | n/a                                                                                  | rejected as a check                 |
 
 "Confidence when fired" is a design estimate to be replaced by measured
 precision from shadow-mode collection; it is not a calibrated probability.
@@ -404,6 +415,84 @@ Conditional: **TI-11** coverage decline, only where the repository already
 runs a coverage tool as a configured check. Advisory only, not collected:
 TI-10, TI-13, TI-14, TI-15. Rejected: TI-12 (mutation score as shadow
 signal), TI-16 (LLM verdict as an authoritative check).
+
+## Implemented shadow collection
+
+[#22](https://github.com/xhnagata/rigor/issues/22) implements the five
+high-confidence candidates as deterministic detectors over a unified Git diff
+between a contract-base commit and the head (a committed sha or the dirty
+worktree). Two commands manage the evidence, and neither reads or affects the
+verification, attempt, review, or CI code paths:
+
+- `rigor test-integrity-scan --task <id> --base <40hex> [--head <40hex>]
+[--attempt <path>] [--verification <path>] [--note <string>]` runs the five
+  detectors and writes an append-only `rigor.test-integrity-event.v1` under
+  `.rigor/evidence/<task>/test-integrity/`. With `--head` omitted the base is
+  compared to the dirty worktree, and the event records `diff.headSha: null`
+  with an opaque `diff.worktreeDigest`. A dirty-worktree scan diffs tracked
+  files only: an untracked file is invisible to every detector even though
+  `worktreeDigest` covers it, so committed-head scans are the exact form and
+  worktree scans are a preview. TI-09's scripts comparison parses the root
+  `package.json` only; a nested package manifest counts as a changed file but
+  its scripts are not compared. Linked `--attempt`/`--verification`
+  artifacts must parse and share the task ID or the command exits `2`; when
+  absent the linkage fields are explicit `null`.
+- `rigor test-integrity-classify --event <path> --input <path>` records a
+  human-reported `rigor.test-integrity-classification.v1` beside the event.
+  Event linkage is copied from the event artifact, not trusted from the input;
+  a verdict may only name a signal the event actually fired. `classifiedBy` is
+  fixed to `human` — a **recorded declaration, not attested identity**, and it
+  satisfies no control. The command refuses (exit `2`) while the event's task
+  has an unfinished attempt session, so a delegated model cannot confirm its
+  own observation mid-attempt. This guard reads unsigned local evidence: an
+  actor that can write the evidence directory could fabricate a finalized
+  attempt artifact and bypass it, which is one more reason a classification
+  is a declaration for calibration, never an authorization.
+
+`rigor retrospect` gains a `testIntegrity` section aggregating events, malformed
+event/classification counts, and per-signal `{ evaluated, fired, unreviewed,
+humanClassified: { truePositive, falsePositive, uncertain } }` with explicit
+denominators; `evaluated` is the number of scans that considered the signal
+(the false-positive denominator), and `unreviewed` counts fired signals with no
+human verdict.
+
+Detectors are `diff-token-scan`/`diff-name-status`/`diff-path-scan`/
+`config-diff-scan`, all version `0.1.0`, and every signal entry carries
+`label: "advisory-interpretation"` and `computation: "deterministic"`: the
+counts are the facts, the weakening claim is not. Built-in defaults (no policy
+or config surface):
+
+- **Test-path globs:** `test/**`, `tests/**`, `spec/**`, `**/__tests__/**`,
+  `**/*.test.*`, `**/*.spec.*`, `**/*_test.go`, `**/*_test.py`,
+  `**/test_*.py`.
+- **TI-05 marker tokens:** `.skip(`, `.only(`, `.todo(`, `it.todo`,
+  `describe.todo`, `xit(`, `xdescribe(`, `fit(`, `fdescribe(`,
+  `@pytest.mark.skip`, `@unittest.skip`, `#[ignore]`, `t.Skip(`,
+  `t.SkipNow(` — each shaped so a plain identifier or prose containing the word
+  does not match.
+- **TI-06 rename detection:** Git's fixed 50% similarity threshold (`-M50%`);
+  a deletion is only reported when no rename pair is found at that threshold.
+- **TI-07 assertion tokens:** `expect(`, `assert`, `should`, `toBe`,
+  `toEqual`, `toStrictEqual`, `toMatch`, `toContain`, `toThrow`,
+  `toHaveBeen*`, `ok(`, `notOk(`, and `require.<member>`; the signal fires only
+  on a net decline across all changed test-path files.
+- **TI-08 snapshot conventions:** `**/__snapshots__/**`, `**/*.snap`, fired
+  only alongside a non-test, non-snapshot implementation change.
+- **TI-09 verification-adjacent files:** `tsconfig*.json`, ESLint/Prettier/
+  Vitest/Jest/Mocha/Babel config files, `Makefile`, `.github/workflows/**`,
+  plus a change to the `package.json` `scripts` object detected by parsing the
+  base and head `scripts` (a version-only bump does not fire).
+
+Marker and assertion counting operates only on the added/removed lines of the
+diff in test-path files. Each fired signal stores bounded value counts, at most
+25 repository-relative paths (the true count stays in `value`), and a
+`matchDigest` — a sha256 over the normalized matched lines using the same
+noise-masking style as `src/fingerprint.ts` — so no raw matched content or
+secret ever persists. An event carries at most 32 signals and records
+`signalsTruncated` rather than silently dropping any; a scan that fires nothing
+still writes an event with an empty `signals` array and the full
+`signalsEvaluated` list, which is the denominator for false-positive
+measurement.
 
 ## What must never be advertised
 

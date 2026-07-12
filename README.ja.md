@@ -193,6 +193,8 @@ routing、attempt、consultation recordは現在ローカルのadvisory evidence
 
 検証失敗を解消できない場合は `rigor.escalation-input.v1` の入力を作り、`facts`、`attempts`、`disprovedHypotheses`、`speculation`、`requestedDecision` を分離します。同一の試行は拒否されます。`rigor retrospect` はgitignoredの `.rigor/events.jsonl` の秘匿化件数に加え、各taskの `outcome.json` から候補ごとの成功率（分子と分母を明示）、retry、経過時間、人手介入分、data-completeness件数を集計します。すべての率は分母を、欠損データは件数を報告するため、利用不能な測定値を隠しません。壊れたoutcomeファイルは致命的ではなく、件数として許容します。報告されるcostは測定値であり、ルーティングの`relativeCost`は抽象的なルーティング重みで、provider invoiceでも実測の金額でもありません。
 
+任意で、`rigor test-integrity-scan` はbase/head差分上のtest弱体化の助言的signal（skip/only/todo marker、testファイル削除、assertion token減少、snapshot churn、検証隣接のconfig/script変更）をshadow専用の `rigor.test-integrity-event.v1` 証跡として記録し、`rigor test-integrity-classify` はそれらに対する人手の判定を記録します。shadow収集はverification、progress、review、merge のいずれの結果も変更しません。発火したsignalはreviewのきっかけであって弱体化の証明ではなく、`rigor retrospect` はsignalごとのfired/unreviewed/classified件数を明示的な分母付きで集計します。詳細は[docs/test-integrity.md](docs/test-integrity.md)を参照してください。
+
 CLIの安定したexit codeは、`0`が成功、`2`がpolicy/検証違反、`3`が入力またはrepository stateの不正、`4`が予期しない内部エラーです。エラーにはsubprocessの生出力を含めません。
 
 ## 配置されるもの

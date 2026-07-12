@@ -140,6 +140,142 @@ export async function diffPaths(
   );
 }
 
+/**
+ * Fixed rename-detection similarity threshold used when comparing a base
+ * commit to a head (or dirty worktree) for test-integrity diff scanning. Git's
+ * own `-M` default is 50%; it is pinned here (rather than left implicit) so the
+ * TI-06 "deleted without a rename pair" signal is reproducible and a
+ * high-similarity rename is paired instead of reported as a deletion.
+ */
+export const RENAME_SIMILARITY_THRESHOLD = 50;
+
+export type DiffChangeType =
+  | "added"
+  | "modified"
+  | "deleted"
+  | "renamed"
+  | "copied"
+  | "typechange";
+
+/**
+ * One changed path between a base commit and a head commit (or, when `head` is
+ * null, the current worktree). `addedLines`/`removedLines` are the raw content
+ * lines of the unified diff with zero context; callers must normalize and
+ * digest them and never persist them verbatim.
+ */
+export interface DiffFileChange {
+  changeType: DiffChangeType;
+  /** Repository-relative current path (previous path for a pure deletion). */
+  path: string;
+  /** Previous path for a rename/copy, else null. */
+  oldPath: string | null;
+  /** Rename/copy similarity percentage when reported, else null. */
+  similarity: number | null;
+  addedLines: string[];
+  removedLines: string[];
+}
+
+function stripPathPrefix(raw: string): string | null {
+  if (raw === "/dev/null") return null;
+  const trimmed =
+    raw.startsWith("a/") || raw.startsWith("b/") ? raw.slice(2) : raw;
+  return trimmed;
+}
+
+/**
+ * Parses the output of `git diff -M --unified=0 --no-color` into per-file
+ * change records. Rename/copy detection uses the fixed
+ * RENAME_SIMILARITY_THRESHOLD so a high-similarity rename is reported as
+ * `renamed` (with both paths) rather than a delete/add pair.
+ */
+export function parseUnifiedDiff(text: string): DiffFileChange[] {
+  const files: DiffFileChange[] = [];
+  let current: DiffFileChange | null = null;
+  let oldPath: string | null = null;
+  let newPath: string | null = null;
+  const flush = (): void => {
+    if (current === null) return;
+    const path = newPath ?? oldPath ?? current.path;
+    current.path = path === null ? current.path : path;
+    if (current.changeType === "renamed" || current.changeType === "copied") {
+      current.path = newPath ?? current.path;
+    }
+    files.push(current);
+  };
+  for (const line of text.split(/\r\n|\r|\n/u)) {
+    if (line.startsWith("diff --git ")) {
+      flush();
+      current = {
+        changeType: "modified",
+        path: "",
+        oldPath: null,
+        similarity: null,
+        addedLines: [],
+        removedLines: [],
+      };
+      oldPath = null;
+      newPath = null;
+      continue;
+    }
+    if (current === null) continue;
+    if (line.startsWith("new file mode")) current.changeType = "added";
+    else if (line.startsWith("deleted file mode"))
+      current.changeType = "deleted";
+    else if (line.startsWith("copy from ")) {
+      current.changeType = "copied";
+      current.oldPath = line.slice("copy from ".length);
+    } else if (line.startsWith("copy to "))
+      newPath = line.slice("copy to ".length);
+    else if (line.startsWith("rename from ")) {
+      current.changeType = "renamed";
+      current.oldPath = line.slice("rename from ".length);
+    } else if (line.startsWith("rename to "))
+      newPath = line.slice("rename to ".length);
+    else if (line.startsWith("old mode ") || line.startsWith("new mode ")) {
+      if (current.changeType === "modified") current.changeType = "typechange";
+    } else if (line.startsWith("similarity index ")) {
+      const match = /(\d+)%/u.exec(line);
+      if (match) current.similarity = Number(match[1]);
+    } else if (line.startsWith("--- ")) {
+      const parsed = stripPathPrefix(line.slice(4));
+      if (parsed !== null && current.oldPath === null) current.oldPath = parsed;
+      oldPath = parsed;
+    } else if (line.startsWith("+++ ")) {
+      newPath = stripPathPrefix(line.slice(4)) ?? newPath;
+    } else if (line.startsWith("@@")) {
+      continue;
+    } else if (line.startsWith("+")) {
+      current.addedLines.push(line.slice(1));
+    } else if (line.startsWith("-")) {
+      current.removedLines.push(line.slice(1));
+    }
+  }
+  flush();
+  return files.filter((file) => file.path.length > 0);
+}
+
+export async function diffChanges(
+  root: string,
+  base: string,
+  head: string | null,
+): Promise<DiffFileChange[]> {
+  await verifyCommit(root, base);
+  const args = [
+    "diff",
+    "--no-color",
+    "--unified=0",
+    `-M${RENAME_SIMILARITY_THRESHOLD}%`,
+    "-C",
+    base,
+  ];
+  if (head !== null) {
+    await verifyCommit(root, head);
+    args.push(head);
+  }
+  const buffer = await git(root, args);
+  return parseUnifiedDiff(buffer.toString("utf8"));
+}
+
 export async function verifyCommit(root: string, sha: string): Promise<void> {
   if (!/^[0-9a-fA-F]{7,64}$/u.test(sha))
     throw new RigorError("Invalid commit identifier", EXIT.inputError);
@@ -149,6 +285,26 @@ export async function verifyCommit(root: string, sha: string): Promise<void> {
       "Commit identifier does not resolve to a commit",
       EXIT.inputError,
     );
+}
+
+/** Resolves a commit-ish to its full 40-hex object id, failing closed when it
+ * does not resolve to a commit. */
+export async function resolveCommit(
+  root: string,
+  sha: string,
+): Promise<string> {
+  await verifyCommit(root, sha);
+  const result = await run(
+    "git",
+    ["rev-parse", "--verify", `${sha}^{commit}`],
+    root,
+  );
+  if (result.code !== 0)
+    throw new RigorError(
+      "Commit identifier does not resolve to a commit",
+      EXIT.inputError,
+    );
+  return result.stdout.toString("utf8").trim();
 }
 
 export async function showFile(

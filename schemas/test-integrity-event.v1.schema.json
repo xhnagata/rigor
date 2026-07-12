@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/test-integrity-event.v1.schema.json",
+  "title": "Rigor test-integrity event v1",
+  "description": "Append-only, record-only shadow-mode observation of test-weakening signals. mode is always shadow and enforcement is always none: a fired signal changes no verification, progress, review, or merge outcome. Every signal label is advisory-interpretation; the counts are facts, the weakening claim is not.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "mode",
+    "enforcement",
+    "attemptArtifactId",
+    "verificationArtifactId",
+    "diff",
+    "signalsEvaluated",
+    "signals",
+    "signalsTruncated",
+    "note"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.test-integrity-event.v1" },
+    "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "mode": { "const": "shadow" },
+    "enforcement": { "const": "none" },
+    "attemptArtifactId": { "type": ["string", "null"], "minLength": 1 },
+    "verificationArtifactId": { "type": ["string", "null"], "minLength": 1 },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseSha", "headSha", "worktreeDigest"],
+      "properties": {
+        "baseSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "headSha": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          ]
+        },
+        "worktreeDigest": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        }
+      }
+    },
+    "signalsEvaluated": {
+      "type": "array",
+      "items": { "enum": ["TI-05", "TI-06", "TI-07", "TI-08", "TI-09"] },
+      "maxItems": 5
+    },
+    "signals": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signalId",
+          "threatClass",
+          "label",
+          "computation",
+          "detector",
+          "value",
+          "paths",
+          "matchDigest",
+          "note"
+        ],
+        "properties": {
+          "signalId": {
+            "enum": ["TI-05", "TI-06", "TI-07", "TI-08", "TI-09"]
+          },
+          "threatClass": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "label": { "const": "advisory-interpretation" },
+          "computation": { "const": "deterministic" },
+          "detector": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "version"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "version": { "type": "string", "minLength": 1, "maxLength": 32 }
+            }
+          },
+          "value": {
+            "type": "object",
+            "maxProperties": 16,
+            "additionalProperties": {
+              "type": ["integer", "string"],
+              "maxLength": 64
+            }
+          },
+          "paths": {
+            "type": "array",
+            "maxItems": 25,
+            "items": { "type": "string", "minLength": 1, "maxLength": 300 }
+          },
+          "matchDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "note": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "minLength": 1, "maxLength": 200 }
+            ]
+          }
+        }
+      }
+    },
+    "signalsTruncated": { "type": "boolean" },
+    "note": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1, "maxLength": 200 }
+      ]
+    }
+  }
+}
