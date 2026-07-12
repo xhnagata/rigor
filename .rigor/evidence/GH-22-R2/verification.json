@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_01c84a41-8a98-4f29-b211-a8db76ea462c",
+  "taskId": "GH-22-R2",
+  "contractArtifactId": "contract_e17f597c-78f6-4120-a12b-c8475d013ab5",
+  "createdAt": "2026-07-12T06:16:35.315Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "treeHash": "418333ae55a5e1aa853941f7d51d8adeca54f14cd8fd09ab8f5992ef4d274ff4",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/test-integrity.md",
+    "docs/threat-model.md",
+    "schemas/test-integrity-classification-input.v1.schema.json",
+    "schemas/test-integrity-classification.v1.schema.json",
+    "schemas/test-integrity-event.v1.schema.json",
+    "skills/attempt/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "src/artifacts.ts",
+    "src/cli.ts",
+    "src/git.ts",
+    "src/test-integrity.ts",
+    "src/types.ts",
+    "test/schema.test.ts",
+    "test/test-integrity.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 11,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

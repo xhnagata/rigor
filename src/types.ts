@@ -34,6 +34,12 @@ export const ATTEMPT_RESULT_INPUT_SCHEMA =
 export const OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1" as const;
 export const OUTCOME_SCHEMA = "rigor.outcome.v1" as const;
 export const AVAILABILITY_SCHEMA = "rigor.availability.v1" as const;
+export const TEST_INTEGRITY_EVENT_SCHEMA =
+  "rigor.test-integrity-event.v1" as const;
+export const TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA =
+  "rigor.test-integrity-classification-input.v1" as const;
+export const TEST_INTEGRITY_CLASSIFICATION_SCHEMA =
+  "rigor.test-integrity-classification.v1" as const;
 
 export type {
   CheckFacts,
@@ -485,6 +491,80 @@ export interface ConsultationResultInput {
   model?: string;
   reasoningEffort?: string;
   usageStatus: "recorded" | "unavailable";
+}
+
+export type TestIntegritySignalId =
+  | "TI-05"
+  | "TI-06"
+  | "TI-07"
+  | "TI-08"
+  | "TI-09";
+
+export type TestIntegrityVerdict =
+  | "true-positive"
+  | "false-positive"
+  | "uncertain";
+
+export interface TestIntegritySignal {
+  signalId: TestIntegritySignalId;
+  threatClass: string;
+  label: "advisory-interpretation";
+  computation: "deterministic";
+  detector: { name: string; version: string };
+  /** Bounded numbers and enumerated strings only; never matched source text. */
+  value: Record<string, number>;
+  /** Repository-relative, at most 25 entries; the true count is in `value`. */
+  paths: string[];
+  /** Opaque hash over normalized matched lines; never reversible to content. */
+  matchDigest: string;
+  note: string | null;
+}
+
+export interface TestIntegrityEvent {
+  schemaVersion: typeof TEST_INTEGRITY_EVENT_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  mode: "shadow";
+  enforcement: "none";
+  attemptArtifactId: string | null;
+  verificationArtifactId: string | null;
+  diff: {
+    baseSha: string;
+    headSha: string | null;
+    worktreeDigest: string | null;
+  };
+  signalsEvaluated: TestIntegritySignalId[];
+  signals: TestIntegritySignal[];
+  signalsTruncated: boolean;
+  note: string | null;
+}
+
+export interface TestIntegrityClassificationInput {
+  schemaVersion: typeof TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA;
+  taskId: string;
+  eventArtifactId: string;
+  verdicts: Array<{
+    signalId: TestIntegritySignalId;
+    verdict: TestIntegrityVerdict;
+    note?: string;
+  }>;
+  /** A recorded declaration, not attested identity; satisfies no control. */
+  classifiedBy: "human";
+}
+
+export interface TestIntegrityClassification {
+  schemaVersion: typeof TEST_INTEGRITY_CLASSIFICATION_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  eventArtifactId: string;
+  classifiedBy: "human";
+  verdicts: Array<{
+    signalId: TestIntegritySignalId;
+    verdict: TestIntegrityVerdict;
+    note: string | null;
+  }>;
 }
 
 export interface OutcomeInput {

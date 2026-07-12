@@ -34,7 +34,7 @@ __export(cli_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(cli_exports);
-var import_node_path10 = __toESM(require("node:path"), 1);
+var import_node_path11 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
 
 // src/artifacts.ts
@@ -211,6 +211,94 @@ async function diffPaths(root, base, head) {
     ])
   );
 }
+var RENAME_SIMILARITY_THRESHOLD = 50;
+function stripPathPrefix(raw) {
+  if (raw === "/dev/null") return null;
+  const trimmed = raw.startsWith("a/") || raw.startsWith("b/") ? raw.slice(2) : raw;
+  return trimmed;
+}
+function parseUnifiedDiff(text) {
+  const files = [];
+  let current = null;
+  let oldPath = null;
+  let newPath = null;
+  const flush = () => {
+    if (current === null) return;
+    const path12 = newPath ?? oldPath ?? current.path;
+    current.path = path12 === null ? current.path : path12;
+    if (current.changeType === "renamed" || current.changeType === "copied") {
+      current.path = newPath ?? current.path;
+    }
+    files.push(current);
+  };
+  for (const line of text.split(/\r\n|\r|\n/u)) {
+    if (line.startsWith("diff --git ")) {
+      flush();
+      current = {
+        changeType: "modified",
+        path: "",
+        oldPath: null,
+        similarity: null,
+        addedLines: [],
+        removedLines: []
+      };
+      oldPath = null;
+      newPath = null;
+      continue;
+    }
+    if (current === null) continue;
+    if (line.startsWith("new file mode")) current.changeType = "added";
+    else if (line.startsWith("deleted file mode"))
+      current.changeType = "deleted";
+    else if (line.startsWith("copy from ")) {
+      current.changeType = "copied";
+      current.oldPath = line.slice("copy from ".length);
+    } else if (line.startsWith("copy to "))
+      newPath = line.slice("copy to ".length);
+    else if (line.startsWith("rename from ")) {
+      current.changeType = "renamed";
+      current.oldPath = line.slice("rename from ".length);
+    } else if (line.startsWith("rename to "))
+      newPath = line.slice("rename to ".length);
+    else if (line.startsWith("old mode ") || line.startsWith("new mode ")) {
+      if (current.changeType === "modified") current.changeType = "typechange";
+    } else if (line.startsWith("similarity index ")) {
+      const match = /(\d+)%/u.exec(line);
+      if (match) current.similarity = Number(match[1]);
+    } else if (line.startsWith("--- ")) {
+      const parsed = stripPathPrefix(line.slice(4));
+      if (parsed !== null && current.oldPath === null) current.oldPath = parsed;
+      oldPath = parsed;
+    } else if (line.startsWith("+++ ")) {
+      newPath = stripPathPrefix(line.slice(4)) ?? newPath;
+    } else if (line.startsWith("@@")) {
+      continue;
+    } else if (line.startsWith("+")) {
+      current.addedLines.push(line.slice(1));
+    } else if (line.startsWith("-")) {
+      current.removedLines.push(line.slice(1));
+    }
+  }
+  flush();
+  return files.filter((file) => file.path.length > 0);
+}
+async function diffChanges(root, base, head) {
+  await verifyCommit(root, base);
+  const args = [
+    "diff",
+    "--no-color",
+    "--unified=0",
+    `-M${RENAME_SIMILARITY_THRESHOLD}%`,
+    "-C",
+    base
+  ];
+  if (head !== null) {
+    await verifyCommit(root, head);
+    args.push(head);
+  }
+  const buffer = await git(root, args);
+  return parseUnifiedDiff(buffer.toString("utf8"));
+}
 async function verifyCommit(root, sha) {
   if (!/^[0-9a-fA-F]{7,64}$/u.test(sha))
     throw new RigorError("Invalid commit identifier", EXIT.inputError);
@@ -220,6 +308,20 @@ async function verifyCommit(root, sha) {
       "Commit identifier does not resolve to a commit",
       EXIT.inputError
     );
+}
+async function resolveCommit(root, sha) {
+  await verifyCommit(root, sha);
+  const result = await run(
+    "git",
+    ["rev-parse", "--verify", `${sha}^{commit}`],
+    root
+  );
+  if (result.code !== 0)
+    throw new RigorError(
+      "Commit identifier does not resolve to a commit",
+      EXIT.inputError
+    );
+  return result.stdout.toString("utf8").trim();
 }
 async function showFile(root, sha, file) {
   await verifyCommit(root, sha);
@@ -711,6 +813,9 @@ var ATTEMPT_RESULT_INPUT_SCHEMA = "rigor.attempt-result-input.v1";
 var OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1";
 var OUTCOME_SCHEMA = "rigor.outcome.v1";
 var AVAILABILITY_SCHEMA = "rigor.availability.v1";
+var TEST_INTEGRITY_EVENT_SCHEMA = "rigor.test-integrity-event.v1";
+var TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA = "rigor.test-integrity-classification-input.v1";
+var TEST_INTEGRITY_CLASSIFICATION_SCHEMA = "rigor.test-integrity-classification.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -1109,14 +1214,153 @@ async function retrospect(root) {
     }
   }
   const { outcomeTotals, candidates } = await aggregateOutcomes(root);
+  const testIntegrity = await aggregateTestIntegrity(root);
   return {
     schemaVersion: "rigor.retrospective.v1",
     generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     taskCount: tasks.size,
     eventCounts: counts,
     outcomeTotals,
-    candidates
+    candidates,
+    testIntegrity
   };
+}
+var TEST_INTEGRITY_SIGNAL_IDS = [
+  "TI-05",
+  "TI-06",
+  "TI-07",
+  "TI-08",
+  "TI-09"
+];
+async function aggregateTestIntegrity(root) {
+  const evidence = import_node_path4.default.join(root, ".rigor", "evidence");
+  let malformedEvents = 0;
+  let malformedClassifications = 0;
+  let classificationCount = 0;
+  const events = [];
+  const verdictEntries = [];
+  let taskDirs = [];
+  try {
+    const entries = await (0, import_promises3.readdir)(evidence, { withFileTypes: true });
+    taskDirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  for (const task of taskDirs) {
+    const directory = import_node_path4.default.join(evidence, task, "test-integrity");
+    let names;
+    try {
+      names = await (0, import_promises3.readdir)(directory);
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+    for (const name of names.filter((file) => file.endsWith(".json"))) {
+      const isClassification = name.startsWith("test-integrity-classification");
+      let parsed;
+      try {
+        parsed = record(
+          JSON.parse(
+            await (0, import_promises3.readFile)(import_node_path4.default.join(directory, name), "utf8")
+          ),
+          "test-integrity artifact"
+        );
+      } catch {
+        if (isClassification) malformedClassifications += 1;
+        else malformedEvents += 1;
+        continue;
+      }
+      if (isClassification) {
+        if (!collectClassification(parsed, verdictEntries))
+          malformedClassifications += 1;
+        else classificationCount += 1;
+      } else if (!collectEvent(parsed, events)) {
+        malformedEvents += 1;
+      }
+    }
+  }
+  const verdictMap = /* @__PURE__ */ new Map();
+  for (const entry of [...verdictEntries].sort(
+    (a, b) => a.createdAt === b.createdAt ? a.artifactId.localeCompare(b.artifactId) : a.createdAt.localeCompare(b.createdAt)
+  ))
+    verdictMap.set(entry.key, entry.verdict);
+  const signals = {};
+  for (const id of TEST_INTEGRITY_SIGNAL_IDS) {
+    const acc = {
+      evaluated: 0,
+      fired: 0,
+      unreviewed: 0,
+      truePositive: 0,
+      falsePositive: 0,
+      uncertain: 0
+    };
+    for (const event of events) {
+      if (event.evaluatedSignals.has(id)) acc.evaluated += 1;
+      if (!event.firedSignals.has(id)) continue;
+      acc.fired += 1;
+      const verdict = verdictMap.get(`${event.artifactId}|${id}`);
+      if (verdict === "true-positive") acc.truePositive += 1;
+      else if (verdict === "false-positive") acc.falsePositive += 1;
+      else if (verdict === "uncertain") acc.uncertain += 1;
+      else acc.unreviewed += 1;
+    }
+    signals[id] = {
+      evaluated: acc.evaluated,
+      fired: acc.fired,
+      unreviewed: acc.unreviewed,
+      humanClassified: {
+        truePositive: acc.truePositive,
+        falsePositive: acc.falsePositive,
+        uncertain: acc.uncertain
+      }
+    };
+  }
+  return {
+    events: events.length,
+    classifications: classificationCount,
+    malformedEvents,
+    malformedClassifications,
+    signals
+  };
+}
+function collectEvent(parsed, events) {
+  if (parsed.schemaVersion !== TEST_INTEGRITY_EVENT_SCHEMA) return false;
+  const artifactId2 = parsed.artifactId;
+  if (typeof artifactId2 !== "string") return false;
+  if (!Array.isArray(parsed.signals) || !Array.isArray(parsed.signalsEvaluated))
+    return false;
+  const firedSignals = /* @__PURE__ */ new Set();
+  for (const signal of parsed.signals) {
+    if (signal !== null && typeof signal === "object" && typeof signal.signalId === "string")
+      firedSignals.add(signal.signalId);
+  }
+  const evaluatedSignals = /* @__PURE__ */ new Set();
+  for (const id of parsed.signalsEvaluated)
+    if (typeof id === "string") evaluatedSignals.add(id);
+  events.push({ firedSignals, evaluatedSignals, artifactId: artifactId2 });
+  return true;
+}
+function collectClassification(parsed, verdictEntries) {
+  if (parsed.schemaVersion !== TEST_INTEGRITY_CLASSIFICATION_SCHEMA)
+    return false;
+  const eventArtifactId = parsed.eventArtifactId;
+  const artifactId2 = parsed.artifactId;
+  const createdAt = parsed.createdAt;
+  if (typeof eventArtifactId !== "string" || typeof artifactId2 !== "string" || typeof createdAt !== "string" || !Array.isArray(parsed.verdicts))
+    return false;
+  for (const verdict of parsed.verdicts) {
+    if (verdict === null || typeof verdict !== "object") continue;
+    const signalId = verdict.signalId;
+    const value = verdict.verdict;
+    if (typeof signalId !== "string" || typeof value !== "string") continue;
+    verdictEntries.push({
+      key: `${eventArtifactId}|${signalId}`,
+      verdict: value,
+      createdAt,
+      artifactId: artifactId2
+    });
+  }
+  return true;
 }
 function optionalString(value) {
   return typeof value === "string" ? value : null;
@@ -4042,6 +4286,500 @@ function createOutcome(input, links, now = /* @__PURE__ */ new Date()) {
   return outcome;
 }
 
+// src/test-integrity.ts
+var import_promises9 = require("node:fs/promises");
+var import_node_path10 = __toESM(require("node:path"), 1);
+var DETECTOR_VERSION = "0.1.0";
+var EVALUATED_SIGNALS = [
+  "TI-05",
+  "TI-06",
+  "TI-07",
+  "TI-08",
+  "TI-09"
+];
+var TEST_PATH_GLOBS = [
+  "test/**",
+  "tests/**",
+  "spec/**",
+  "**/__tests__/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/*_test.go",
+  "**/*_test.py",
+  "**/test_*.py"
+];
+var SNAPSHOT_GLOBS = [
+  "**/__snapshots__/**",
+  "**/*.snap"
+];
+var CONFIG_GLOBS = [
+  "**/tsconfig.json",
+  "**/tsconfig.*.json",
+  "**/.eslintrc",
+  "**/.eslintrc.*",
+  "**/eslint.config.*",
+  "**/.prettierrc",
+  "**/.prettierrc.*",
+  "**/prettier.config.*",
+  "**/vitest.config.*",
+  "**/jest.config.*",
+  "**/.mocharc",
+  "**/.mocharc.*",
+  "**/babel.config.*",
+  "**/.babelrc",
+  "**/.babelrc.*",
+  "**/Makefile",
+  ".github/workflows/**"
+];
+var MARKER_TOKENS = [
+  ".skip(",
+  ".only(",
+  ".todo(",
+  "it.todo",
+  "describe.todo",
+  "xit(",
+  "xdescribe(",
+  "fit(",
+  "fdescribe(",
+  "@pytest.mark.skip",
+  "@unittest.skip",
+  "#[ignore]",
+  "t.Skip(",
+  "t.SkipNow("
+];
+var ASSERTION_TOKEN_RE = /expect\(|\bassert|\.should\b|\bshould\(|toBe\b|toEqual\b|toStrictEqual\b|toMatch\b|toContain\b|toThrow\b|toHaveBeen|\bok\(|\bnotOk\(|\brequire\.[A-Za-z]/gu;
+function isTestPath(file) {
+  return matches(file, [...TEST_PATH_GLOBS]);
+}
+function isSnapshotPath(file) {
+  return matches(file, [...SNAPSHOT_GLOBS]);
+}
+function isConfigPath(file) {
+  return matches(file, [...CONFIG_GLOBS]);
+}
+var ESC2 = String.fromCharCode(27);
+var ANSI_RE2 = new RegExp(`${ESC2}\\[[0-9;]*[a-zA-Z]`, "g");
+var UUID_RE2 = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+var ISO_TIMESTAMP_RE2 = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
+var DURATION_RE2 = /\b\d+(?:\.\d+)?(?:ms|s|m)\b/g;
+var HEX_RUN_RE2 = /\b[0-9a-fA-F]{8,}\b/g;
+function normalizeMatchedLine(line) {
+  return line.replace(ANSI_RE2, "").replace(UUID_RE2, "<uuid>").replace(ISO_TIMESTAMP_RE2, "<ts>").replace(DURATION_RE2, "<dur>").replace(HEX_RUN_RE2, "<hex>").replace(/\s+/gu, " ").trim();
+}
+function matchDigest(lines) {
+  const normalized = lines.map(normalizeMatchedLine).filter((line) => line.length > 0).sort();
+  return hash(normalized);
+}
+var MAX_PATHS = 25;
+function boundedPaths(paths) {
+  return [...new Set(paths)].sort().slice(0, MAX_PATHS);
+}
+function countMatches(line, tokens) {
+  let count = 0;
+  for (const token of tokens) {
+    let index = line.indexOf(token);
+    while (index !== -1) {
+      count += 1;
+      index = line.indexOf(token, index + token.length);
+    }
+  }
+  return count;
+}
+function countAssertions(line) {
+  const matched = line.match(ASSERTION_TOKEN_RE);
+  return matched === null ? 0 : matched.length;
+}
+function detectTi05(changes) {
+  let added = 0;
+  let removed = 0;
+  const paths = [];
+  const matched = [];
+  for (const change of changes) {
+    if (!isTestPath(change.path)) continue;
+    let fileAdded = 0;
+    for (const line of change.addedLines) {
+      const n = countMatches(line, MARKER_TOKENS);
+      if (n > 0) matched.push(line);
+      fileAdded += n;
+    }
+    for (const line of change.removedLines) {
+      const n = countMatches(line, MARKER_TOKENS);
+      if (n > 0) matched.push(line);
+      removed += n;
+    }
+    added += fileAdded;
+    if (fileAdded > 0) paths.push(change.path);
+  }
+  if (added === 0) return null;
+  return {
+    signalId: "TI-05",
+    threatClass: "skip-only-todo",
+    detector: "diff-token-scan",
+    value: {
+      addedMarkers: added,
+      removedMarkers: removed,
+      matchedPaths: paths.length
+    },
+    paths,
+    matchedLines: matched
+  };
+}
+function detectTi06(changes) {
+  const paths = [];
+  for (const change of changes) {
+    if (change.changeType !== "deleted") continue;
+    if (!isTestPath(change.path)) continue;
+    paths.push(change.path);
+  }
+  if (paths.length === 0) return null;
+  return {
+    signalId: "TI-06",
+    threatClass: "test-case-removal",
+    detector: "diff-name-status",
+    value: { deletedTestFiles: paths.length, matchedPaths: paths.length },
+    paths,
+    matchedLines: paths
+  };
+}
+function detectTi07(changes) {
+  let added = 0;
+  let removed = 0;
+  const paths = [];
+  const matched = [];
+  for (const change of changes) {
+    if (!isTestPath(change.path)) continue;
+    let touched = false;
+    for (const line of change.addedLines) {
+      const n = countAssertions(line);
+      if (n > 0) {
+        added += n;
+        matched.push(line);
+        touched = true;
+      }
+    }
+    for (const line of change.removedLines) {
+      const n = countAssertions(line);
+      if (n > 0) {
+        removed += n;
+        matched.push(line);
+        touched = true;
+      }
+    }
+    if (touched) paths.push(change.path);
+  }
+  const netRemoved = removed - added;
+  if (netRemoved <= 0) return null;
+  return {
+    signalId: "TI-07",
+    threatClass: "assertion-deletion",
+    detector: "diff-token-scan",
+    value: {
+      addedAssertions: added,
+      removedAssertions: removed,
+      netRemoved,
+      matchedPaths: paths.length
+    },
+    paths,
+    matchedLines: matched
+  };
+}
+function detectTi08(changes) {
+  const snapshotPaths = [];
+  let implementationFiles = 0;
+  for (const change of changes) {
+    if (isSnapshotPath(change.path)) {
+      snapshotPaths.push(change.path);
+      continue;
+    }
+    if (isTestPath(change.path) || isConfigPath(change.path)) continue;
+    implementationFiles += 1;
+  }
+  if (snapshotPaths.length === 0 || implementationFiles === 0) return null;
+  return {
+    signalId: "TI-08",
+    threatClass: "snapshot-churn",
+    detector: "diff-path-scan",
+    value: {
+      snapshotFiles: snapshotPaths.length,
+      implementationFiles,
+      matchedPaths: snapshotPaths.length
+    },
+    paths: snapshotPaths,
+    matchedLines: snapshotPaths
+  };
+}
+function scriptsDiffer(base, head) {
+  if (base === null || head === null) return base !== head;
+  return hash(base) !== hash(head);
+}
+function detectTi09(inputs) {
+  const configPaths = [];
+  let packageChanged = false;
+  for (const change of inputs.changes) {
+    if (change.path === "package.json" || change.path.endsWith("/package.json"))
+      packageChanged = true;
+    if (isConfigPath(change.path)) configPaths.push(change.path);
+  }
+  const scriptsChanged = packageChanged && scriptsDiffer(inputs.baseScripts, inputs.headScripts);
+  if (configPaths.length === 0 && !scriptsChanged) return null;
+  const paths = [...configPaths];
+  if (scriptsChanged) paths.push("package.json");
+  return {
+    signalId: "TI-09",
+    threatClass: "configured-check-weakening",
+    detector: "config-diff-scan",
+    value: {
+      changedConfigFiles: configPaths.length,
+      packageScriptsChanged: scriptsChanged ? 1 : 0,
+      matchedPaths: paths.length
+    },
+    paths,
+    matchedLines: paths
+  };
+}
+function detectSignals(inputs) {
+  const results = [
+    detectTi05(inputs.changes),
+    detectTi06(inputs.changes),
+    detectTi07(inputs.changes),
+    detectTi08(inputs.changes),
+    detectTi09(inputs)
+  ].filter((result) => result !== null);
+  return results.map((result) => ({
+    signalId: result.signalId,
+    threatClass: result.threatClass,
+    label: "advisory-interpretation",
+    computation: "deterministic",
+    detector: { name: result.detector, version: DETECTOR_VERSION },
+    value: result.value,
+    paths: boundedPaths(result.paths),
+    matchDigest: matchDigest(result.matchedLines),
+    note: null
+  }));
+}
+var MAX_SIGNALS = 32;
+function buildTestIntegrityEvent(meta, signals, now = /* @__PURE__ */ new Date()) {
+  if (!/^[0-9a-f]{40}$/u.test(meta.baseSha))
+    throw new RigorError(
+      "baseSha must be a 40-hex commit sha",
+      EXIT.inputError
+    );
+  if (meta.headSha !== null && !/^[0-9a-f]{40}$/u.test(meta.headSha))
+    throw new RigorError(
+      "headSha must be a 40-hex commit sha",
+      EXIT.inputError
+    );
+  if (meta.headSha === null && meta.worktreeDigest === null)
+    throw new RigorError(
+      "worktreeDigest is required when headSha is null",
+      EXIT.inputError
+    );
+  const truncated = signals.length > MAX_SIGNALS;
+  return {
+    schemaVersion: TEST_INTEGRITY_EVENT_SCHEMA,
+    artifactId: artifactId("test-integrity-event"),
+    taskId: meta.taskId,
+    createdAt: now.toISOString(),
+    mode: "shadow",
+    enforcement: "none",
+    attemptArtifactId: meta.attemptArtifactId,
+    verificationArtifactId: meta.verificationArtifactId,
+    diff: {
+      baseSha: meta.baseSha,
+      headSha: meta.headSha,
+      worktreeDigest: meta.headSha === null ? meta.worktreeDigest : null
+    },
+    signalsEvaluated: [...EVALUATED_SIGNALS],
+    signals: signals.slice(0, MAX_SIGNALS),
+    signalsTruncated: truncated,
+    note: meta.note
+  };
+}
+function parseScripts(text) {
+  if (text === null) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed === null || typeof parsed !== "object") return null;
+    const scripts = parsed.scripts;
+    if (scripts === null || typeof scripts !== "object") return null;
+    const result = {};
+    for (const [key, value] of Object.entries(
+      scripts
+    ))
+      if (typeof value === "string") result[key] = value;
+    return result;
+  } catch {
+    return null;
+  }
+}
+var IGNORED_EVIDENCE = [".rigor/evidence/", ".rigor/events.jsonl"];
+async function scanTestIntegrity(root, options, now = /* @__PURE__ */ new Date()) {
+  const baseSha = await resolveCommit(root, options.base);
+  const headSha = options.head === null ? null : await resolveCommit(root, options.head);
+  const changes = await diffChanges(root, baseSha, headSha);
+  const baseScripts = parseScripts(
+    await showFile(root, baseSha, "package.json")
+  );
+  let headScripts;
+  if (headSha === null) {
+    let text = null;
+    try {
+      text = await (0, import_promises9.readFile)(import_node_path10.default.join(root, "package.json"), "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    headScripts = parseScripts(text);
+  } else {
+    headScripts = parseScripts(await showFile(root, headSha, "package.json"));
+  }
+  const signals = detectSignals({ changes, baseScripts, headScripts });
+  const worktreeDigest = headSha === null ? await treeHash(root, IGNORED_EVIDENCE) : null;
+  return buildTestIntegrityEvent(
+    {
+      taskId: options.task,
+      baseSha,
+      headSha,
+      worktreeDigest,
+      attemptArtifactId: options.attemptArtifactId,
+      verificationArtifactId: options.verificationArtifactId,
+      note: options.note
+    },
+    signals,
+    now
+  );
+}
+var VERDICTS = [
+  "true-positive",
+  "false-positive",
+  "uncertain"
+];
+var SIGNAL_IDS = EVALUATED_SIGNALS;
+function parseTestIntegrityEvent(value) {
+  const item = record(value, "test-integrity event");
+  if (item.schemaVersion !== TEST_INTEGRITY_EVENT_SCHEMA)
+    throw new RigorError(
+      "Unsupported test-integrity event schema",
+      EXIT.inputError
+    );
+  taskId(item.taskId);
+  textField(item.artifactId, "event.artifactId", 128);
+  if (!Array.isArray(item.signals))
+    throw new RigorError("event.signals must be an array", EXIT.inputError);
+  if (!Array.isArray(item.signalsEvaluated))
+    throw new RigorError(
+      "event.signalsEvaluated must be an array",
+      EXIT.inputError
+    );
+  return item;
+}
+function parseVerdictEntry(value, index) {
+  const item = record(value, `verdicts[${index}]`);
+  const signalId = textField(item.signalId, `verdicts[${index}].signalId`, 32);
+  if (!SIGNAL_IDS.includes(signalId))
+    throw new RigorError(
+      `verdicts[${index}].signalId is not a known signal`,
+      EXIT.inputError
+    );
+  if (typeof item.verdict !== "string" || !VERDICTS.includes(item.verdict))
+    throw new RigorError(
+      `verdicts[${index}].verdict is invalid`,
+      EXIT.inputError
+    );
+  const entry = {
+    signalId,
+    verdict: item.verdict
+  };
+  if (item.note !== void 0)
+    entry.note = textField(item.note, `verdicts[${index}].note`, 200);
+  return entry;
+}
+function parseClassificationInput(value) {
+  const item = record(value, "classification input");
+  if (item.schemaVersion !== TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported classification input schema",
+      EXIT.inputError
+    );
+  if (item.classifiedBy !== "human")
+    throw new RigorError("classifiedBy must be human", EXIT.inputError);
+  if (!Array.isArray(item.verdicts) || item.verdicts.length === 0)
+    throw new RigorError("verdicts must be a non-empty array", EXIT.inputError);
+  if (item.verdicts.length > MAX_SIGNALS)
+    throw new RigorError("too many verdicts", EXIT.inputError);
+  return {
+    schemaVersion: TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    eventArtifactId: textField(item.eventArtifactId, "eventArtifactId", 128),
+    verdicts: item.verdicts.map(parseVerdictEntry),
+    classifiedBy: "human"
+  };
+}
+function createClassification(input, event, now = /* @__PURE__ */ new Date()) {
+  if (input.taskId !== event.taskId)
+    throw new RigorError(
+      "Classification taskId does not match the event",
+      EXIT.policyViolation
+    );
+  if (input.eventArtifactId !== event.artifactId)
+    throw new RigorError(
+      "Classification eventArtifactId does not match the event",
+      EXIT.policyViolation
+    );
+  const firedSignals = new Set(event.signals.map((signal) => signal.signalId));
+  for (const verdict of input.verdicts)
+    if (!firedSignals.has(verdict.signalId))
+      throw new RigorError(
+        `verdict names a signal not present in the event: ${verdict.signalId}`,
+        EXIT.policyViolation
+      );
+  return {
+    schemaVersion: TEST_INTEGRITY_CLASSIFICATION_SCHEMA,
+    artifactId: artifactId("test-integrity-classification"),
+    taskId: event.taskId,
+    createdAt: now.toISOString(),
+    eventArtifactId: event.artifactId,
+    classifiedBy: "human",
+    verdicts: input.verdicts.map((verdict) => ({
+      signalId: verdict.signalId,
+      verdict: verdict.verdict,
+      note: verdict.note ?? null
+    }))
+  };
+}
+async function hasUnfinishedAttempt(root, task) {
+  const directory = import_node_path10.default.join(root, ".rigor", "evidence", task, "attempts");
+  let names;
+  try {
+    names = await (0, import_promises9.readdir)(directory);
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+  const sessions = /* @__PURE__ */ new Set();
+  const finished = /* @__PURE__ */ new Set();
+  for (const name of names.filter((entry) => entry.endsWith(".json"))) {
+    let item;
+    try {
+      item = record(
+        JSON.parse(
+          await (0, import_promises9.readFile)(import_node_path10.default.join(directory, name), "utf8")
+        ),
+        "attempt artifact"
+      );
+    } catch {
+      throw new RigorError(
+        `Invalid attempt artifact: ${name}`,
+        EXIT.inputError
+      );
+    }
+    if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
+      sessions.add(textField(item.artifactId, "artifactId", 128));
+    if (item.schemaVersion === ATTEMPT_SCHEMA)
+      finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
+  }
+  return [...sessions].some((id) => !finished.has(id));
+}
+
 // src/cli.ts
 function option(args, name, required = true) {
   const index = args.indexOf(name);
@@ -4074,13 +4812,13 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
   const root = await findGitRoot(cwd);
   if (command === "setup" || command === "upgrade") {
-    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path10.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
+    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path11.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
     output(await setup(root, bundle));
     return EXIT.success;
   }
@@ -4306,6 +5044,75 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output(await retrospect(root));
     return EXIT.success;
   }
+  if (command === "test-integrity-scan") {
+    const task = taskId(option(args, "--task"));
+    const base = option(args, "--base");
+    const head = option(args, "--head", false) ?? null;
+    const attemptPath = option(args, "--attempt", false);
+    const verificationPath = option(args, "--verification", false);
+    const noteArg = option(args, "--note", false);
+    const note = noteArg === void 0 ? null : textField(noteArg, "--note", 200);
+    let attemptArtifactId = null;
+    let verificationArtifactId = null;
+    if (attemptPath !== void 0) {
+      const attempt = parseAttempt(await readJson(attemptPath));
+      if (attempt.taskId !== task)
+        throw new RigorError(
+          "Linked attempt taskId does not match --task",
+          EXIT.policyViolation
+        );
+      attemptArtifactId = attempt.artifactId;
+    }
+    if (verificationPath !== void 0) {
+      const verification = parseVerification(await readJson(verificationPath));
+      if (verification.taskId !== task)
+        throw new RigorError(
+          "Linked verification taskId does not match --task",
+          EXIT.policyViolation
+        );
+      verificationArtifactId = verification.artifactId;
+    }
+    const event = await scanTestIntegrity(root, {
+      task,
+      base,
+      head,
+      attemptArtifactId,
+      verificationArtifactId,
+      note
+    });
+    const saved = await saveCollectionArtifact(
+      root,
+      task,
+      "test-integrity",
+      "test-integrity-event",
+      event
+    );
+    output({ ...event, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-classify") {
+    const event = parseTestIntegrityEvent(
+      await readJson(option(args, "--event"))
+    );
+    const input = parseClassificationInput(
+      await readJson(option(args, "--input"))
+    );
+    if (await hasUnfinishedAttempt(root, event.taskId))
+      throw new RigorError(
+        "Refusing to classify while an attempt is unfinished for this task",
+        EXIT.policyViolation
+      );
+    const classification = createClassification(input, event);
+    const saved = await saveCollectionArtifact(
+      root,
+      event.taskId,
+      "test-integrity",
+      "test-integrity-classification",
+      classification
+    );
+    output({ ...classification, saved });
+    return EXIT.success;
+  }
   if (command === "ci") {
     const result = await ciVerify(
       root,
@@ -4317,7 +5124,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   }
   throw new RigorError(`Unknown command: ${command}`, EXIT.inputError);
 }
-var entryName = import_node_process.default.argv[1] ? import_node_path10.default.basename(import_node_process.default.argv[1]) : "";
+var entryName = import_node_process.default.argv[1] ? import_node_path11.default.basename(import_node_process.default.argv[1]) : "";
 var isEntry = entryName === "rigor.cjs" || entryName === "rigor-ci.cjs" || entryName === "cli.ts";
 if (isEntry) {
   main().then((code) => {

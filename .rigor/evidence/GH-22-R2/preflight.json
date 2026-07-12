@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_50f62871-c73f-4e0c-96ff-a1b9e32671f4",
+  "taskId": "GH-22-R2",
+  "createdAt": "2026-07-12T06:13:32.728Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "2d6c593b11ed7faa6cf595ad6dfda7b73420e60d1c66e365f1abbf1f37e1a1cb",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-22",
+    "head": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-22/attempts/attempt-session_30d6a0d3-7d31-434e-866e-13e59b0516a8.json",
+      ".rigor/evidence/GH-22/attempts/attempt_07887eaf-6b5d-4a41-a09d-c25740d4008c.json",
+      ".rigor/evidence/GH-22/contract.json",
+      ".rigor/evidence/GH-22/preflight.json",
+      ".rigor/evidence/GH-22/review.json",
+      ".rigor/evidence/GH-22/routing/routing-plan_9e452c16-a553-4008-bdd5-dd4b4b10e6a8.json",
+      ".rigor/evidence/GH-22/test-integrity/test-integrity-event_8f919d1b-6a3a-4346-869c-1fa67c480c0f.json",
+      ".rigor/evidence/GH-22/verification.json",
+      "CHANGELOG.md",
+      "README.ja.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/architecture.md",
+      "docs/mvp-limitations.md",
+      "docs/orchestration.md",
+      "docs/test-integrity.md",
+      "docs/threat-model.md",
+      "schemas/test-integrity-classification-input.v1.schema.json",
+      "schemas/test-integrity-classification.v1.schema.json",
+      "schemas/test-integrity-event.v1.schema.json",
+      "skills/attempt/SKILL.md",
+      "skills/orchestrate/SKILL.md",
+      "src/artifacts.ts",
+      "src/cli.ts",
+      "src/git.ts",
+      "src/test-integrity.ts",
+      "src/types.ts",
+      "test/schema.test.ts",
+      "test/test-integrity.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/test-integrity.md",
+    "src/test-integrity.ts",
+    "test/test-integrity.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/test-integrity.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/test-integrity.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/test-integrity.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

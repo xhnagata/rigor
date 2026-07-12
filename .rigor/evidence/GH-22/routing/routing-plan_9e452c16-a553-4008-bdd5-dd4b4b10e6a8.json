@@ -1,0 +1,58 @@
+{
+  "taskId": "GH-22",
+  "preflightArtifactId": "preflight_34c3b381-ab6a-47aa-8668-70dae97a1558",
+  "preflightHash": "2024daacfa27b1de64c2ccf13c2f9e7322189bdf8ea8fe9b48a9c5a0b3d77f48",
+  "routingInputHash": "b2458b14a464c4cfbd2b94eace6c3c467ee47327608ffe39f3f3e64f777e2bb8",
+  "modelProfilesHash": "77ae1f231940df91303482aba5e42119c5b476ed0dc84c1b7e58197e99e6c1aa",
+  "purpose": "implementation",
+  "requiredCapabilityClass": "premium",
+  "eligibleCandidates": [
+    "claude-opus-4-8",
+    "claude-fable-5"
+  ],
+  "excludedCandidates": [
+    {
+      "candidateId": "claude-haiku-4-5",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    },
+    {
+      "candidateId": "claude-sonnet-5",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    },
+    {
+      "candidateId": "codex-plugin-cc-gpt-5",
+      "reasonCode": "PURPOSE_UNSUPPORTED"
+    }
+  ],
+  "selection": {
+    "candidateId": "claude-opus-4-8",
+    "provider": "claude",
+    "model": "claude-opus-4-8",
+    "capabilityClass": "premium",
+    "relativeCost": 10
+  },
+  "controls": {
+    "externalTransmission": "allowed",
+    "requireHumanApproval": true,
+    "requireIndependentReview": true
+  },
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 10800000,
+    "maxRelativeCost": 30
+  },
+  "availabilityReportHash": "59dd6ba28161cf82b8ac542a6ce890d1364868d63f09d05ef5cdbbb0a94d6759",
+  "assessment": {
+    "inputSchemaVersion": "rigor.routing-input.v2",
+    "confidence": "high",
+    "evidenceCount": 9
+  },
+  "schemaVersion": "rigor.routing-plan.v1",
+  "artifactId": "routing-plan_9e452c16-a553-4008-bdd5-dd4b4b10e6a8",
+  "createdAt": "2026-07-12T05:41:33.117Z",
+  "contractArtifactId": "contract_6374370e-c022-42e4-b271-d0b2f5814775",
+  "contractHash": "5b9123c1fad624ce56b5df1e3d63315ae12c8dd5765517cdc9df897594b7747a",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "plannedHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "status": "planned"
+}

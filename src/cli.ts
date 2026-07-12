@@ -60,7 +60,14 @@ import {
 } from "./outcome.js";
 import { parseIntent } from "./schema.js";
 import { setup } from "./setup.js";
-import { readJson, record } from "./util.js";
+import {
+  createClassification,
+  hasUnfinishedAttempt,
+  parseClassificationInput,
+  parseTestIntegrityEvent,
+  scanTestIntegrity,
+} from "./test-integrity.js";
+import { readJson, record, taskId, textField } from "./util.js";
 import type { Verification } from "./types.js";
 
 function option(
@@ -103,7 +110,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|governance|release-check|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -365,6 +372,76 @@ export async function main(
   }
   if (command === "retrospect") {
     output(await retrospect(root));
+    return EXIT.success;
+  }
+  if (command === "test-integrity-scan") {
+    const task = taskId(option(args, "--task")!);
+    const base = option(args, "--base")!;
+    const head = option(args, "--head", false) ?? null;
+    const attemptPath = option(args, "--attempt", false);
+    const verificationPath = option(args, "--verification", false);
+    const noteArg = option(args, "--note", false);
+    const note =
+      noteArg === undefined ? null : textField(noteArg, "--note", 200);
+    let attemptArtifactId: string | null = null;
+    let verificationArtifactId: string | null = null;
+    if (attemptPath !== undefined) {
+      const attempt = parseAttempt(await readJson(attemptPath));
+      if (attempt.taskId !== task)
+        throw new RigorError(
+          "Linked attempt taskId does not match --task",
+          EXIT.policyViolation,
+        );
+      attemptArtifactId = attempt.artifactId;
+    }
+    if (verificationPath !== undefined) {
+      const verification = parseVerification(await readJson(verificationPath));
+      if (verification.taskId !== task)
+        throw new RigorError(
+          "Linked verification taskId does not match --task",
+          EXIT.policyViolation,
+        );
+      verificationArtifactId = verification.artifactId;
+    }
+    const event = await scanTestIntegrity(root, {
+      task,
+      base,
+      head,
+      attemptArtifactId,
+      verificationArtifactId,
+      note,
+    });
+    const saved = await saveCollectionArtifact(
+      root,
+      task,
+      "test-integrity",
+      "test-integrity-event",
+      event,
+    );
+    output({ ...event, saved });
+    return EXIT.success;
+  }
+  if (command === "test-integrity-classify") {
+    const event = parseTestIntegrityEvent(
+      await readJson(option(args, "--event")!),
+    );
+    const input = parseClassificationInput(
+      await readJson(option(args, "--input")!),
+    );
+    if (await hasUnfinishedAttempt(root, event.taskId))
+      throw new RigorError(
+        "Refusing to classify while an attempt is unfinished for this task",
+        EXIT.policyViolation,
+      );
+    const classification = createClassification(input, event);
+    const saved = await saveCollectionArtifact(
+      root,
+      event.taskId,
+      "test-integrity",
+      "test-integrity-classification",
+      classification,
+    );
+    output({ ...classification, saved });
     return EXIT.success;
   }
   if (command === "ci") {
