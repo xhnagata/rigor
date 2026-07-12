@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_e9934eab-3017-4804-9bee-54ce6e1dda60",
+  "taskId": "REL-0-7-1",
+  "createdAt": "2026-07-12T01:07:34.005Z",
+  "preflightArtifactId": "preflight_0a1af733-5bb0-4307-8f5d-d4ea8b4fa4a3",
+  "preflightHash": "de6a85c476dba199a6da7d8814dd678648c88dba47a7b245ff89fdb0a9f36825",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.7.1.",
+    "CHANGELOG.md renames the Unreleased heading to '## 0.7.1 - 2026-07-12' with the #24 entry unchanged beneath it and no other content change.",
+    "npm run test:all passes on the release tree; dist/rigor.cjs is unchanged (no src change in this release).",
+    "rigor release-check --version 0.7.1 passes on the merged main SHA after the release PR merges, before tagging."
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Mechanical release change only: no source, schema, docs, workflow, or dist edits.",
+    "Do not create keys, secrets, attestations, or GitHub configuration, and do not increase any workflow permission.",
+    "Do not describe the release as attested or as carrying provenance; ADR 0001 is documentation only in this release."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

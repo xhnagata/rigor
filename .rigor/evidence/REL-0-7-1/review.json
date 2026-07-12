@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_de042293-992e-44c5-8d1e-80216dbb2c48",
+  "taskId": "REL-0-7-1",
+  "createdAt": "2026-07-12T01:07:58.693Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_e9934eab-3017-4804-9bee-54ce6e1dda60",
+  "verificationArtifactId": "verification_2f6187b5-30f1-4ffe-8aae-b05f23476f13",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.7.1.",
+    "CHANGELOG.md renames the Unreleased heading to '## 0.7.1 - 2026-07-12' with the #24 entry unchanged beneath it and no other content change.",
+    "npm run test:all passes on the release tree; dist/rigor.cjs is unchanged (no src change in this release).",
+    "rigor release-check --version 0.7.1 passes on the merged main SHA after the release PR merges, before tagging."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
