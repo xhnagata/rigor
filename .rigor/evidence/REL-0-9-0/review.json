@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_bdc02b66-0a57-4cc7-8126-73f4af884f6a",
+  "taskId": "REL-0-9-0",
+  "createdAt": "2026-07-12T13:42:22.405Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_c54fdead-b9d6-4fd1-ab0c-53d7270bd354",
+  "verificationArtifactId": "verification_dabb6f1f-731c-43f5-8dd3-493400f271bb",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.9.0.",
+    "CHANGELOG.md renames the Unreleased heading to '## 0.9.0 - 2026-07-12' with the #15, #21-amendment, and #48 entries preserved, a previously missing #14 escalate-decide entry added, and an honesty note on the #48 entry recording the post-#50 divergence of the pinned CI verifier and the owner's explicit deferral of the re-sync.",
+    "dist/rigor.cjs is unchanged in this release (no source change; last rebuilt in #50).",
+    "rigor release-check --version 0.9.0 passes on the merged main SHA after the release PR merges, before tagging."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
