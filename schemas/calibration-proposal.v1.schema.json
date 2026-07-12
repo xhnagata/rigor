@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/calibration-proposal.v1.schema.json",
+  "title": "Rigor calibration proposal v1",
+  "description": "A proposed routing-policy change authored by a human for human review. It is inert: `status` is always \"proposed\" and `approvalEffect` always \"none\", so no code path may read it to change routing, thresholds, or profiles. Any `relativeCost` referenced in its evidence is an abstract configured weight, never a price, token count, or verified charge.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "taskId",
+    "createdAt",
+    "target",
+    "summary",
+    "evidence",
+    "proposedChange",
+    "expectedTradeOffs",
+    "rollbackCriteria",
+    "status",
+    "approvalEffect",
+    "provenance"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.calibration-proposal.v1" },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "createdAt": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "target": {
+      "enum": [
+        "model-profiles",
+        "escalation-thresholds",
+        "routing-heuristic-constant"
+      ]
+    },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reportHashes", "taskIds", "replayHash"],
+      "properties": {
+        "reportHashes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "taskIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "replayHash": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        }
+      }
+    },
+    "proposedChange": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "expectedTradeOffs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "rollbackCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "status": { "const": "proposed" },
+    "approvalEffect": { "const": "none" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifestHash",
+        "manifestVersion",
+        "holdoutFinalEvaluation",
+        "evidenceTaskSplits"
+      ],
+      "description": "Manifest-bound provenance recorded by the CLI, never provided by input. Every cited evidence task is cross-checked against the manifest and its split recorded, so the calibration/holdout boundary of the evidence is auditable.",
+      "properties": {
+        "manifestHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "manifestVersion": { "type": "integer", "minimum": 1 },
+        "holdoutFinalEvaluation": { "type": "boolean" },
+        "evidenceTaskSplits": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["taskId", "split"],
+            "properties": {
+              "taskId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "split": { "enum": ["calibration", "holdout"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

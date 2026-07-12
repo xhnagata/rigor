@@ -1,0 +1,721 @@
+{
+  "schemaVersion": "rigor.evaluation-report.v1",
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "manifest": {
+    "manifestVersion": 1,
+    "taskCount": 16,
+    "hash": "e381466af159491daa4d1057d026e627cc278475cd2efe40e3e4abba854e3f74"
+  },
+  "splits": {
+    "calibration": {
+      "split": "calibration",
+      "evaluationOnly": false,
+      "manifestTaskCount": 14,
+      "outcomes": {
+        "accepted": 8,
+        "rejected": 1,
+        "absent": 1,
+        "malformed": 4
+      },
+      "missingData": {
+        "usageRecorded": 5,
+        "usageUnavailable": 3,
+        "usageUnknown": 1,
+        "modelIdentityPresent": 1,
+        "modelIdentityAbsent": 8,
+        "providerCostPresent": 1,
+        "elapsedPresent": 9,
+        "elapsedMissing": 0,
+        "attemptLinked": 9,
+        "attemptUnlinked": 0,
+        "verificationLinked": 9,
+        "relativeCostUnknownAttempts": 1,
+        "malformedArtifacts": 3
+      },
+      "signals": {
+        "overRouting": {
+          "count": 4,
+          "denominator": 8,
+          "definition": "Accepted on the first attempt (retryCount 0, escalationCount 0) with zero review findings at a capability class above economy, so a lower class may have sufficed. A reviewable heuristic count, not a verdict."
+        },
+        "underRouting": {
+          "count": 3,
+          "denominator": 9,
+          "definition": "An outcome at the routed capability class that was rejected, escalated (escalationCount > 0), or produced an expanded failure set. A reviewable heuristic count, not a verdict."
+        },
+        "retryCost": {
+          "acceptedChanges": 8,
+          "retriesTotal": 2,
+          "retriesPerAcceptedChange": 0.25,
+          "configuredRelativeCostTotal": 270,
+          "configuredRelativeCostPerAcceptedChange": null,
+          "relativeCostUnknownAttempts": 1
+        },
+        "escapedDefects": {
+          "suspected": 0,
+          "confirmed": 1,
+          "acceptedChanges": 8
+        }
+      },
+      "byCapabilityClass": [
+        {
+          "capabilityClass": "economy",
+          "acceptedChanges": 2,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": 5,
+            "humanCorrectionMinutes": 5,
+            "reviewFindings": 1,
+            "elapsedMs": 45000
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 10,
+            "humanCorrectionMinutes": 10,
+            "reviewFindings": 2,
+            "elapsedMs": {
+              "total": 90000,
+              "present": 2,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 0,
+            "usageUnavailable": 1,
+            "usageUnknown": 1,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 2
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 2
+            }
+          }
+        },
+        {
+          "capabilityClass": "standard",
+          "acceptedChanges": 3,
+          "rejectedOutcomes": 1,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": null,
+            "humanCorrectionMinutes": 10,
+            "reviewFindings": 0,
+            "elapsedMs": 113333.33333333333
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 40,
+            "humanCorrectionMinutes": 30,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 340000,
+              "present": 3,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 3,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 1
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 3,
+              "denominator": 3
+            },
+            "underRouting": {
+              "count": 1,
+              "denominator": 4
+            }
+          }
+        },
+        {
+          "capabilityClass": "premium",
+          "acceptedChanges": 2,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": 1,
+            "configuredRelativeCost": 70,
+            "humanCorrectionMinutes": 32.5,
+            "reviewFindings": 0.5,
+            "elapsedMs": 290000
+          },
+          "totals": {
+            "retries": 2,
+            "configuredRelativeCost": 140,
+            "humanCorrectionMinutes": 65,
+            "reviewFindings": 1,
+            "elapsedMs": {
+              "total": 580000,
+              "present": 2,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 1,
+            "usageUnavailable": 1,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 2
+            },
+            "underRouting": {
+              "count": 2,
+              "denominator": 2
+            }
+          }
+        },
+        {
+          "capabilityClass": "frontier",
+          "acceptedChanges": 1,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": 80,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": 200000
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 80,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 200000,
+              "present": 1,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 1,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 1,
+            "providerCostPresent": 1,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 1
+          },
+          "signals": {
+            "overRouting": {
+              "count": 1,
+              "denominator": 1
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 1
+            }
+          }
+        }
+      ],
+      "byCandidate": [
+        {
+          "candidate": "[\"synthetic\",\"synthetic-economy\",\"economy\"]",
+          "provider": "synthetic",
+          "model": "synthetic-economy",
+          "capabilityClass": "economy",
+          "acceptedChanges": 2,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": 5,
+            "humanCorrectionMinutes": 5,
+            "reviewFindings": 1,
+            "elapsedMs": 45000
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 10,
+            "humanCorrectionMinutes": 10,
+            "reviewFindings": 2,
+            "elapsedMs": {
+              "total": 90000,
+              "present": 2,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 0,
+            "usageUnavailable": 1,
+            "usageUnknown": 1,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 2
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 2
+            }
+          }
+        },
+        {
+          "candidate": "[\"synthetic\",\"synthetic-frontier\",\"frontier\"]",
+          "provider": "synthetic",
+          "model": "synthetic-frontier",
+          "capabilityClass": "frontier",
+          "acceptedChanges": 1,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": 80,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": 200000
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 80,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 200000,
+              "present": 1,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 1,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 1,
+            "providerCostPresent": 1,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 1
+          },
+          "signals": {
+            "overRouting": {
+              "count": 1,
+              "denominator": 1
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 1
+            }
+          }
+        },
+        {
+          "candidate": "[\"synthetic\",\"synthetic-premium\",\"premium\"]",
+          "provider": "synthetic",
+          "model": "synthetic-premium",
+          "capabilityClass": "premium",
+          "acceptedChanges": 2,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": 1,
+            "configuredRelativeCost": 70,
+            "humanCorrectionMinutes": 32.5,
+            "reviewFindings": 0.5,
+            "elapsedMs": 290000
+          },
+          "totals": {
+            "retries": 2,
+            "configuredRelativeCost": 140,
+            "humanCorrectionMinutes": 65,
+            "reviewFindings": 1,
+            "elapsedMs": {
+              "total": 580000,
+              "present": 2,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 1,
+            "usageUnavailable": 1,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 2
+            },
+            "underRouting": {
+              "count": 2,
+              "denominator": 2
+            }
+          }
+        },
+        {
+          "candidate": "[\"synthetic\",\"synthetic-standard\",\"standard\"]",
+          "provider": "synthetic",
+          "model": "synthetic-standard",
+          "capabilityClass": "standard",
+          "acceptedChanges": 3,
+          "rejectedOutcomes": 1,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": null,
+            "humanCorrectionMinutes": 10,
+            "reviewFindings": 0,
+            "elapsedMs": 113333.33333333333
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 40,
+            "humanCorrectionMinutes": 30,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 340000,
+              "present": 3,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 3,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 1
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 3,
+              "denominator": 3
+            },
+            "underRouting": {
+              "count": 1,
+              "denominator": 4
+            }
+          }
+        }
+      ]
+    },
+    "holdout": {
+      "split": "holdout",
+      "evaluationOnly": true,
+      "manifestTaskCount": 2,
+      "outcomes": {
+        "accepted": 1,
+        "rejected": 1,
+        "absent": 0,
+        "malformed": 0
+      },
+      "missingData": {
+        "usageRecorded": 1,
+        "usageUnavailable": 1,
+        "usageUnknown": 0,
+        "modelIdentityPresent": 0,
+        "modelIdentityAbsent": 2,
+        "providerCostPresent": 0,
+        "elapsedPresent": 2,
+        "elapsedMissing": 0,
+        "attemptLinked": 2,
+        "attemptUnlinked": 0,
+        "verificationLinked": 2,
+        "relativeCostUnknownAttempts": 0,
+        "malformedArtifacts": 0
+      },
+      "signals": {
+        "overRouting": {
+          "count": 1,
+          "denominator": 1,
+          "definition": "Accepted on the first attempt (retryCount 0, escalationCount 0) with zero review findings at a capability class above economy, so a lower class may have sufficed. A reviewable heuristic count, not a verdict."
+        },
+        "underRouting": {
+          "count": 1,
+          "denominator": 2,
+          "definition": "An outcome at the routed capability class that was rejected, escalated (escalationCount > 0), or produced an expanded failure set. A reviewable heuristic count, not a verdict."
+        },
+        "retryCost": {
+          "acceptedChanges": 1,
+          "retriesTotal": 0,
+          "retriesPerAcceptedChange": 0,
+          "configuredRelativeCostTotal": 20,
+          "configuredRelativeCostPerAcceptedChange": 20,
+          "relativeCostUnknownAttempts": 0
+        },
+        "escapedDefects": {
+          "suspected": 0,
+          "confirmed": 0,
+          "acceptedChanges": 1
+        }
+      },
+      "byCapabilityClass": [
+        {
+          "capabilityClass": "economy",
+          "acceptedChanges": 0,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": null,
+            "configuredRelativeCost": null,
+            "humanCorrectionMinutes": null,
+            "reviewFindings": null,
+            "elapsedMs": null
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 0,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 0,
+              "present": 0,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 0,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 0
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 0
+            }
+          }
+        },
+        {
+          "capabilityClass": "standard",
+          "acceptedChanges": 1,
+          "rejectedOutcomes": 1,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": 20,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": 110000
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 20,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 110000,
+              "present": 1,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 1,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 1,
+              "denominator": 1
+            },
+            "underRouting": {
+              "count": 1,
+              "denominator": 2
+            }
+          }
+        },
+        {
+          "capabilityClass": "premium",
+          "acceptedChanges": 0,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": null,
+            "configuredRelativeCost": null,
+            "humanCorrectionMinutes": null,
+            "reviewFindings": null,
+            "elapsedMs": null
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 0,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 0,
+              "present": 0,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 0,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 0
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 0
+            }
+          }
+        },
+        {
+          "capabilityClass": "frontier",
+          "acceptedChanges": 0,
+          "rejectedOutcomes": 0,
+          "perAcceptedChange": {
+            "retries": null,
+            "configuredRelativeCost": null,
+            "humanCorrectionMinutes": null,
+            "reviewFindings": null,
+            "elapsedMs": null
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 0,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 0,
+              "present": 0,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 0,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 0,
+              "denominator": 0
+            },
+            "underRouting": {
+              "count": 0,
+              "denominator": 0
+            }
+          }
+        }
+      ],
+      "byCandidate": [
+        {
+          "candidate": "[\"synthetic\",\"synthetic-standard\",\"standard\"]",
+          "provider": "synthetic",
+          "model": "synthetic-standard",
+          "capabilityClass": "standard",
+          "acceptedChanges": 1,
+          "rejectedOutcomes": 1,
+          "perAcceptedChange": {
+            "retries": 0,
+            "configuredRelativeCost": 20,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": 110000
+          },
+          "totals": {
+            "retries": 0,
+            "configuredRelativeCost": 20,
+            "humanCorrectionMinutes": 0,
+            "reviewFindings": 0,
+            "elapsedMs": {
+              "total": 110000,
+              "present": 1,
+              "missing": 0
+            }
+          },
+          "missingData": {
+            "usageRecorded": 1,
+            "usageUnavailable": 0,
+            "usageUnknown": 0,
+            "modelIdentityPresent": 0,
+            "providerCostPresent": 0,
+            "relativeCostUnknownAttempts": 0
+          },
+          "escapedDefects": {
+            "suspected": 0,
+            "confirmed": 0
+          },
+          "signals": {
+            "overRouting": {
+              "count": 1,
+              "denominator": 1
+            },
+            "underRouting": {
+              "count": 1,
+              "denominator": 2
+            }
+          }
+        }
+      ]
+    }
+  }
+}

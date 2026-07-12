@@ -34,8 +34,9 @@ __export(cli_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(cli_exports);
-var import_node_path11 = __toESM(require("node:path"), 1);
+var import_node_path12 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
+var import_promises11 = require("node:fs/promises");
 
 // src/artifacts.ts
 var import_promises3 = require("node:fs/promises");
@@ -224,8 +225,8 @@ function parseUnifiedDiff(text) {
   let newPath = null;
   const flush = () => {
     if (current === null) return;
-    const path12 = newPath ?? oldPath ?? current.path;
-    current.path = path12 === null ? current.path : path12;
+    const path13 = newPath ?? oldPath ?? current.path;
+    current.path = path13 === null ? current.path : path13;
     if (current.changeType === "renamed" || current.changeType === "copied") {
       current.path = newPath ?? current.path;
     }
@@ -822,6 +823,11 @@ var AVAILABILITY_SCHEMA = "rigor.availability.v1";
 var TEST_INTEGRITY_EVENT_SCHEMA = "rigor.test-integrity-event.v1";
 var TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA = "rigor.test-integrity-classification-input.v1";
 var TEST_INTEGRITY_CLASSIFICATION_SCHEMA = "rigor.test-integrity-classification.v1";
+var EVALUATION_MANIFEST_SCHEMA = "rigor.evaluation-manifest.v1";
+var EVALUATION_REPORT_SCHEMA = "rigor.evaluation-report.v1";
+var EVALUATION_REPLAY_SCHEMA = "rigor.evaluation-replay.v1";
+var CALIBRATION_PROPOSAL_SCHEMA = "rigor.calibration-proposal.v1";
+var CALIBRATION_PROPOSAL_INPUT_SCHEMA = "rigor.calibration-proposal-input.v1";
 
 // src/schema.ts
 var tiers = ["low", "medium", "high", "critical"];
@@ -4881,9 +4887,940 @@ function selectEscalation(input, profiles, availability2) {
   });
 }
 
-// src/test-integrity.ts
+// src/evaluation.ts
 var import_promises9 = require("node:fs/promises");
 var import_node_path10 = __toESM(require("node:path"), 1);
+var CAPABILITY_CLASSES = [
+  "economy",
+  "standard",
+  "premium",
+  "frontier"
+];
+var SPLITS = ["calibration", "holdout"];
+var PROPOSAL_TARGETS = [
+  "model-profiles",
+  "escalation-thresholds",
+  "routing-heuristic-constant"
+];
+var OVER_ROUTING_DEFINITION = "Accepted on the first attempt (retryCount 0, escalationCount 0) with zero review findings at a capability class above economy, so a lower class may have sufficed. A reviewable heuristic count, not a verdict.";
+var UNDER_ROUTING_DEFINITION = "An outcome at the routed capability class that was rejected, escalated (escalationCount > 0), or produced an expanded failure set. A reviewable heuristic count, not a verdict.";
+function oneOf7(value, values, name) {
+  if (typeof value !== "string" || !values.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function integer4(value, name, min, max) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function optionalString2(value) {
+  return typeof value === "string" ? value : null;
+}
+function optionalNumber2(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : void 0;
+}
+var USAGE_STATUSES = ["recorded", "unavailable", "unknown"];
+var ESCAPED_STATUSES = ["none", "suspected", "confirmed"];
+var PROGRESS_STATUSES = [
+  "first",
+  "unchanged",
+  "reduced",
+  "expanded",
+  "incomparable"
+];
+function isFiniteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function numericFieldOk(value) {
+  return value === void 0 || isFiniteNumber(value);
+}
+function requiredNumericFieldOk(value) {
+  return isFiniteNumber(value);
+}
+function isRecord3(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function nullableRecordOk(value, shapeOk) {
+  return value === void 0 || value === null || isRecord3(value) && shapeOk(value);
+}
+function isModelIdentityShape(value) {
+  return typeof value.value === "string" && value.attestation === "unverified";
+}
+function isProviderCostShape(value) {
+  return typeof value.currency === "string" && /^[A-Z]{3}$/u.test(value.currency) && isFiniteNumber(value.amount) && value.amount >= 0;
+}
+function outcomeFieldsWellFormed(o) {
+  if (o.decision !== "accepted" && o.decision !== "rejected") return false;
+  if (!requiredNumericFieldOk(o.retryCount) || !requiredNumericFieldOk(o.escalationCount) || !requiredNumericFieldOk(o.humanCorrectionMinutes))
+    return false;
+  if (!numericFieldOk(o.attemptDurationMs)) return false;
+  if (o.provider !== void 0 && typeof o.provider !== "string") return false;
+  if (o.model !== void 0 && typeof o.model !== "string") return false;
+  if (o.capabilityClass !== void 0 && o.capabilityClass !== null && !(typeof o.capabilityClass === "string" && CAPABILITY_CLASSES.includes(o.capabilityClass)))
+    return false;
+  if (!isRecord3(o.reviewFindings) || !requiredNumericFieldOk(o.reviewFindings.total))
+    return false;
+  if (!isRecord3(o.usage)) return false;
+  if (typeof o.usage.status !== "string" || !USAGE_STATUSES.includes(o.usage.status))
+    return false;
+  if (!nullableRecordOk(o.usage.modelIdentity, isModelIdentityShape))
+    return false;
+  if (!nullableRecordOk(o.usage.providerCost, isProviderCostShape))
+    return false;
+  if (typeof o.escapedDefectStatus !== "string" || !ESCAPED_STATUSES.includes(o.escapedDefectStatus))
+    return false;
+  return true;
+}
+function attemptFieldsWellFormed(a) {
+  if (typeof a.routingPlanArtifactId !== "string") return false;
+  if (a.progress !== void 0 && a.progress !== null) {
+    if (!isRecord3(a.progress)) return false;
+    if (a.progress.status !== void 0 && !PROGRESS_STATUSES.includes(a.progress.status))
+      return false;
+  }
+  return true;
+}
+function planFieldsWellFormed(p) {
+  if (typeof p.artifactId !== "string") return false;
+  if (p.selection !== void 0 && p.selection !== null) {
+    if (!isRecord3(p.selection)) return false;
+    if (p.selection.relativeCost !== void 0 && !(typeof p.selection.relativeCost === "number" && Number.isFinite(p.selection.relativeCost)))
+      return false;
+  }
+  return true;
+}
+function parseEvaluationManifest(value) {
+  const item = record(value, "evaluation manifest");
+  if (item.schemaVersion !== EVALUATION_MANIFEST_SCHEMA)
+    throw new RigorError(
+      "Unsupported evaluation manifest schema",
+      EXIT.inputError
+    );
+  const categories = strings(item.categories, "categories", 32);
+  if (categories.length === 0)
+    throw new RigorError("categories must not be empty", EXIT.inputError);
+  if (new Set(categories).size !== categories.length)
+    throw new RigorError("categories must be unique", EXIT.inputError);
+  if (!Array.isArray(item.tasks) || item.tasks.length === 0)
+    throw new RigorError("tasks must be a non-empty array", EXIT.inputError);
+  if (item.tasks.length > 100)
+    throw new RigorError("tasks must not exceed 100 entries", EXIT.inputError);
+  const categorySet = new Set(categories);
+  const seen = /* @__PURE__ */ new Set();
+  const tasks = item.tasks.map((raw, index) => {
+    const entry = record(raw, `tasks[${index}]`);
+    const id = taskId(entry.taskId);
+    if (seen.has(id))
+      throw new RigorError(
+        `Duplicate task id in manifest: ${id}`,
+        EXIT.inputError
+      );
+    seen.add(id);
+    const category = textField(entry.category, `tasks[${index}].category`, 128);
+    if (!categorySet.has(category))
+      throw new RigorError(
+        `tasks[${index}].category is not declared in categories`,
+        EXIT.inputError
+      );
+    const task = {
+      taskId: id,
+      category,
+      split: oneOf7(entry.split, SPLITS, `tasks[${index}].split`),
+      source: textField(entry.source, `tasks[${index}].source`, 2e3)
+    };
+    if (entry.fixtureRef !== void 0) {
+      const ref = textField(
+        entry.fixtureRef,
+        `tasks[${index}].fixtureRef`,
+        1024
+      );
+      if (ref.startsWith("/") || ref.split(/[\\/]/u).includes(".."))
+        throw new RigorError(
+          `tasks[${index}].fixtureRef must be a repository-relative path`,
+          EXIT.inputError
+        );
+      task.fixtureRef = ref;
+    }
+    if (entry.crossModelComparison !== void 0) {
+      if (typeof entry.crossModelComparison !== "boolean")
+        throw new RigorError(
+          `tasks[${index}].crossModelComparison must be boolean`,
+          EXIT.inputError
+        );
+      task.crossModelComparison = entry.crossModelComparison;
+    }
+    return task;
+  });
+  return {
+    schemaVersion: EVALUATION_MANIFEST_SCHEMA,
+    manifestVersion: integer4(
+      item.manifestVersion,
+      "manifestVersion",
+      1,
+      1e5
+    ),
+    createdAt: textField(item.createdAt, "createdAt", 128),
+    owner: textField(item.owner, "owner", 256),
+    reviewInterval: textField(item.reviewInterval, "reviewInterval", 256),
+    categories,
+    expansionPolicy: textField(item.expansionPolicy, "expansionPolicy", 4e3),
+    tasks
+  };
+}
+function parseCalibrationProposalInput(value) {
+  const item = record(value, "calibration proposal");
+  if (item.schemaVersion !== CALIBRATION_PROPOSAL_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported calibration proposal input schema",
+      EXIT.inputError
+    );
+  if (item.status !== "proposed")
+    throw new RigorError(
+      'A calibration proposal status must be exactly "proposed"',
+      EXIT.inputError
+    );
+  if (item.approvalEffect !== "none")
+    throw new RigorError(
+      'A calibration proposal approvalEffect must be exactly "none"',
+      EXIT.inputError
+    );
+  const evidence = record(item.evidence, "evidence");
+  const reportHashes = strings(
+    evidence.reportHashes,
+    "evidence.reportHashes",
+    100
+  );
+  if (reportHashes.length === 0)
+    throw new RigorError(
+      "evidence.reportHashes must not be empty",
+      EXIT.inputError
+    );
+  for (const [index, digest2] of reportHashes.entries())
+    if (!/^[a-f0-9]{64}$/u.test(digest2))
+      throw new RigorError(
+        `evidence.reportHashes[${index}] must be a SHA-256 digest`,
+        EXIT.inputError
+      );
+  const taskIds = Array.isArray(evidence.taskIds) ? evidence.taskIds : void 0;
+  if (taskIds === void 0 || taskIds.length === 0 || taskIds.length > 100)
+    throw new RigorError(
+      "evidence.taskIds must be a non-empty array",
+      EXIT.inputError
+    );
+  const resolvedTaskIds = taskIds.map((raw) => taskId(raw));
+  let replayHash = null;
+  if (evidence.replayHash !== void 0 && evidence.replayHash !== null) {
+    replayHash = textField(evidence.replayHash, "evidence.replayHash", 128);
+    if (!/^[a-f0-9]{64}$/u.test(replayHash))
+      throw new RigorError(
+        "evidence.replayHash must be a SHA-256 digest",
+        EXIT.inputError
+      );
+  }
+  const expectedTradeOffs = strings(
+    item.expectedTradeOffs,
+    "expectedTradeOffs",
+    50
+  );
+  if (expectedTradeOffs.length === 0)
+    throw new RigorError(
+      "expectedTradeOffs must not be empty",
+      EXIT.inputError
+    );
+  const rollbackCriteria = strings(
+    item.rollbackCriteria,
+    "rollbackCriteria",
+    50
+  );
+  if (rollbackCriteria.length === 0)
+    throw new RigorError("rollbackCriteria must not be empty", EXIT.inputError);
+  let holdoutFinalEvaluation = false;
+  if (item.holdoutFinalEvaluation !== void 0) {
+    if (typeof item.holdoutFinalEvaluation !== "boolean")
+      throw new RigorError(
+        "holdoutFinalEvaluation must be a boolean",
+        EXIT.inputError
+      );
+    holdoutFinalEvaluation = item.holdoutFinalEvaluation;
+  }
+  return {
+    schemaVersion: CALIBRATION_PROPOSAL_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    target: oneOf7(item.target, PROPOSAL_TARGETS, "target"),
+    summary: textField(item.summary, "summary", 2e3),
+    evidence: { reportHashes, taskIds: resolvedTaskIds, replayHash },
+    proposedChange: textField(item.proposedChange, "proposedChange", 4e3),
+    expectedTradeOffs,
+    rollbackCriteria,
+    status: "proposed",
+    approvalEffect: "none",
+    holdoutFinalEvaluation
+  };
+}
+function createCalibrationProposal(input, manifest, now = /* @__PURE__ */ new Date()) {
+  const splitByTask = /* @__PURE__ */ new Map();
+  for (const task of manifest.tasks) splitByTask.set(task.taskId, task.split);
+  const evidenceTaskSplits = input.evidence.taskIds.map((id) => {
+    const split = splitByTask.get(id);
+    if (split === void 0)
+      throw new RigorError(
+        `evidence task ${id} is not present in the cross-checked manifest`,
+        EXIT.inputError
+      );
+    if (split === "holdout" && !input.holdoutFinalEvaluation)
+      throw new RigorError(
+        `evidence task ${id} is a holdout task; set holdoutFinalEvaluation to cite it as a final evaluation`,
+        EXIT.inputError
+      );
+    return { taskId: id, split };
+  });
+  const provenance = {
+    manifestHash: hash(manifest),
+    manifestVersion: manifest.manifestVersion,
+    holdoutFinalEvaluation: input.holdoutFinalEvaluation,
+    evidenceTaskSplits
+  };
+  return {
+    schemaVersion: CALIBRATION_PROPOSAL_SCHEMA,
+    artifactId: artifactId("calibration-proposal"),
+    taskId: input.taskId,
+    createdAt: now.toISOString(),
+    target: input.target,
+    summary: input.summary,
+    evidence: input.evidence,
+    proposedChange: input.proposedChange,
+    expectedTradeOffs: input.expectedTradeOffs,
+    rollbackCriteria: input.rollbackCriteria,
+    status: "proposed",
+    approvalEffect: "none",
+    provenance
+  };
+}
+function verifyCalibrationEvidence(evidence, manifest, reports) {
+  if (reports.length === 0)
+    throw new RigorError(
+      "At least one --report is required to verify cited evidence",
+      EXIT.inputError
+    );
+  const manifestHash = hash(manifest);
+  const parsed = reports.map((raw, index) => {
+    const item = record(raw, `--report[${index}]`);
+    if (item.schemaVersion !== EVALUATION_REPORT_SCHEMA && item.schemaVersion !== EVALUATION_REPLAY_SCHEMA)
+      throw new RigorError(
+        `--report[${index}] is not a rigor.evaluation-report.v1 or rigor.evaluation-replay.v1 document`,
+        EXIT.inputError
+      );
+    const reportManifest = record(item.manifest, `--report[${index}].manifest`);
+    if (reportManifest.hash !== manifestHash)
+      throw new RigorError(
+        `--report[${index}].manifest.hash does not match the selected --manifest`,
+        EXIT.inputError
+      );
+    return { schemaVersion: item.schemaVersion, digest: hash(item) };
+  });
+  for (const digest2 of evidence.reportHashes) {
+    const backed = parsed.some(
+      (item) => item.schemaVersion === EVALUATION_REPORT_SCHEMA && item.digest === digest2
+    );
+    if (!backed)
+      throw new RigorError(
+        `evidence.reportHashes entry ${digest2} is not the canonical hash of any supplied --report file`,
+        EXIT.inputError
+      );
+  }
+  if (evidence.replayHash !== null) {
+    const backed = parsed.some(
+      (item) => item.schemaVersion === EVALUATION_REPLAY_SCHEMA && item.digest === evidence.replayHash
+    );
+    if (!backed)
+      throw new RigorError(
+        "evidence.replayHash is not the canonical hash of any supplied --report file",
+        EXIT.inputError
+      );
+  }
+}
+async function containedInRoot(root, target) {
+  try {
+    await assertContainedPath(root, target);
+    return true;
+  } catch (error) {
+    if (error instanceof RigorError) return false;
+    throw error;
+  }
+}
+async function readRecord(root, file) {
+  if (!await containedInRoot(root, file))
+    throw new RigorError("Path escapes the evidence root", EXIT.inputError);
+  let text;
+  try {
+    text = await (0, import_promises9.readFile)(file, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return void 0;
+    throw error;
+  }
+  const parsed = JSON.parse(text);
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+    throw new RigorError("Not an object", EXIT.inputError);
+  return parsed;
+}
+async function readCollection(root, directory, schemaVersion, wellFormed) {
+  if (!await containedInRoot(root, directory))
+    return { valid: [], malformed: 1 };
+  let names;
+  try {
+    names = await (0, import_promises9.readdir)(directory);
+  } catch (error) {
+    if (error.code === "ENOENT")
+      return { valid: [], malformed: 0 };
+    throw error;
+  }
+  const valid = [];
+  let malformed = 0;
+  for (const name of names.filter((file) => file.endsWith(".json")).sort()) {
+    try {
+      const parsed = await readRecord(root, import_node_path10.default.join(directory, name));
+      if (parsed === void 0 || parsed.schemaVersion !== schemaVersion || !wellFormed(parsed))
+        malformed += 1;
+      else valid.push(parsed);
+    } catch {
+      malformed += 1;
+    }
+  }
+  return { valid, malformed };
+}
+async function loadTask(root, task) {
+  const directory = import_node_path10.default.join(root, task);
+  if (!await containedInRoot(root, directory))
+    return {
+      outcome: null,
+      outcomeAbsent: false,
+      outcomeMalformed: true,
+      attempts: [],
+      malformedAttempts: 0,
+      plans: /* @__PURE__ */ new Map(),
+      planList: [],
+      malformedPlans: 0
+    };
+  let outcome = null;
+  let outcomeAbsent = false;
+  let outcomeMalformed = false;
+  try {
+    const parsed = await readRecord(root, import_node_path10.default.join(directory, "outcome.json"));
+    if (parsed === void 0) outcomeAbsent = true;
+    else if (parsed.schemaVersion !== OUTCOME_SCHEMA || !outcomeFieldsWellFormed(parsed))
+      outcomeMalformed = true;
+    else outcome = parsed;
+  } catch {
+    outcomeMalformed = true;
+  }
+  const attempts = await readCollection(
+    root,
+    import_node_path10.default.join(directory, "attempts"),
+    ATTEMPT_SCHEMA,
+    attemptFieldsWellFormed
+  );
+  const plans = await readCollection(
+    root,
+    import_node_path10.default.join(directory, "routing"),
+    ROUTING_PLAN_SCHEMA,
+    planFieldsWellFormed
+  );
+  const planMap = /* @__PURE__ */ new Map();
+  for (const plan of plans.valid) {
+    const id = optionalString2(plan.artifactId);
+    if (id !== null) planMap.set(id, plan);
+  }
+  return {
+    outcome,
+    outcomeAbsent,
+    outcomeMalformed,
+    attempts: attempts.valid,
+    malformedAttempts: attempts.malformed,
+    plans: planMap,
+    planList: plans.valid,
+    malformedPlans: plans.malformed
+  };
+}
+function emptyAgg() {
+  return {
+    acceptedChanges: 0,
+    rejectedOutcomes: 0,
+    retriesTotal: 0,
+    relativeCostTotal: 0,
+    relativeCostUnknownAttempts: 0,
+    humanTotal: 0,
+    reviewFindingsTotal: 0,
+    elapsedTotal: 0,
+    elapsedPresent: 0,
+    elapsedMissing: 0,
+    usageRecorded: 0,
+    usageUnavailable: 0,
+    usageUnknown: 0,
+    modelIdentityPresent: 0,
+    providerCostPresent: 0,
+    escapedSuspected: 0,
+    escapedConfirmed: 0,
+    overRouting: 0,
+    underRouting: 0
+  };
+}
+function deriveOutcomeData(loaded) {
+  const outcome = loaded.outcome;
+  const decision2 = outcome.decision === "accepted" ? "accepted" : "rejected";
+  const rawClass = optionalString2(outcome.capabilityClass);
+  const capabilityClass = rawClass !== null && CAPABILITY_CLASSES.includes(rawClass) ? rawClass : null;
+  const provider = optionalString2(outcome.provider);
+  const model = optionalString2(outcome.model);
+  const attemptLinked = typeof outcome.attemptArtifactId === "string";
+  const candidateKey = attemptLinked ? JSON.stringify([provider, model, capabilityClass]) : "unlinked";
+  const retries = optionalNumber2(outcome.retryCount) ?? 0;
+  const escalationCount = optionalNumber2(outcome.escalationCount) ?? 0;
+  const human = optionalNumber2(outcome.humanCorrectionMinutes) ?? 0;
+  const findings2 = typeof outcome.reviewFindings === "object" && outcome.reviewFindings !== null ? outcome.reviewFindings : {};
+  const reviewFindings = optionalNumber2(findings2.total) ?? 0;
+  const elapsed = optionalNumber2(outcome.attemptDurationMs);
+  const usage = typeof outcome.usage === "object" && outcome.usage !== null ? outcome.usage : {};
+  const usageStatus = usage.status === "recorded" || usage.status === "unavailable" || usage.status === "unknown" ? usage.status : null;
+  const modelIdentityPresent = usage.modelIdentity !== null && usage.modelIdentity !== void 0;
+  const providerCostPresent = usage.providerCost !== null && usage.providerCost !== void 0;
+  const escaped = outcome.escapedDefectStatus === "suspected" ? "suspected" : outcome.escapedDefectStatus === "confirmed" ? "confirmed" : "none";
+  let relativeCost = 0;
+  let relativeCostUnknown = 0;
+  let expanded = false;
+  for (const attempt of loaded.attempts) {
+    const planId = optionalString2(attempt.routingPlanArtifactId);
+    const plan = planId !== null ? loaded.plans.get(planId) : void 0;
+    const selection = plan && typeof plan.selection === "object" && plan.selection !== null ? plan.selection : void 0;
+    const cost = selection ? optionalNumber2(selection.relativeCost) : void 0;
+    if (cost !== void 0) relativeCost += cost;
+    else relativeCostUnknown += 1;
+    const progress2 = typeof attempt.progress === "object" && attempt.progress !== null ? attempt.progress : void 0;
+    if (progress2 && progress2.status === "expanded") expanded = true;
+  }
+  relativeCostUnknown += loaded.malformedAttempts;
+  const overRouting = decision2 === "accepted" && retries === 0 && escalationCount === 0 && reviewFindings === 0 && capabilityClass !== null && capabilityClass !== "economy";
+  const underRouting = decision2 === "rejected" || escalationCount > 0 || expanded;
+  return {
+    decision: decision2,
+    capabilityClass,
+    provider,
+    model,
+    candidateKey,
+    retries,
+    relativeCost,
+    relativeCostUnknown,
+    human,
+    reviewFindings,
+    elapsed,
+    usageStatus,
+    modelIdentityPresent,
+    providerCostPresent,
+    escaped,
+    overRouting,
+    underRouting
+  };
+}
+function applyAgg(agg, data) {
+  if (data.decision === "accepted") {
+    agg.acceptedChanges += 1;
+    agg.retriesTotal += data.retries;
+    agg.relativeCostTotal += data.relativeCost;
+    agg.relativeCostUnknownAttempts += data.relativeCostUnknown;
+    agg.humanTotal += data.human;
+    agg.reviewFindingsTotal += data.reviewFindings;
+    if (data.elapsed !== void 0) {
+      agg.elapsedTotal += data.elapsed;
+      agg.elapsedPresent += 1;
+    } else {
+      agg.elapsedMissing += 1;
+    }
+    if (data.usageStatus === "recorded") agg.usageRecorded += 1;
+    else if (data.usageStatus === "unavailable") agg.usageUnavailable += 1;
+    else if (data.usageStatus === "unknown") agg.usageUnknown += 1;
+    if (data.modelIdentityPresent) agg.modelIdentityPresent += 1;
+    if (data.providerCostPresent) agg.providerCostPresent += 1;
+    if (data.escaped === "suspected") agg.escapedSuspected += 1;
+    else if (data.escaped === "confirmed") agg.escapedConfirmed += 1;
+    if (data.overRouting) agg.overRouting += 1;
+  } else {
+    agg.rejectedOutcomes += 1;
+  }
+  if (data.underRouting) agg.underRouting += 1;
+}
+function ratio(total, denominator) {
+  return denominator > 0 ? total / denominator : null;
+}
+function renderAgg(agg) {
+  const d = agg.acceptedChanges;
+  return {
+    acceptedChanges: d,
+    rejectedOutcomes: agg.rejectedOutcomes,
+    perAcceptedChange: {
+      retries: ratio(agg.retriesTotal, d),
+      // Null unless the configured relative cost is known for every accepted
+      // change in the aggregate: an unresolved-plan attempt must never make an
+      // unknown look like a smaller average.
+      configuredRelativeCost: agg.relativeCostUnknownAttempts > 0 ? null : ratio(agg.relativeCostTotal, d),
+      humanCorrectionMinutes: ratio(agg.humanTotal, d),
+      reviewFindings: ratio(agg.reviewFindingsTotal, d),
+      // Denominated by accepted changes, and only reported when elapsed is
+      // present for every accepted change (elapsedMissing === 0); otherwise
+      // null, since a partial mean would misrepresent the completeness.
+      elapsedMs: agg.elapsedMissing > 0 ? null : ratio(agg.elapsedTotal, d)
+    },
+    totals: {
+      retries: agg.retriesTotal,
+      configuredRelativeCost: agg.relativeCostTotal,
+      humanCorrectionMinutes: agg.humanTotal,
+      reviewFindings: agg.reviewFindingsTotal,
+      elapsedMs: {
+        total: agg.elapsedTotal,
+        present: agg.elapsedPresent,
+        missing: agg.elapsedMissing
+      }
+    },
+    missingData: {
+      usageRecorded: agg.usageRecorded,
+      usageUnavailable: agg.usageUnavailable,
+      usageUnknown: agg.usageUnknown,
+      modelIdentityPresent: agg.modelIdentityPresent,
+      providerCostPresent: agg.providerCostPresent,
+      relativeCostUnknownAttempts: agg.relativeCostUnknownAttempts
+    },
+    escapedDefects: {
+      suspected: agg.escapedSuspected,
+      confirmed: agg.escapedConfirmed
+    },
+    signals: {
+      overRouting: { count: agg.overRouting, denominator: d },
+      underRouting: {
+        count: agg.underRouting,
+        denominator: agg.acceptedChanges + agg.rejectedOutcomes
+      }
+    }
+  };
+}
+function emptySplitState() {
+  const classes = /* @__PURE__ */ new Map();
+  for (const capability of CAPABILITY_CLASSES)
+    classes.set(capability, emptyAgg());
+  return {
+    manifestTaskCount: 0,
+    accepted: 0,
+    rejected: 0,
+    absent: 0,
+    malformed: 0,
+    missing: {
+      usageRecorded: 0,
+      usageUnavailable: 0,
+      usageUnknown: 0,
+      modelIdentityPresent: 0,
+      modelIdentityAbsent: 0,
+      providerCostPresent: 0,
+      elapsedPresent: 0,
+      elapsedMissing: 0,
+      attemptLinked: 0,
+      attemptUnlinked: 0,
+      verificationLinked: 0,
+      relativeCostUnknownAttempts: 0,
+      malformedArtifacts: 0
+    },
+    split: emptyAgg(),
+    classes,
+    candidates: /* @__PURE__ */ new Map()
+  };
+}
+function renderSplit(split, state) {
+  const accepted = state.accepted;
+  const s = state.split;
+  const byCapabilityClass = CAPABILITY_CLASSES.map((capability) => ({
+    capabilityClass: capability,
+    ...renderAgg(state.classes.get(capability))
+  }));
+  const byCandidate = [...state.candidates.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([candidate, entry]) => ({
+    candidate,
+    provider: entry.provider,
+    model: entry.model,
+    capabilityClass: entry.capabilityClass,
+    ...renderAgg(entry.agg)
+  }));
+  return {
+    split,
+    evaluationOnly: split === "holdout",
+    manifestTaskCount: state.manifestTaskCount,
+    outcomes: {
+      accepted,
+      rejected: state.rejected,
+      absent: state.absent,
+      malformed: state.malformed
+    },
+    missingData: state.missing,
+    signals: {
+      overRouting: {
+        count: s.overRouting,
+        denominator: accepted,
+        definition: OVER_ROUTING_DEFINITION
+      },
+      underRouting: {
+        count: s.underRouting,
+        denominator: accepted + state.rejected,
+        definition: UNDER_ROUTING_DEFINITION
+      },
+      retryCost: {
+        acceptedChanges: accepted,
+        retriesTotal: s.retriesTotal,
+        retriesPerAcceptedChange: ratio(s.retriesTotal, accepted),
+        configuredRelativeCostTotal: s.relativeCostTotal,
+        // Known numerator (configuredRelativeCostTotal) is reported separately;
+        // the per-accepted-change value is null whenever any contributing
+        // attempt's plan was unresolved, so a partial total never reads as
+        // complete.
+        configuredRelativeCostPerAcceptedChange: s.relativeCostUnknownAttempts > 0 ? null : ratio(s.relativeCostTotal, accepted),
+        relativeCostUnknownAttempts: s.relativeCostUnknownAttempts
+      },
+      escapedDefects: {
+        suspected: s.escapedSuspected,
+        confirmed: s.escapedConfirmed,
+        acceptedChanges: accepted
+      }
+    },
+    byCapabilityClass,
+    byCandidate
+  };
+}
+async function resolveEvidenceRoot(root) {
+  try {
+    return await (0, import_promises9.realpath)(root);
+  } catch (error) {
+    if (error.code === "ENOENT") return root;
+    throw error;
+  }
+}
+async function buildEvaluationReport(root, manifest, now = /* @__PURE__ */ new Date()) {
+  const realRoot = await resolveEvidenceRoot(root);
+  const states = {
+    calibration: emptySplitState(),
+    holdout: emptySplitState()
+  };
+  for (const task of manifest.tasks) {
+    const state = states[task.split];
+    state.manifestTaskCount += 1;
+    const loaded = await loadTask(realRoot, task.taskId);
+    state.missing.malformedArtifacts += loaded.malformedAttempts + loaded.malformedPlans;
+    if (loaded.outcomeAbsent) {
+      state.absent += 1;
+      continue;
+    }
+    if (loaded.outcomeMalformed || loaded.outcome === null) {
+      state.malformed += 1;
+      continue;
+    }
+    const data = deriveOutcomeData(loaded);
+    const outcome = loaded.outcome;
+    if (data.usageStatus === "recorded") state.missing.usageRecorded += 1;
+    else if (data.usageStatus === "unavailable")
+      state.missing.usageUnavailable += 1;
+    else if (data.usageStatus === "unknown") state.missing.usageUnknown += 1;
+    if (data.modelIdentityPresent) state.missing.modelIdentityPresent += 1;
+    else state.missing.modelIdentityAbsent += 1;
+    if (data.providerCostPresent) state.missing.providerCostPresent += 1;
+    if (data.elapsed !== void 0) state.missing.elapsedPresent += 1;
+    else state.missing.elapsedMissing += 1;
+    if (typeof outcome.attemptArtifactId === "string")
+      state.missing.attemptLinked += 1;
+    else state.missing.attemptUnlinked += 1;
+    if (typeof outcome.verificationArtifactId === "string")
+      state.missing.verificationLinked += 1;
+    if (data.decision === "accepted")
+      state.missing.relativeCostUnknownAttempts += data.relativeCostUnknown;
+    if (data.decision === "accepted") state.accepted += 1;
+    else state.rejected += 1;
+    applyAgg(state.split, data);
+    if (data.capabilityClass !== null)
+      applyAgg(state.classes.get(data.capabilityClass), data);
+    let candidate = state.candidates.get(data.candidateKey);
+    if (candidate === void 0) {
+      candidate = {
+        provider: data.provider,
+        model: data.model,
+        capabilityClass: data.capabilityClass,
+        agg: emptyAgg()
+      };
+      state.candidates.set(data.candidateKey, candidate);
+    }
+    applyAgg(candidate.agg, data);
+  }
+  return {
+    schemaVersion: EVALUATION_REPORT_SCHEMA,
+    generatedAt: now.toISOString(),
+    manifest: {
+      manifestVersion: manifest.manifestVersion,
+      taskCount: manifest.tasks.length,
+      hash: hash(manifest)
+    },
+    splits: {
+      calibration: renderSplit("calibration", states.calibration),
+      holdout: renderSplit("holdout", states.holdout)
+    }
+  };
+}
+function replaySelection(plan, profiles) {
+  const requiredIndex = CAPABILITY_CLASSES.indexOf(
+    plan.requiredCapabilityClass
+  );
+  const eligible = profiles.candidates.filter(
+    (candidate) => candidate.enabled && candidate.purposes.includes(
+      plan.purpose
+    ) && !(plan.externalTransmission === "denied" && candidate.requiresAdditionalExternalTransmission) && CAPABILITY_CLASSES.indexOf(candidate.capabilityClass) >= requiredIndex && candidate.relativeCost <= plan.maxRelativeCost
+  ).sort(
+    (left, right) => left.relativeCost - right.relativeCost || CAPABILITY_CLASSES.indexOf(left.capabilityClass) - CAPABILITY_CLASSES.indexOf(right.capabilityClass) || left.id.localeCompare(right.id)
+  );
+  const selected = plan.confidence === "low" ? void 0 : eligible[0];
+  if (plan.confidence === "low")
+    return {
+      status: "requires-review",
+      candidateId: null,
+      capabilityClass: null,
+      relativeCost: null
+    };
+  if (selected === void 0)
+    return {
+      status: "unroutable",
+      candidateId: null,
+      capabilityClass: null,
+      relativeCost: null
+    };
+  return {
+    status: "selected",
+    candidateId: selected.id,
+    capabilityClass: selected.capabilityClass,
+    relativeCost: selected.relativeCost
+  };
+}
+function toLoadedPlan(plan) {
+  const selection = typeof plan.selection === "object" && plan.selection !== null ? plan.selection : null;
+  if (plan.status !== "planned" || selection === null) return null;
+  const rawClass = optionalString2(plan.requiredCapabilityClass);
+  const selClass = optionalString2(selection.capabilityClass);
+  const purpose = optionalString2(plan.purpose);
+  const budget = typeof plan.budget === "object" && plan.budget !== null ? plan.budget : null;
+  const controls = typeof plan.controls === "object" && plan.controls !== null ? plan.controls : null;
+  const assessment = typeof plan.assessment === "object" && plan.assessment !== null ? plan.assessment : null;
+  const candidateId = optionalString2(selection.candidateId);
+  const maxRelativeCost = budget ? optionalNumber2(budget.maxRelativeCost) : void 0;
+  const relativeCost = optionalNumber2(selection.relativeCost);
+  const externalTransmission = controls ? optionalString2(controls.externalTransmission) : null;
+  const confidence2 = assessment ? optionalString2(assessment.confidence) : "medium";
+  const createdAt = optionalString2(plan.createdAt);
+  const artifactIdValue = optionalString2(plan.artifactId);
+  if (rawClass === null || !CAPABILITY_CLASSES.includes(rawClass) || selClass === null || !CAPABILITY_CLASSES.includes(selClass) || purpose === null || maxRelativeCost === void 0 || relativeCost === void 0 || candidateId === null || externalTransmission !== "allowed" && externalTransmission !== "denied" || confidence2 !== "low" && confidence2 !== "medium" && confidence2 !== "high" || createdAt === null || artifactIdValue === null)
+    return null;
+  return {
+    requiredCapabilityClass: rawClass,
+    purpose,
+    maxRelativeCost,
+    externalTransmission,
+    confidence: confidence2,
+    selection: {
+      candidateId,
+      capabilityClass: selClass,
+      relativeCost
+    },
+    createdAt,
+    artifactId: artifactIdValue
+  };
+}
+async function buildReplayReport(root, manifest, profiles, options2, now = /* @__PURE__ */ new Date()) {
+  const realRoot = await resolveEvidenceRoot(root);
+  const selectedSplit = options2.holdoutFinal ? "holdout" : "calibration";
+  const diffs = [];
+  let excludedSplitTaskCount = 0;
+  let noPlan = 0;
+  let changed = 0;
+  let unchanged = 0;
+  let nowSelected = 0;
+  let nowUnroutable = 0;
+  let nowRequiresReview = 0;
+  for (const task of manifest.tasks) {
+    if (task.split !== selectedSplit) {
+      excludedSplitTaskCount += 1;
+      continue;
+    }
+    const loaded = await loadTask(realRoot, task.taskId);
+    const plans = loaded.planList.map(toLoadedPlan).filter((plan2) => plan2 !== null).sort(
+      (a, b) => a.createdAt === b.createdAt ? a.artifactId.localeCompare(b.artifactId) : a.createdAt.localeCompare(b.createdAt)
+    );
+    const plan = plans[plans.length - 1];
+    if (plan === void 0) {
+      noPlan += 1;
+      diffs.push({
+        taskId: task.taskId,
+        original: null,
+        proposed: null,
+        changed: false,
+        note: "no recorded routing plan"
+      });
+      continue;
+    }
+    const proposed = replaySelection(plan, profiles);
+    const isChanged = proposed.status !== "selected" || proposed.candidateId !== plan.selection.candidateId || proposed.capabilityClass !== plan.selection.capabilityClass || proposed.relativeCost !== plan.selection.relativeCost;
+    if (isChanged) changed += 1;
+    else unchanged += 1;
+    if (proposed.status === "selected") nowSelected += 1;
+    else if (proposed.status === "unroutable") nowUnroutable += 1;
+    else nowRequiresReview += 1;
+    diffs.push({
+      taskId: task.taskId,
+      original: {
+        status: "selected",
+        candidateId: plan.selection.candidateId,
+        capabilityClass: plan.selection.capabilityClass,
+        relativeCost: plan.selection.relativeCost
+      },
+      proposed: {
+        status: proposed.status,
+        candidateId: proposed.candidateId,
+        capabilityClass: proposed.capabilityClass,
+        relativeCost: proposed.relativeCost
+      },
+      changed: isChanged
+    });
+  }
+  const tasksReplayed = diffs.length - noPlan;
+  if (tasksReplayed === 0)
+    throw new RigorError(
+      `No ${selectedSplit} tasks with a recorded routing plan to replay`,
+      EXIT.policyViolation
+    );
+  return {
+    schemaVersion: EVALUATION_REPLAY_SCHEMA,
+    generatedAt: now.toISOString(),
+    split: selectedSplit,
+    holdoutFinal: options2.holdoutFinal,
+    proposedModelProfilesHash: hash(profiles),
+    manifest: {
+      manifestVersion: manifest.manifestVersion,
+      taskCount: manifest.tasks.length,
+      hash: hash(manifest)
+    },
+    excludedSplitTaskCount,
+    summary: {
+      tasksReplayed,
+      changed,
+      unchanged,
+      nowSelected,
+      nowUnroutable,
+      nowRequiresReview,
+      noPlan
+    },
+    diffs
+  };
+}
+
+// src/test-integrity.ts
+var import_promises10 = require("node:fs/promises");
+var import_node_path11 = __toESM(require("node:path"), 1);
 var DETECTOR_VERSION = "0.1.0";
 var EVALUATED_SIGNALS = [
   "TI-05",
@@ -5219,7 +6156,7 @@ async function scanTestIntegrity(root, options2, now = /* @__PURE__ */ new Date(
   if (headSha === null) {
     let text = null;
     try {
-      text = await (0, import_promises9.readFile)(import_node_path10.default.join(root, "package.json"), "utf8");
+      text = await (0, import_promises10.readFile)(import_node_path11.default.join(root, "package.json"), "utf8");
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
@@ -5342,10 +6279,10 @@ function createClassification(input, event, now = /* @__PURE__ */ new Date()) {
   };
 }
 async function hasUnfinishedAttempt(root, task) {
-  const directory = import_node_path10.default.join(root, ".rigor", "evidence", task, "attempts");
+  const directory = import_node_path11.default.join(root, ".rigor", "evidence", task, "attempts");
   let names;
   try {
-    names = await (0, import_promises9.readdir)(directory);
+    names = await (0, import_promises10.readdir)(directory);
   } catch (error) {
     if (error.code === "ENOENT") return false;
     throw error;
@@ -5357,7 +6294,7 @@ async function hasUnfinishedAttempt(root, task) {
     try {
       item = record(
         JSON.parse(
-          await (0, import_promises9.readFile)(import_node_path10.default.join(directory, name), "utf8")
+          await (0, import_promises10.readFile)(import_node_path11.default.join(directory, name), "utf8")
         ),
         "attempt artifact"
       );
@@ -5386,7 +6323,7 @@ var availability = [
   "incompatible"
 ];
 var unavailableActions = ["skip", "stop", "continue-claude-only"];
-function oneOf7(value, allowed, name) {
+function oneOf8(value, allowed, name) {
   if (typeof value !== "string" || !allowed.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
   return value;
@@ -5396,7 +6333,7 @@ function bool4(value, name) {
     throw new RigorError(`${name} must be boolean`, EXIT.inputError);
   return value;
 }
-function integer4(value, name, minimum) {
+function integer5(value, name, minimum) {
   if (!Number.isInteger(value) || value < minimum || value > 20)
     throw new RigorError(`${name} is out of range`, EXIT.inputError);
   return value;
@@ -5444,14 +6381,14 @@ function parseConsultationDecisionInput(value) {
   return {
     schemaVersion: CONSULTATION_DECISION_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
-    riskTier: oneOf7(item.riskTier, risks2, "riskTier"),
-    assessmentConfidence: oneOf7(
+    riskTier: oneOf8(item.riskTier, risks2, "riskTier"),
+    assessmentConfidence: oneOf8(
       item.assessmentConfidence,
       confidences,
       "assessmentConfidence"
     ),
-    failureProgress: oneOf7(item.failureProgress, progress, "failureProgress"),
-    fingerprintRepetitions: integer4(
+    failureProgress: oneOf8(item.failureProgress, progress, "failureProgress"),
+    fingerprintRepetitions: integer5(
       item.fingerprintRepetitions,
       "fingerprintRepetitions",
       0
@@ -5461,23 +6398,23 @@ function parseConsultationDecisionInput(value) {
       dataIntegrity: bool4(concerns.dataIntegrity, "concerns.dataIntegrity")
     },
     humanRequested: bool4(item.humanRequested, "humanRequested"),
-    externalTransmission: oneOf7(
+    externalTransmission: oneOf8(
       item.externalTransmission,
       ["allowed", "denied"],
       "externalTransmission"
     ),
-    pluginAvailability: oneOf7(
+    pluginAvailability: oneOf8(
       item.pluginAvailability,
       availability,
       "pluginAvailability"
     ),
     policy: {
-      unchangedFailureThreshold: integer4(
+      unchangedFailureThreshold: integer5(
         policy.unchangedFailureThreshold,
         "policy.unchangedFailureThreshold",
         2
       ),
-      unavailableAction: oneOf7(
+      unavailableAction: oneOf8(
         policy.unavailableAction,
         unavailableActions,
         "policy.unavailableAction"
@@ -5598,13 +6535,13 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|eval-report|eval-replay|calibration-proposal|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
   const root = await findGitRoot(cwd);
   if (command === "setup" || command === "upgrade") {
-    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path11.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
+    const bundle = import_node_process.default.env.RIGOR_BUNDLE_PATH ?? import_node_path12.default.resolve(import_node_process.default.argv[1] ?? "dist/rigor.cjs");
     output(await setup(root, bundle));
     return EXIT.success;
   }
@@ -5903,6 +6840,65 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output(await retrospect(root));
     return EXIT.success;
   }
+  if (command === "eval-report") {
+    const manifest = parseEvaluationManifest(
+      await readJson(option(args, "--manifest"))
+    );
+    const evidenceRoot = import_node_path12.default.resolve(cwd, option(args, "--evidence-root"));
+    const report = await buildEvaluationReport(evidenceRoot, manifest);
+    const outPath = option(args, "--out", false);
+    if (outPath !== void 0)
+      await (0, import_promises11.writeFile)(
+        import_node_path12.default.resolve(cwd, outPath),
+        `${JSON.stringify(report, null, 2)}
+`
+      );
+    output(report);
+    return EXIT.success;
+  }
+  if (command === "eval-replay") {
+    const manifest = parseEvaluationManifest(
+      await readJson(option(args, "--manifest"))
+    );
+    const evidenceRoot = import_node_path12.default.resolve(cwd, option(args, "--evidence-root"));
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles"))
+    );
+    const holdoutFinal = args.includes("--holdout-final");
+    const replay = await buildReplayReport(evidenceRoot, manifest, profiles, {
+      holdoutFinal
+    });
+    output(replay);
+    return EXIT.success;
+  }
+  if (command === "calibration-proposal") {
+    const manifest = parseEvaluationManifest(
+      await readJson(option(args, "--manifest"))
+    );
+    const input = parseCalibrationProposalInput(
+      await readJson(option(args, "--input"))
+    );
+    const reportPaths = options(args, "--report");
+    if (reportPaths.length === 0)
+      throw new RigorError(
+        "At least one --report is required",
+        EXIT.inputError
+      );
+    const reports = await Promise.all(
+      reportPaths.map(async (file) => readJson(file))
+    );
+    verifyCalibrationEvidence(input.evidence, manifest, reports);
+    const proposal = createCalibrationProposal(input, manifest);
+    const saved = await saveCollectionArtifact(
+      root,
+      proposal.taskId,
+      "calibration",
+      "calibration-proposal",
+      proposal
+    );
+    output({ ...proposal, saved });
+    return EXIT.success;
+  }
   if (command === "test-integrity-scan") {
     const task = taskId(option(args, "--task"));
     const base = option(args, "--base");
@@ -5983,7 +6979,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   }
   throw new RigorError(`Unknown command: ${command}`, EXIT.inputError);
 }
-var entryName = import_node_process.default.argv[1] ? import_node_path11.default.basename(import_node_process.default.argv[1]) : "";
+var entryName = import_node_process.default.argv[1] ? import_node_path12.default.basename(import_node_process.default.argv[1]) : "";
 var isEntry = entryName === "rigor.cjs" || entryName === "rigor-ci.cjs" || entryName === "cli.ts";
 if (isEntry) {
   main().then((code) => {

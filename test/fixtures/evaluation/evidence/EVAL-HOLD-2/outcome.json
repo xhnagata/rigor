@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.outcome.v1",
+  "artifactId": "outcome_EVAL-HOLD-2",
+  "taskId": "EVAL-HOLD-2",
+  "createdAt": "2023-11-14T22:13:55.000Z",
+  "decision": "rejected",
+  "acceptedWithoutModelCodeChanges": false,
+  "humanCorrectionMinutes": 5,
+  "escalationCount": 0,
+  "retryCount": 0,
+  "reviewFindings": {
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "total": 1
+  },
+  "revertStatus": "none",
+  "escapedDefectStatus": "none",
+  "executionIdentityStatus": "unverified",
+  "routingPlanArtifactId": "routing-plan_EVAL-HOLD-2_1",
+  "attemptArtifactId": "attempt_EVAL-HOLD-2_1",
+  "attemptSequence": 1,
+  "attemptStatus": "failed",
+  "attemptDurationMs": 30000,
+  "provider": "synthetic",
+  "model": "synthetic-standard",
+  "capabilityClass": "standard",
+  "verificationArtifactId": "verification_EVAL-HOLD-2",
+  "usage": {
+    "status": "unavailable",
+    "inputTokens": null,
+    "outputTokens": null,
+    "totalTokens": null,
+    "reasoningEffort": null,
+    "providerCost": null,
+    "modelIdentity": null
+  },
+  "notes": []
+}

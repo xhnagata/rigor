@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "rigor.outcome.v1",
+  "artifactId": "outcome_EVAL-COLL-B",
+  "taskId": "EVAL-COLL-B",
+  "createdAt": "2023-11-14T22:14:05.000Z",
+  "decision": "accepted",
+  "acceptedWithoutModelCodeChanges": false,
+  "humanCorrectionMinutes": 0,
+  "escalationCount": 0,
+  "retryCount": 0,
+  "reviewFindings": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "total": 0
+  },
+  "revertStatus": "none",
+  "escapedDefectStatus": "none",
+  "executionIdentityStatus": "unverified",
+  "attemptArtifactId": "attempt_EVAL-COLL-B_1",
+  "attemptSequence": 1,
+  "attemptStatus": "completed",
+  "attemptDurationMs": 10000,
+  "provider": "a",
+  "model": "b/c",
+  "capabilityClass": "standard",
+  "usage": {
+    "status": "unavailable",
+    "inputTokens": null,
+    "outputTokens": null,
+    "totalTokens": null,
+    "reasoningEffort": null,
+    "providerCost": null,
+    "modelIdentity": null
+  },
+  "notes": []
+}

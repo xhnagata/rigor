@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "rigor.routing-plan.v1",
+  "artifactId": "routing-plan_EVAL-MIXED-1_2",
+  "createdAt": "2023-11-14T22:14:01.700Z",
+  "taskId": "EVAL-MIXED-1",
+  "preflightArtifactId": "preflight_EVAL-MIXED-1",
+  "preflightHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "routingInputHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "modelProfilesHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contractArtifactId": "contract_EVAL-MIXED-1",
+  "contractHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "policyHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "plannedHead": null,
+  "purpose": "implementation",
+  "requiredCapabilityClass": "standard",
+  "eligibleCandidates": ["claude-standard"],
+  "excludedCandidates": [],
+  "selection": {
+    "candidateId": "claude-standard",
+    "provider": "synthetic",
+    "model": "synthetic-standard",
+    "capabilityClass": "standard",
+    "relativeCost": 15
+  },
+  "controls": {
+    "externalTransmission": "denied",
+    "requireHumanApproval": false,
+    "requireIndependentReview": false
+  },
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 3600000,
+    "maxRelativeCost": 100
+  },
+  "status": "planned"
+}

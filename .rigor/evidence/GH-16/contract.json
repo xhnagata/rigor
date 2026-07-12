@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_658d6a16-cee5-42d2-996d-b2995257f9d3",
+  "taskId": "GH-16",
+  "createdAt": "2026-07-12T14:09:07.883Z",
+  "preflightArtifactId": "preflight_e624e075-3fa1-4d30-a0c1-5e762ecbb370",
+  "preflightHash": "b5223cdf35c11ae76ee0fdb1751081e1863c05b24cbe566df0407f2821dbd2cc",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A versioned evaluation manifest schema defines task categories, an initial 10-20 task set, a documented expansion path to 30-100 tasks, and an explicit calibration/holdout split per task",
+    "Evaluation reports use accepted changes as the denominator and show missing-data counts explicitly",
+    "A report can compare economy/standard/premium/frontier capability classes without treating configured relative cost as an invoice, price, or verified provider charge",
+    "Evaluation detects over-routing, under-routing, retry cost, and escaped defects where known, each with explicit numerators and denominators",
+    "Replay/shadow evaluation re-runs recorded routing inputs against proposed threshold or profile changes deterministically without invoking any model",
+    "Proposed rule changes are recorded as a calibration proposal artifact that includes evidence references, expected trade-offs, and rollback criteria, requires human review, and has no approval or enforcement effect",
+    "Holdout task results are never used to fit the same thresholds: replay/fitting against holdout tasks is refused or explicitly separated from calibration output",
+    "Documentation defines a recurring calibration owner and review interval, isolated worktree/fixture support for selected cross-model comparisons, and contamination-awareness rules",
+    "A sample report is produced entirely from checked-in synthetic fixtures with no live model invocation",
+    "npm run test:all passes",
+    "npm run bench passes",
+    "claude plugin validate . --strict passes",
+    "git diff --check passes"
+  ],
+  "allowedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/evaluation.md",
+    "docs/orchestration.md",
+    "docs/mvp-limitations.md",
+    "docs/product.md",
+    "docs/architecture.md",
+    "schemas/evaluation-manifest.v1.schema.json",
+    "schemas/evaluation-report.v1.schema.json",
+    "schemas/calibration-proposal.v1.schema.json",
+    "schemas/artifacts.v1.schema.json",
+    "src/cli.ts",
+    "src/evaluation.ts",
+    "src/schema.ts",
+    "src/types.ts",
+    "src/paths.ts",
+    "src/artifacts.ts",
+    "test/evaluation.test.ts",
+    "test/schema.test.ts",
+    "test/e2e.test.ts",
+    "test/fixtures/evaluation/**"
+  ],
+  "constraints": [
+    "Implement only Issue #16 scope; no changes outside allowed paths",
+    "Do not run live multi-model experiments or invoke any model from the CLI; evaluation is deterministic aggregation and replay over recorded evidence",
+    "Do not delete, weaken, or skip existing tests or configured checks",
+    "Additive schemas only: existing artifact schemas and their consumers must remain accepted unchanged",
+    "Configured relative cost remains an abstract comparison weight; never present it as a price, token count, or provider charge",
+    "Unknown usage, model identity, effort, and cost data stay unknown/null; never inferred or fabricated",
+    "Calibration proposals must not be auto-applied: no code path changes routing policy, thresholds, or profiles without human review",
+    "Do not claim statistical confidence from a tiny sample; reports must expose sample sizes",
+    "Fixtures must be synthetic, secret-free, and contain no absolute paths",
+    "Stop if protected paths, public API compatibility, or security boundaries need unexpected changes"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

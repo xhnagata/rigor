@@ -1,5 +1,6 @@
 import path from "node:path";
 import process from "node:process";
+import { writeFile } from "node:fs/promises";
 import {
   createContract,
   createEscalation,
@@ -65,6 +66,14 @@ import {
   validateEscalationArtifacts,
 } from "./escalation.js";
 import { setup } from "./setup.js";
+import {
+  buildEvaluationReport,
+  buildReplayReport,
+  createCalibrationProposal,
+  parseCalibrationProposalInput,
+  parseEvaluationManifest,
+  verifyCalibrationEvidence,
+} from "./evaluation.js";
 import {
   createClassification,
   hasUnfinishedAttempt,
@@ -132,7 +141,7 @@ export async function main(
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     process.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n",
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|eval-report|eval-replay|calibration-proposal|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n",
     );
     return EXIT.success;
   }
@@ -476,6 +485,64 @@ export async function main(
   }
   if (command === "retrospect") {
     output(await retrospect(root));
+    return EXIT.success;
+  }
+  if (command === "eval-report") {
+    const manifest = parseEvaluationManifest(
+      await readJson(option(args, "--manifest")!),
+    );
+    const evidenceRoot = path.resolve(cwd, option(args, "--evidence-root")!);
+    const report = await buildEvaluationReport(evidenceRoot, manifest);
+    const outPath = option(args, "--out", false);
+    if (outPath !== undefined)
+      await writeFile(
+        path.resolve(cwd, outPath),
+        `${JSON.stringify(report, null, 2)}\n`,
+      );
+    output(report);
+    return EXIT.success;
+  }
+  if (command === "eval-replay") {
+    const manifest = parseEvaluationManifest(
+      await readJson(option(args, "--manifest")!),
+    );
+    const evidenceRoot = path.resolve(cwd, option(args, "--evidence-root")!);
+    const profiles = parseModelProfiles(
+      await readJson(option(args, "--profiles")!),
+    );
+    const holdoutFinal = args.includes("--holdout-final");
+    const replay = await buildReplayReport(evidenceRoot, manifest, profiles, {
+      holdoutFinal,
+    });
+    output(replay);
+    return EXIT.success;
+  }
+  if (command === "calibration-proposal") {
+    const manifest = parseEvaluationManifest(
+      await readJson(option(args, "--manifest")!),
+    );
+    const input = parseCalibrationProposalInput(
+      await readJson(option(args, "--input")!),
+    );
+    const reportPaths = options(args, "--report");
+    if (reportPaths.length === 0)
+      throw new RigorError(
+        "At least one --report is required",
+        EXIT.inputError,
+      );
+    const reports = await Promise.all(
+      reportPaths.map(async (file) => readJson(file)),
+    );
+    verifyCalibrationEvidence(input.evidence, manifest, reports);
+    const proposal = createCalibrationProposal(input, manifest);
+    const saved = await saveCollectionArtifact(
+      root,
+      proposal.taskId,
+      "calibration",
+      "calibration-proposal",
+      proposal,
+    );
+    output({ ...proposal, saved });
     return EXIT.success;
   }
   if (command === "test-integrity-scan") {

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_6cf0118a-42fd-430c-b977-e73df5a1f24a",
+  "taskId": "GH-16-R3",
+  "createdAt": "2026-07-12T15:26:20.593Z",
+  "preflightArtifactId": "preflight_db5348fd-8a34-4ad1-8622-e7cf9899b234",
+  "preflightHash": "68404a556b983f4c54c458e56cf302aea374c58c601afd63da2db17c351bbb34",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "Every consumed evidence field is validated for presence and type; schema-required fields that are absent or wrong-typed make the artifact count as malformed instead of defaulting (retryCount, escalationCount, humanCorrectionMinutes, provider, model, usage.modelIdentity/providerCost types, artifactId, routingPlanArtifactId)",
+    "A malformed excluded attempt counts as an unknown relative-cost contribution so partial cost is never presented as complete",
+    "rigor calibration-proposal verifies each cited report artifact: the file is supplied, hashes to the listed reportHash, and embeds the selected manifest hash",
+    "The evaluation-report schema const-binds split discriminators (calibration/evaluationOnly false, holdout/evaluationOnly true) with negative tests",
+    "An attempts or routing collection directory escaping containment yields a nonzero malformed count, with collection-directory and file-level symlink tests",
+    "The candidate key uses an unambiguous encoding immune to delimiter collision, with a collision test",
+    "Coverage gaps closed: accepted-outcome-missing-elapsed test and malformed-excluded-attempt cost test",
+    "All checks pass: npm run test:all, npm run bench, claude plugin validate . --strict, git diff --check",
+    "The sample report is still produced entirely from checked-in synthetic fixtures"
+  ],
+  "allowedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/evaluation.md",
+    "docs/orchestration.md",
+    "docs/mvp-limitations.md",
+    "docs/product.md",
+    "docs/architecture.md",
+    "schemas/evaluation-manifest.v1.schema.json",
+    "schemas/evaluation-report.v1.schema.json",
+    "schemas/calibration-proposal.v1.schema.json",
+    "schemas/calibration-proposal-input.v1.schema.json",
+    "schemas/artifacts.v1.schema.json",
+    "src/cli.ts",
+    "src/evaluation.ts",
+    "src/schema.ts",
+    "src/types.ts",
+    "src/paths.ts",
+    "src/artifacts.ts",
+    "test/evaluation.test.ts",
+    "test/schema.test.ts",
+    "test/e2e.test.ts",
+    "test/fixtures/evaluation/**"
+  ],
+  "constraints": [
+    "Remediate exactly the residual findings recorded in consultation_d6e84429-1d3f-468f-ab84-60a7391ab0cf under GH-16-R3; no unrelated changes",
+    "Do not delete, weaken, or skip existing tests or configured checks",
+    "Existing artifact schemas and consumers outside this change remain accepted unchanged",
+    "Configured relative cost remains an abstract comparison weight; never a price, token count, or provider charge",
+    "Unknown data stays unknown/null; never inferred",
+    "Proposals remain inert",
+    "Fixtures stay synthetic, secret-free, without absolute paths",
+    "Stop if remediation requires paths outside the allowed list"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

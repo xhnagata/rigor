@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "rigor.evaluation-manifest.v1",
+  "manifestVersion": 1,
+  "createdAt": "2023-11-14T22:13:20.000Z",
+  "owner": "repository owner (calibration owner of record)",
+  "reviewInterval": "every release",
+  "categories": ["refactor"],
+  "expansionPolicy": "Single-task manifest exercising an accepted change whose routing plan cannot be resolved, so the configured relative cost is unknown and reported null rather than as a smaller or zero average.",
+  "tasks": [
+    {
+      "taskId": "EVAL-UNRES-1",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: accepted change whose attempt references a routing plan that is absent, so configured relative cost is unknown."
+    }
+  ]
+}

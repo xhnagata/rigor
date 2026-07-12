@@ -50,7 +50,7 @@ Before the produced input is ever passed to `rigor route --record`, `/rigor:asse
 
 The selector maps `low`, `medium`, `high`, and `critical` assessment levels to `economy`, `standard`, `premium`, and `frontier`. It takes the maximum of complexity, ambiguity, and novelty. Weak deterministic verification raises the required class by one, capped at frontier.
 
-This is an initial, testable heuristic rather than an empirical quality claim. Later calibration must be based on accepted-change cost, retries, elapsed time, human intervention, review findings, and escaped defects.
+This is an initial, testable heuristic rather than an empirical quality claim. Calibration is based on accepted-change cost, retries, elapsed time, human intervention, review findings, and escaped defects; the contamination-aware process, its manifest, and the shadow-replay and inert-proposal commands are documented in [the evaluation guide](evaluation.md). Any routing change from that evidence requires human review.
 
 Every routing input includes at least one assessment reason (v1) or at least one piece of path-anchored evidence (v2). These make the model- or human-supplied classification reviewable, but they do not turn an assessment into a deterministic fact. See "Assessment confidence and evidence" above for the v2 confidence gate and its fail-closed cases.
 

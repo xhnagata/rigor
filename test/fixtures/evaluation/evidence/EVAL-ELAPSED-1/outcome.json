@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.outcome.v1",
+  "artifactId": "outcome_EVAL-ELAPSED-1",
+  "taskId": "EVAL-ELAPSED-1",
+  "createdAt": "2023-11-14T22:14:03.000Z",
+  "decision": "accepted",
+  "acceptedWithoutModelCodeChanges": false,
+  "humanCorrectionMinutes": 0,
+  "escalationCount": 0,
+  "retryCount": 0,
+  "reviewFindings": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "total": 0
+  },
+  "revertStatus": "none",
+  "escapedDefectStatus": "none",
+  "executionIdentityStatus": "unverified",
+  "routingPlanArtifactId": "routing-plan_EVAL-ELAPSED-1_1",
+  "attemptArtifactId": "attempt_EVAL-ELAPSED-1_1",
+  "attemptSequence": 1,
+  "attemptStatus": "completed",
+  "provider": "synthetic",
+  "model": "synthetic-standard",
+  "capabilityClass": "standard",
+  "verificationArtifactId": "verification_EVAL-ELAPSED-1",
+  "usage": {
+    "status": "recorded",
+    "inputTokens": 1000,
+    "outputTokens": 500,
+    "totalTokens": 1500,
+    "reasoningEffort": null,
+    "providerCost": null,
+    "modelIdentity": null
+  },
+  "notes": []
+}

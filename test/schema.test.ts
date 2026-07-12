@@ -5,6 +5,11 @@ import path from "node:path";
 import { defaultPolicy } from "../src/setup.js";
 import { parseIntent, parsePolicy } from "../src/schema.js";
 import {
+  createCalibrationProposal,
+  parseCalibrationProposalInput,
+  parseEvaluationManifest,
+} from "../src/evaluation.js";
+import {
   buildTestIntegrityEvent,
   createClassification,
   parseClassificationInput,
@@ -205,6 +210,153 @@ test("test-integrity parsers fail closed on an unknown schema", () => {
       schemaVersion: "future",
       classifiedBy: "human",
     }),
+  );
+});
+
+async function loadEvaluationFixture(name: string): Promise<unknown> {
+  return JSON.parse(
+    await readFile(
+      path.join(import.meta.dirname, "fixtures", "evaluation", name),
+      "utf8",
+    ),
+  ) as unknown;
+}
+
+test("the evaluation manifest fixture matches its schema and round-trips", async () => {
+  const raw = await loadEvaluationFixture("manifest.json");
+  const schema = await loadSchema("evaluation-manifest.v1.schema.json");
+  assert.deepEqual(validate(raw, schema), []);
+  assert.equal(
+    parseEvaluationManifest(raw).schemaVersion,
+    "rigor.evaluation-manifest.v1",
+  );
+});
+
+test("a tampered evaluation manifest fails schema validation", async () => {
+  const schema = await loadSchema("evaluation-manifest.v1.schema.json");
+  const raw = (await loadEvaluationFixture("manifest.json")) as Record<
+    string,
+    unknown
+  >;
+  assert.notEqual(validate({ ...raw, surprise: true }, schema).length, 0);
+  assert.notEqual(
+    validate({ ...raw, manifestVersion: "one" }, schema).length,
+    0,
+  );
+});
+
+test("the evaluation report matches its fully specified schema", async () => {
+  const raw = await loadEvaluationFixture("expected-report.json");
+  const schema = await loadSchema("evaluation-report.v1.schema.json");
+  assert.deepEqual(validate(raw, schema), []);
+});
+
+test("a report with a missing field or a wrongly typed metric fails schema validation", async () => {
+  const schema = await loadSchema("evaluation-report.v1.schema.json");
+  const raw = (await loadEvaluationFixture("expected-report.json")) as {
+    splits: {
+      calibration: {
+        outcomes: Record<string, unknown>;
+        signals: {
+          overRouting: { count: number };
+          retryCost: { configuredRelativeCostTotal: unknown };
+        };
+        byCapabilityClass: Array<{
+          perAcceptedChange: Record<string, unknown>;
+        }>;
+      };
+    };
+  };
+  // A missing required count.
+  const missing = JSON.parse(JSON.stringify(raw));
+  delete missing.splits.calibration.outcomes.accepted;
+  assert.notEqual(validate(missing, schema).length, 0);
+  // A rate typed as a string rather than number|null.
+  const badRate = JSON.parse(JSON.stringify(raw));
+  badRate.splits.calibration.byCapabilityClass[0].perAcceptedChange.retries =
+    "lots";
+  assert.notEqual(validate(badRate, schema).length, 0);
+  // A total typed as a string.
+  const badTotal = JSON.parse(JSON.stringify(raw));
+  badTotal.splits.calibration.signals.retryCost.configuredRelativeCostTotal =
+    "270";
+  assert.notEqual(validate(badTotal, schema).length, 0);
+  // An unexpected extra property is rejected by additionalProperties:false.
+  const extra = JSON.parse(JSON.stringify(raw));
+  extra.splits.calibration.surprise = true;
+  assert.notEqual(validate(extra, schema).length, 0);
+});
+
+test("a report with swapped split/evaluationOnly discriminators fails schema validation", async () => {
+  const schema = await loadSchema("evaluation-report.v1.schema.json");
+  const raw = (await loadEvaluationFixture("expected-report.json")) as {
+    splits: {
+      calibration: { split: unknown; evaluationOnly: unknown };
+      holdout: { split: unknown; evaluationOnly: unknown };
+    };
+  };
+  // splits.calibration.split is const-bound to "calibration": swapping it to
+  // "holdout" (a value the sibling holdout object legitimately has) must fail.
+  const swappedCalibrationSplit = JSON.parse(JSON.stringify(raw));
+  swappedCalibrationSplit.splits.calibration.split = "holdout";
+  assert.notEqual(validate(swappedCalibrationSplit, schema).length, 0);
+  // splits.calibration.evaluationOnly is const-bound to false.
+  const swappedCalibrationFlag = JSON.parse(JSON.stringify(raw));
+  swappedCalibrationFlag.splits.calibration.evaluationOnly = true;
+  assert.notEqual(validate(swappedCalibrationFlag, schema).length, 0);
+  // splits.holdout.split is const-bound to "holdout".
+  const swappedHoldoutSplit = JSON.parse(JSON.stringify(raw));
+  swappedHoldoutSplit.splits.holdout.split = "calibration";
+  assert.notEqual(validate(swappedHoldoutSplit, schema).length, 0);
+  // splits.holdout.evaluationOnly is const-bound to true.
+  const swappedHoldoutFlag = JSON.parse(JSON.stringify(raw));
+  swappedHoldoutFlag.splits.holdout.evaluationOnly = false;
+  assert.notEqual(validate(swappedHoldoutFlag, schema).length, 0);
+});
+
+test("the calibration proposal input fixture matches its schema and round-trips", async () => {
+  const raw = await loadEvaluationFixture("proposal-input.json");
+  const schema = await loadSchema("calibration-proposal-input.v1.schema.json");
+  assert.deepEqual(validate(raw, schema), []);
+  assert.equal(
+    parseCalibrationProposalInput(raw).schemaVersion,
+    "rigor.calibration-proposal-input.v1",
+  );
+});
+
+async function proposalManifest(): Promise<
+  Parameters<typeof createCalibrationProposal>[1]
+> {
+  return parseEvaluationManifest(await loadEvaluationFixture("manifest.json"));
+}
+
+test("a calibration proposal matches its schema and fixes the inert markers", async () => {
+  const proposal = createCalibrationProposal(
+    parseCalibrationProposalInput(
+      await loadEvaluationFixture("proposal-input.json"),
+    ),
+    await proposalManifest(),
+    new Date(0),
+  );
+  const schema = await loadSchema("calibration-proposal.v1.schema.json");
+  assert.deepEqual(validate(proposal, schema), []);
+  assert.equal(proposal.status, "proposed");
+  assert.equal(proposal.approvalEffect, "none");
+  assert.match(proposal.provenance.manifestHash, /^[a-f0-9]{64}$/u);
+});
+
+test("a calibration proposal with an approval effect fails schema validation", async () => {
+  const schema = await loadSchema("calibration-proposal.v1.schema.json");
+  const proposal = createCalibrationProposal(
+    parseCalibrationProposalInput(
+      await loadEvaluationFixture("proposal-input.json"),
+    ),
+    await proposalManifest(),
+    new Date(0),
+  );
+  assert.notEqual(
+    validate({ ...proposal, approvalEffect: "enforce" }, schema).length,
+    0,
   );
 });
 

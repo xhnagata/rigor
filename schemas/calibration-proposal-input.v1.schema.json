@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/calibration-proposal-input.v1.schema.json",
+  "title": "Rigor calibration proposal input v1",
+  "description": "The human-authored input to `rigor calibration-proposal`. It carries its own schema version, distinct from the saved artifact: the CLI generates the artifactId, createdAt, and provenance, cross-checking every evidence task id against a required `--manifest`. A holdout task may only be cited when `holdoutFinalEvaluation` is true, marking the citation as a deliberate final-evaluation reference. The proposal is inert: `status` is always \"proposed\" and `approvalEffect` always \"none\". Any `relativeCost` referenced in its evidence is an abstract configured weight, never a price, token count, or verified charge.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "target",
+    "summary",
+    "evidence",
+    "proposedChange",
+    "expectedTradeOffs",
+    "rollbackCriteria",
+    "status",
+    "approvalEffect"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.calibration-proposal-input.v1" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "target": {
+      "enum": [
+        "model-profiles",
+        "escalation-thresholds",
+        "routing-heuristic-constant"
+      ]
+    },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reportHashes", "taskIds", "replayHash"],
+      "properties": {
+        "reportHashes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "taskIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "replayHash": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        }
+      }
+    },
+    "proposedChange": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "expectedTradeOffs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "rollbackCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "status": { "const": "proposed" },
+    "approvalEffect": { "const": "none" },
+    "holdoutFinalEvaluation": {
+      "type": "boolean",
+      "description": "When true, evidence citations of holdout tasks are permitted and recorded as a deliberate final-evaluation reference. Defaults to false, under which any holdout citation is rejected fail-closed."
+    }
+  }
+}

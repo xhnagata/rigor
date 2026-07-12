@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_EVAL-MIXED-1_1",
+  "taskId": "EVAL-MIXED-1",
+  "createdAt": "2023-11-14T22:14:01.500Z",
+  "sessionArtifactId": "attempt-session_EVAL-MIXED-1_1",
+  "sessionHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "routingPlanHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contractArtifactId": "contract_EVAL-MIXED-1",
+  "contractHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sequence": 1,
+  "provider": "synthetic",
+  "model": "synthetic-standard",
+  "capabilityClass": "standard",
+  "purpose": "implementation",
+  "startedAt": "2023-11-14T22:14:01.600Z",
+  "completedAt": "2023-11-14T22:14:01.600Z",
+  "durationMs": 1000,
+  "executionIdentityStatus": "unverified",
+  "status": "failed",
+  "beforeHead": null,
+  "afterHead": null,
+  "beforeTreeHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "afterTreeHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "changedPathsBefore": [],
+  "changedPaths": ["src/synthetic.ts"],
+  "scopeViolations": [],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  }
+}
