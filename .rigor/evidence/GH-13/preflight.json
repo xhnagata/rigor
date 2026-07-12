@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_883dc7d9-461c-481f-bdea-62868efca28d",
+  "taskId": "GH-13",
+  "createdAt": "2026-07-11T15:33:28.266Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "4e2de69765b0b1239342e9f6a433149316c81623b47085aa9520cc41681fff5c",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-13",
+    "head": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "docs/architecture.md",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/attempt-result-input.v1.schema.json",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/cli.ts",
+    "src/fingerprint.ts",
+    "src/types.ts",
+    "test/artifacts.test.ts",
+    "test/attempt.test.ts",
+    "test/fingerprint.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/architecture.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/artifacts.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/attempt.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/fingerprint.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/artifacts.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/attempt.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fingerprint.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}

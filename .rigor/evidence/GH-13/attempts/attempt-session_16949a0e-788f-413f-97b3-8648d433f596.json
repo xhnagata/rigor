@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_16949a0e-788f-413f-97b3-8648d433f596",
+  "taskId": "GH-13",
+  "createdAt": "2026-07-11T15:33:28.407Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_7ee181d8-99ff-4693-b121-6edc765f399c",
+  "routingPlanHash": "fbfe2f0c6de35d7e48332eaabb1bccc246535df4327d2a042a059ef5be40db63",
+  "contractArtifactId": "contract_936c38a0-2186-40ce-a3e1-2071afc8d570",
+  "contractHash": "50534ed56df5c43ae221b4d11f89ba217f8dd5608b02f1c96bfd7dfc699282fb",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 5400000,
+    "maxRelativeCost": 100
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "a0f5fc5b66f4d915b421b3c2e080d6c1ff58aab4",
+  "beforeTreeHash": "971555008817d4bdbe64c62d32f9d6df410a7907a1289f2b3a5c9995ed937c39",
+  "changedPathsBefore": [],
+  "selection": {
+    "provider": "claude",
+    "model": "claude-sonnet-5",
+    "capabilityClass": "premium"
+  }
+}

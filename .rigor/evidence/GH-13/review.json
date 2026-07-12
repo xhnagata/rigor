@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_407d4bae-de57-41a0-89e9-c27f3140eb28",
+  "taskId": "GH-13",
+  "createdAt": "2026-07-11T15:34:02.164Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_936c38a0-2186-40ce-a3e1-2071afc8d570",
+  "verificationArtifactId": "verification_0595ca17-f810-479a-a557-97681c2af1c5",
+  "changedPaths": [
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/fingerprint.ts",
+    "src/types.ts",
+    "test/artifacts.test.ts",
+    "test/attempt.test.ts",
+    "test/fingerprint.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "Identical normalized failures produce the same deterministic fingerprint across attempts.",
+    "Path, timestamp, random ID, and duration noise do not create a new fingerprint when covered by documented normalization rules.",
+    "New regressions cannot be hidden by deleting or weakening tests or checks: a failing check that later passes with fewer observed tests, or a disappearing previously-failing test, is flagged as a weakening signal and is not reported as genuine progress.",
+    "Infrastructure, timeout, and spawn-error failures are categorized separately from implementation failures and do not by themselves count as an unchanged implementation-failure loop.",
+    "Raw command logs and secrets are not persisted: only normalized structured facts (check id, exit code, category, error class, bounded normalized test ids) and digests are stored.",
+    "Failure sets are compared across attempts and recorded as first, unchanged, reduced, expanded, or incomparable.",
+    "Model-authored diagnosis remains separate from and is explicitly labeled as speculation, distinct from the deterministic Rigor-derived fingerprint and progress facts.",
+    "Pure verification and routing stay deterministic for identical inputs; existing v1 attempt and verification artifacts remain parseable (backward compatible).",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict all pass."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

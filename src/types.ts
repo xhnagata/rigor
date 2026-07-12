@@ -1,3 +1,11 @@
+import type {
+  CheckFacts,
+  CheckFailure,
+  FailureCategory,
+  ProgressComparison,
+  TestStats,
+} from "./fingerprint.js";
+
 export const POLICY_SCHEMA = "rigor.policy.v1" as const;
 export const INTENT_SCHEMA = "rigor.intent.v1" as const;
 export const PREFLIGHT_SCHEMA = "rigor.preflight.v1" as const;
@@ -26,6 +34,15 @@ export const ATTEMPT_RESULT_INPUT_SCHEMA =
 export const OUTCOME_INPUT_SCHEMA = "rigor.outcome-input.v1" as const;
 export const OUTCOME_SCHEMA = "rigor.outcome.v1" as const;
 export const AVAILABILITY_SCHEMA = "rigor.availability.v1" as const;
+
+export type {
+  CheckFacts,
+  CheckFailure,
+  FailureCategory,
+  ProgressComparison,
+  ProgressStatus,
+  TestStats,
+} from "./fingerprint.js";
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type Transmission = "allowed" | "denied";
@@ -126,6 +143,8 @@ export interface CheckResult {
   exitCode: number | null;
   durationMs: number;
   outputDigest: string;
+  testStats?: TestStats;
+  failure?: CheckFailure;
 }
 
 export interface Verification {
@@ -141,6 +160,12 @@ export interface Verification {
   scopeViolations: string[];
   checks: CheckResult[];
   status: "passed" | "failed";
+  /**
+   * Additive, optional for backward compatibility with verification.json
+   * artifacts recorded before failure fingerprinting existed.
+   */
+  failureFingerprint?: string | null;
+  failureFacts?: CheckFacts[];
 }
 
 export interface EscalationInput {
@@ -339,6 +364,17 @@ export interface Attempt {
   failureClass?: string;
   externalSessionId?: string;
   externalTurnId?: string;
+  /**
+   * Additive, optional for backward compatibility with attempt.json artifacts
+   * recorded before failure fingerprinting existed. Deterministically derived
+   * from the linked verification's failureFacts, never copied from model
+   * input; kept separate from the model-supplied, speculative `failureClass`
+   * above.
+   */
+  failureFingerprint?: string | null;
+  failureCategory?: FailureCategory | "mixed" | null;
+  failureFacts?: CheckFacts[];
+  progress?: ProgressComparison;
 }
 
 export interface RoutingPlan
