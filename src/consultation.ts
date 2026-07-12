@@ -5,11 +5,14 @@ import { matches } from "./paths.js";
 import {
   CONSULTATION_REQUEST_SCHEMA,
   CONSULTATION_RESULT_INPUT_SCHEMA,
+  CONSULTATION_RESULT_INPUT_V2_SCHEMA,
   CONSULTATION_SCHEMA,
+  CONSULTATION_V2_SCHEMA,
   CONSULTATION_SESSION_SCHEMA,
   type Consultation,
   type ConsultationRequest,
   type ConsultationResultInput,
+  type ConsultationFinding,
   type ConsultationSession,
   type Policy,
   type Preflight,
@@ -37,6 +40,23 @@ const outcomes: ConsultationResultInput["outcome"][] = [
   "investigate",
   "ask-human",
 ];
+const severities: ConsultationFinding["severity"][] = [
+  "critical",
+  "high",
+  "medium",
+  "low",
+  "informational",
+];
+const reproducibility: ConsultationFinding["reproducibility"][] = [
+  "always",
+  "intermittent",
+  "not-reproduced",
+];
+const confidence: ConsultationFinding["confidence"][] = [
+  "low",
+  "medium",
+  "high",
+];
 
 function oneOf<T extends string>(
   value: unknown,
@@ -50,6 +70,102 @@ function oneOf<T extends string>(
 
 function optionalText(value: unknown, name: string): string | undefined {
   return value === undefined ? undefined : textField(value, name, 512);
+}
+
+function evidencePath(value: unknown, name: string): string {
+  const result = textField(value, name, 1024);
+  if (
+    result.startsWith("/") ||
+    result.startsWith("\\") ||
+    /^[A-Za-z]:/u.test(result) ||
+    result.split(/[\\/]/u).includes("..")
+  )
+    throw new RigorError(
+      `${name} must be a repository-relative path`,
+      EXIT.inputError,
+    );
+  return result;
+}
+
+function exactKeys(
+  item: Record<string, unknown>,
+  allowed: readonly string[],
+  name: string,
+): void {
+  const unexpected = Object.keys(item).filter((key) => !allowed.includes(key));
+  if (unexpected.length > 0)
+    throw new RigorError(
+      `${name} contains unsupported fields: ${unexpected.join(", ")}`,
+      EXIT.inputError,
+    );
+}
+
+function findings(value: unknown): ConsultationFinding[] {
+  if (!Array.isArray(value) || value.length > 100)
+    throw new RigorError(
+      "findings must contain at most 100 items",
+      EXIT.inputError,
+    );
+  return value.map((raw, index) => {
+    const item = record(raw, `findings[${index}]`);
+    exactKeys(
+      item,
+      [
+        "severity",
+        "evidenceLocation",
+        "reproducibility",
+        "requiredAction",
+        "confidence",
+      ],
+      `findings[${index}]`,
+    );
+    const location = record(
+      item.evidenceLocation,
+      `findings[${index}].evidenceLocation`,
+    );
+    exactKeys(
+      location,
+      ["path", "line"],
+      `findings[${index}].evidenceLocation`,
+    );
+    const finding: ConsultationFinding = {
+      severity: oneOf(item.severity, severities, `findings[${index}].severity`),
+      evidenceLocation: {
+        path: evidencePath(
+          location.path,
+          `findings[${index}].evidenceLocation.path`,
+        ),
+      },
+      reproducibility: oneOf(
+        item.reproducibility,
+        reproducibility,
+        `findings[${index}].reproducibility`,
+      ),
+      requiredAction: textField(
+        item.requiredAction,
+        `findings[${index}].requiredAction`,
+        2_000,
+      ),
+      confidence: oneOf(
+        item.confidence,
+        confidence,
+        `findings[${index}].confidence`,
+      ),
+    };
+    if (location.line !== undefined) {
+      if (
+        !Number.isInteger(location.line) ||
+        (location.line as number) < 1 ||
+        (location.line as number) > 10_000_000
+      )
+        throw new RigorError(
+          `findings[${index}].evidenceLocation.line is invalid`,
+          EXIT.inputError,
+        );
+      finding.evidenceLocation.line = location.line as number;
+    }
+    return finding;
+  });
 }
 
 function filteredChangedPaths(paths: string[]): string[] {
@@ -127,26 +243,91 @@ export function parseConsultationResultInput(
   value: unknown,
 ): ConsultationResultInput {
   const item = record(value, "consultation result input");
-  if (item.schemaVersion !== CONSULTATION_RESULT_INPUT_SCHEMA)
+  if (
+    item.schemaVersion !== CONSULTATION_RESULT_INPUT_SCHEMA &&
+    item.schemaVersion !== CONSULTATION_RESULT_INPUT_V2_SCHEMA
+  )
     throw new RigorError(
       "Unsupported consultation result input schema",
       EXIT.inputError,
     );
-  if (!Number.isInteger(item.findingCount) || (item.findingCount as number) < 0)
+  const structuredFindings =
+    item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA
+      ? findings(item.findings)
+      : undefined;
+  if (item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA)
+    exactKeys(
+      item,
+      [
+        "schemaVersion",
+        "taskId",
+        "status",
+        "outcome",
+        "findings",
+        "externalJobId",
+        "externalSessionId",
+        "externalTurnId",
+        "model",
+        "reasoningEffort",
+        "usageStatus",
+        "modelStatus",
+        "reasoningEffortStatus",
+      ],
+      "consultation result input",
+    );
+  if (
+    item.schemaVersion === CONSULTATION_RESULT_INPUT_SCHEMA &&
+    (!Number.isInteger(item.findingCount) || (item.findingCount as number) < 0)
+  )
     throw new RigorError("findingCount is invalid", EXIT.inputError);
+  const modelStatus =
+    item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA
+      ? oneOf(item.modelStatus, ["recorded", "unavailable"], "modelStatus")
+      : undefined;
+  const reasoningEffortStatus =
+    item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA
+      ? oneOf(
+          item.reasoningEffortStatus,
+          ["recorded", "unavailable"],
+          "reasoningEffortStatus",
+        )
+      : undefined;
+  const model = optionalText(item.model, "model");
+  const reasoningEffort = optionalText(item.reasoningEffort, "reasoningEffort");
+  if (
+    item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA &&
+    ((modelStatus === "recorded") !== (model !== undefined) ||
+      (reasoningEffortStatus === "recorded") !==
+        (reasoningEffort !== undefined))
+  )
+    throw new RigorError(
+      "Recorded/unavailable metadata status is inconsistent",
+      EXIT.inputError,
+    );
   const result: ConsultationResultInput = {
-    schemaVersion: CONSULTATION_RESULT_INPUT_SCHEMA,
+    schemaVersion: item.schemaVersion,
     taskId: taskId(item.taskId),
     status: oneOf(item.status, ["completed", "failed"], "status"),
     outcome: oneOf(item.outcome, outcomes, "outcome"),
-    findingCount: item.findingCount as number,
-    requiredActions: strings(item.requiredActions, "requiredActions", 100),
+    findingCount:
+      structuredFindings === undefined
+        ? (item.findingCount as number)
+        : structuredFindings.length,
+    requiredActions:
+      structuredFindings === undefined
+        ? strings(item.requiredActions, "requiredActions", 100)
+        : structuredFindings.map((finding) => finding.requiredAction),
     usageStatus: oneOf(
       item.usageStatus,
       ["recorded", "unavailable"],
       "usageStatus",
     ),
   };
+  if (structuredFindings !== undefined) {
+    result.findings = structuredFindings;
+    result.modelStatus = modelStatus!;
+    result.reasoningEffortStatus = reasoningEffortStatus!;
+  }
   for (const [key, value] of Object.entries({
     externalJobId: optionalText(item.externalJobId, "externalJobId"),
     externalSessionId: optionalText(
@@ -154,8 +335,8 @@ export function parseConsultationResultInput(
       "externalSessionId",
     ),
     externalTurnId: optionalText(item.externalTurnId, "externalTurnId"),
-    model: optionalText(item.model, "model"),
-    reasoningEffort: optionalText(item.reasoningEffort, "reasoningEffort"),
+    model,
+    reasoningEffort,
   }))
     if (value !== undefined) Object.assign(result, { [key]: value });
   return result;
@@ -243,7 +424,10 @@ export async function finishConsultation(
     JSON.stringify(session.changedPathsBefore) !==
       JSON.stringify(changedPathsAfter);
   const consultation: Consultation = {
-    schemaVersion: CONSULTATION_SCHEMA,
+    schemaVersion:
+      input.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA
+        ? CONSULTATION_V2_SCHEMA
+        : CONSULTATION_SCHEMA,
     artifactId: artifactId("consultation"),
     taskId: session.taskId,
     createdAt: now.toISOString(),
@@ -265,6 +449,11 @@ export async function finishConsultation(
     findingCount: input.findingCount,
     requiredActions: input.requiredActions,
   };
+  if (input.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA) {
+    consultation.findings = input.findings!;
+    consultation.modelStatus = input.modelStatus!;
+    consultation.reasoningEffortStatus = input.reasoningEffortStatus!;
+  }
   for (const key of [
     "externalJobId",
     "externalSessionId",

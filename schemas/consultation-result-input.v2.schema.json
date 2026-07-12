@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/consultation-result-input.v2.schema.json",
+  "title": "Rigor consultation result input v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "status",
+    "outcome",
+    "findings",
+    "usageStatus",
+    "modelStatus",
+    "reasoningEffortStatus"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.consultation-result-input.v2" },
+    "taskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 128
+    },
+    "status": { "enum": ["completed", "failed"] },
+    "outcome": {
+      "enum": ["accept", "revise", "reject", "investigate", "ask-human"]
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "externalJobId": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "externalSessionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "externalTurnId": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "model": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "reasoningEffort": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "usageStatus": { "enum": ["recorded", "unavailable"] },
+    "modelStatus": { "enum": ["recorded", "unavailable"] },
+    "reasoningEffortStatus": { "enum": ["recorded", "unavailable"] }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "evidenceLocation",
+        "reproducibility",
+        "requiredAction",
+        "confidence"
+      ],
+      "properties": {
+        "severity": {
+          "enum": ["critical", "high", "medium", "low", "informational"]
+        },
+        "evidenceLocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^(?!/|\\\\|[A-Za-z]:)(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+            },
+            "line": { "type": "integer", "minimum": 1, "maximum": 10000000 }
+          }
+        },
+        "reproducibility": {
+          "enum": ["always", "intermittent", "not-reproduced"]
+        },
+        "requiredAction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "confidence": { "enum": ["low", "medium", "high"] }
+      }
+    }
+  }
+}

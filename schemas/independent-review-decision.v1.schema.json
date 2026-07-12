@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/independent-review-decision.v1.schema.json",
+  "title": "Rigor independent review decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "inputHash",
+    "decision",
+    "reasonCode",
+    "triggerReasons",
+    "invocationAllowed",
+    "pluginAvailability",
+    "externalTransmission",
+    "approvalEffect"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.independent-review-decision.v1" },
+    "taskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 128
+    },
+    "inputHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "decision": {
+      "enum": [
+        "request-independent-review",
+        "skip-independent-review",
+        "stop-required-review",
+        "continue-claude-only"
+      ]
+    },
+    "reasonCode": {
+      "enum": [
+        "EXTERNAL_TRANSMISSION_DENIED",
+        "NO_REVIEW_TRIGGER",
+        "REVIEW_TRIGGERED",
+        "OPTIONAL_REVIEW_PLUGIN_UNAVAILABLE",
+        "REQUIRED_REVIEW_PLUGIN_UNAVAILABLE",
+        "CLAUDE_ONLY_PLUGIN_UNAVAILABLE"
+      ]
+    },
+    "triggerReasons": {
+      "type": "array",
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "HIGH_RISK",
+          "CRITICAL_RISK",
+          "LOW_ASSESSMENT_CONFIDENCE",
+          "REPEATED_UNCHANGED_FAILURE",
+          "SECURITY_CONCERN",
+          "DATA_INTEGRITY_CONCERN",
+          "HUMAN_REQUEST"
+        ]
+      }
+    },
+    "invocationAllowed": { "type": "boolean" },
+    "pluginAvailability": {
+      "enum": ["available", "unavailable", "unknown", "incompatible"]
+    },
+    "externalTransmission": { "enum": ["allowed", "denied"] },
+    "approvalEffect": { "const": "none" }
+  }
+}

@@ -18,6 +18,7 @@
         "rigor.attempt.v1",
         "rigor.consultation-session.v1",
         "rigor.consultation.v1",
+        "rigor.consultation.v2",
         "rigor.outcome.v1"
       ]
     },
@@ -212,6 +213,37 @@
           "status",
           "outcome",
           "findingCount",
+          "requiredActions"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": { "const": "rigor.consultation.v2" }
+        }
+      },
+      "then": {
+        "required": [
+          "sessionArtifactId",
+          "sessionHash",
+          "provider",
+          "mode",
+          "requestedDecision",
+          "transmissionDecision",
+          "beforeTreeHash",
+          "afterTreeHash",
+          "beforeHead",
+          "afterHead",
+          "changedPathsBefore",
+          "changedPathsAfter",
+          "usageStatus",
+          "modelStatus",
+          "reasoningEffortStatus",
+          "status",
+          "outcome",
+          "findingCount",
+          "findings",
           "requiredActions"
         ]
       }
