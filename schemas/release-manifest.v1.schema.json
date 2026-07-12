@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/xhnagata/rigor/releases/schema/release-manifest/v1",
+  "title": "Rigor detached release manifest v1",
+  "description": "Release metadata published beside the deterministic plugin archive. This is not a trust anchor: trust derives from verifying GitHub Artifact Attestations against independently held consumer policy. Cross-field equalities that JSON Schema cannot express (tag == v+version, source.ref == refs/tags/+tag, pluginArchive.path == rigor-<version>.tar.gz) are enforced by validateManifest in scripts/package-plugin.mjs and by test/provenance.test.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "release",
+    "source",
+    "workflow",
+    "subjects",
+    "tools",
+    "trustAnchor"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "https://github.com/xhnagata/rigor/releases/schema/release-manifest/v1"
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "version"],
+      "properties": {
+        "tag": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId", "commit", "ref"],
+      "properties": {
+        "repository": { "type": "string", "const": "xhnagata/rigor" },
+        "repositoryId": { "type": "string", "const": "1296432215" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "ref": {
+          "type": "string",
+          "pattern": "^refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "ref", "digest"],
+      "properties": {
+        "path": { "type": "string", "const": ".github/workflows/release.yml" },
+        "ref": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "subjects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundle", "pluginArchive"],
+      "properties": {
+        "bundle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "type": "string", "const": "dist/rigor.cjs" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "pluginArchive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^rigor-[0-9]+\\.[0-9]+\\.[0-9]+\\.tar\\.gz$"
+            },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node", "esbuild"],
+      "properties": {
+        "node": { "type": "string", "minLength": 1 },
+        "esbuild": { "type": "string", "const": "0.25.6" }
+      }
+    },
+    "trustAnchor": {
+      "type": "string",
+      "const": "This manifest is release metadata, not a trust anchor. Trust derives from verifying the GitHub Artifact Attestations against independently held consumer policy; a manifest or checksum beside an artifact is not proof."
+    }
+  }
+}

@@ -1,0 +1,140 @@
+# ADR 0001 producer-provenance signer (#25).
+#
+# This is the dedicated, GitHub-hosted release-build workflow that generates
+# keyless GitHub OIDC Artifact Attestations (SLSA v1 build provenance) over
+# three subjects: the release bundle `dist/rigor.cjs`, a deterministic
+# complete-plugin archive, and the detached release manifest.
+#
+# It is human-authorized: it runs ONLY when a maintainer pushes a `v*.*.*` tag
+# to this repository. There is deliberately NO pull_request, pull_request_target,
+# workflow_call, or workflow_dispatch trigger, so a fork pull request cannot
+# invoke this trusted attestation job or supply untrusted inputs to it.
+#
+# Least privilege: the top level grants only `contents: read`; the build job
+# additionally requests `id-token: write` and `attestations: write` and NOTHING
+# else. It never requests `contents: write`, so it cannot publish release
+# assets. Uploading the attested files to the GitHub Release is a SEPARATE,
+# human-authorized step (see docs/release.md); this workflow only exposes them as
+# build artifacts and prints their digests to the job summary.
+#
+# No SLSA Build Level is claimed. This is producer provenance only; a consumer
+# must still verify the exact bytes against independently held policy
+# (scripts/verify-provenance.mjs), and #26 (pre-activation consumer enforcement)
+# remains blocked.
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate tag matches the manifest version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "tag ${tag} is not a strict vX.Y.Z release tag" >&2
+            exit 1
+          fi
+          version="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          if [ "$tag" != "v${version}" ]; then
+            echo "tag ${tag} does not equal v${version} from plugin.json" >&2
+            exit 1
+          fi
+
+      - name: Build the release bundle
+        run: npm run build
+
+      - name: Fail if the rebuilt bundle differs from the committed bundle
+        run: |
+          if ! git diff --quiet -- dist/rigor.cjs; then
+            echo "rebuilt dist/rigor.cjs differs from the committed bundle" >&2
+            git diff --stat -- dist/rigor.cjs >&2 || true
+            exit 1
+          fi
+
+      - name: Deterministically package the complete plugin
+        run: |
+          node scripts/package-plugin.mjs \
+            --outdir dist-release \
+            --source-sha "$GITHUB_SHA" \
+            --tag "$GITHUB_REF_NAME" \
+            --workflow-ref "$GITHUB_WORKFLOW_REF" \
+            --workflow-sha "$GITHUB_SHA"
+
+      - name: Resolve subject paths
+        id: subjects
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          echo "archive=dist-release/rigor-${version}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "manifest=dist-release/rigor-${version}.release-manifest.json" >> "$GITHUB_OUTPUT"
+
+      - name: Attest the release bundle
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: dist/rigor.cjs
+
+      - name: Attest the complete plugin archive
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ steps.subjects.outputs.archive }}
+
+      - name: Attest the detached release manifest
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ steps.subjects.outputs.manifest }}
+
+      # The archive and manifest are uploaded ONLY as build artifacts. Publishing
+      # them as release assets requires `contents: write`, which this workflow
+      # deliberately never grants; a maintainer attaches them in a separate
+      # authorized step (docs/release.md).
+      - name: Upload archive and manifest as build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rigor-release
+          path: |
+            ${{ steps.subjects.outputs.archive }}
+            ${{ steps.subjects.outputs.manifest }}
+          if-no-files-found: error
+
+      - name: Record subject digests in the job summary
+        run: |
+          set -euo pipefail
+          {
+            echo "## Rigor release provenance (${GITHUB_REF_NAME})"
+            echo ""
+            echo "Attested subjects (verify with scripts/verify-provenance.mjs):"
+            echo ""
+            echo '```'
+            sha256sum dist/rigor.cjs "${{ steps.subjects.outputs.archive }}" "${{ steps.subjects.outputs.manifest }}"
+            echo '```'
+            echo ""
+            echo "Publishing these files as release assets is a separate, human-authorized step."
+          } >> "$GITHUB_STEP_SUMMARY"

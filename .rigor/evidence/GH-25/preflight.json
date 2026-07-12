@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_d012bf2b-8390-4f11-b2ab-99e06a831923",
+  "taskId": "GH-25",
+  "createdAt": "2026-07-12T20:43:49.761Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "fb0f8948a24a1738e60bd37d58aa4a9e145732035896b1e2de4a215e03008b82",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-25",
+    "head": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    ".github/workflows/release.yml",
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/mvp-limitations.md",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "scripts/package-plugin.mjs",
+    "scripts/verify-provenance.mjs",
+    "test/fixtures/provenance/README.md",
+    "test/provenance.test.ts"
+  ],
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "protectedPaths": [
+    ".github/workflows/release.yml"
+  ],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ],
+  "reasons": [
+    {
+      "ruleId": "governance",
+      "path": ".github/workflows/release.yml",
+      "reason": "Governance and enforcement changes can weaken controls."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/mvp-limitations.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/release.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fixtures/provenance/README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/provenance.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_0a12c06a-3980-4368-b76a-bf02067ff3c1",
+  "taskId": "GH-25",
+  "createdAt": "2026-07-12T20:59:34.023Z",
+  "preflightArtifactId": "preflight_d012bf2b-8390-4f11-b2ab-99e06a831923",
+  "preflightHash": "6a3c134419c2ba447b5b65570f4ac46f810ade258f7cf70be36b71b51a22b3df",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "A dedicated release-build GitHub workflow (.github/workflows/release.yml) triggers ONLY on release tag push (refs/tags/v*), validates the tag against a strict SemVer regex, checks out the full source commit, rebuilds dist/rigor.cjs with pinned deps on a GitHub-hosted runner, and fails if the rebuilt bundle differs from the committed bundle. Fork pull requests and untrusted inputs cannot invoke it (no pull_request, pull_request_target, workflow_call, or workflow_dispatch trigger).",
+    "The release job is granted only contents:read, id-token:write, attestations:write; every third-party action is pinned to a full 40-hex commit SHA; runs on a GitHub-hosted runner.",
+    "scripts/package-plugin.mjs deterministically packages the complete-plugin archive rigor-X.Y.Z.tar.gz from an explicit 21-file allowlist (.claude-plugin/marketplace.json, .claude-plugin/plugin.json, agents/rigor-reviewer.md, bin/rigor, dist/rigor.cjs, hooks/hooks.json, the 12 skills/*/SKILL.md, LICENSE, README.md, README.ja.md) under rigor-X.Y.Z/, dirs 0755, bin/rigor 0755, all other files 0644, entries sorted, mtime 0, uid/gid 0, ustar format, gzip without embedded timestamp; it rejects symlinks, extra, missing, or wrong-mode entries; it excludes src/test/docs/schemas/scripts/node_modules/.git/.github/.rigor/package*.json. Packaging twice in one environment yields byte-identical archives.",
+    "scripts/package-plugin.mjs emits a detached rigor-X.Y.Z.release-manifest.json (canonical JSON, sorted keys) validating against schemas/release-manifest.v1.schema.json (additionalProperties false) recording schemaVersion, release tag/version, source repository + numeric repositoryId 1296432215 + full commit + refs/tags ref, workflow path/ref/digest, sha256 of dist/rigor.cjs and of the archive, tool versions, and an explicit trustAnchor note that the manifest is metadata not proof. No subject is self-referential (the manifest never records its own or a containing digest).",
+    "The workflow generates GitHub Artifact Attestations with predicate type https://slsa.dev/provenance/v1 for three distinct subjects: dist/rigor.cjs, the plugin archive, and the detached manifest. Release metadata records tag, source commit, workflow run, subject digests, build/package command, and tool versions.",
+    "scripts/verify-provenance.mjs is a fail-closed consumer verifier that runs gh attestation verify with --repo, --signer-workflow, --signer-digest, --source-digest, --source-ref, --cert-oidc-issuer, --deny-self-hosted-runners, --predicate-type, --format json, then additionally enforces from the certificate JSON the values the flags do not enforce: numeric repository id OID 1.3.6.1.4.1.57264.1.14 == 1296432215, trigger event == push, source ref matching ^refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+$, and GitHub-hosted runner. It rejects nonzero exit, empty/ambiguous/unknown-shape output, denied digests, and stale policy/roots; it never reports verified on any mismatch.",
+    "A verifier distinguishes the released bundle from a locally modified bundle, and provenance refers to the exact tagged commit and expected signer workflow: negative tests in test/provenance.test.ts, run fully offline against fixtures in test/fixtures/provenance/, cover changed bundle bytes, a changed non-bundle plugin file, an archive presented with a mismatched detached manifest (mix-and-match substitution), wrong source SHA, wrong signer, wrong predicate, absent attestation, and self-hosted-runner rejection; each fails closed. Positive fixtures verify. Deterministic packaging and the 21-file archive allowlist/mode set are asserted.",
+    "docs/release.md incorporates attestation generation and verification into the release procedure from #8; a provenance verification/lifecycle section documents consumer verification steps, gh version pinning, trusted-root refresh cadence, maximum offline staleness, compromised-digest denylist distribution, attestation withdrawal/deletion, and release rollback. GitHub immutable releases are documented as a separately authorized owner action (option a); #25 does not enable them and consumer policy treats every tag as mutable, pinning commit and digests.",
+    "docs/threat-model.md and docs/mvp-limitations.md and README.md/README.ja.md reference the implemented producer provenance accurately: they do NOT claim a SLSA Build Level, an enabled immutable release, a completed #26 marketplace consumer verifier, or provider-attested runtime model identity, and they do not present a checksum or detached manifest beside an artifact as independent proof.",
+    "A separate non-production smoke workflow (.github/workflows/provenance-smoke.yml) triggers only on workflow_dispatch, requires a protected environment with owner approval, runs only in repository id 1296432215 on a branch ref (rejecting main and every tag), uses a GitHub-hosted runner and only contents:read/id-token:write/attestations:write with actions pinned to full SHAs, attests only a clearly named synthetic subject (never dist/rigor.cjs or the archive), and creates no tag, release, prerelease, or release-named asset. It cannot be triggered by fork pull requests.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass; git diff --check reports no whitespace errors; the committed dist/rigor.cjs and .rigor/rigor-ci.cjs are unchanged (no source change).",
+    "CHANGELOG.md documents the provenance implementation under the Unreleased heading following the one-entry-per-issue convention."
+  ],
+  "allowedPaths": [
+    ".github/workflows/release.yml",
+    ".github/workflows/provenance-smoke.yml",
+    "scripts/package-plugin.mjs",
+    "scripts/verify-provenance.mjs",
+    "schemas/release-manifest.v1.schema.json",
+    "test/provenance.test.ts",
+    "test/fixtures/provenance/**",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "docs/mvp-limitations.md",
+    "docs/provenance.md",
+    "README.md",
+    "README.ja.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Implement ONLY Issue #25 Scope and Acceptance criteria plus the five owner-reserved design decisions frozen in the recorded Codex consultation. Do not add unrelated features.",
+    "Do not modify src/**, dist/**, bin/**, hooks/**, agents/**, skills/**, schemas/** other than the new release-manifest.v1.schema.json, .rigor/** except task evidence, package.json, or package-lock.json. Do not delete, weaken, or skip existing tests; preserve merged main content.",
+    "The committed dist/rigor.cjs must remain byte-identical to a fresh build (no src change), so .rigor/rigor-ci.cjs stays in sync and ci-bundle-sync/test:all pass without touching either file.",
+    "Workflows may grant only contents:read, id-token:write, attestations:write; no other permission increase. Pin every third-party action to a full commit SHA and use GitHub-hosted runners (never self-hosted).",
+    "The production signer workflow triggers only on release tag push; it must not add pull_request, pull_request_target, workflow_call, or workflow_dispatch, and must validate the tag against a strict SemVer regex before attesting so fork PRs and untrusted inputs cannot mint trusted provenance.",
+    "The smoke workflow must be a separate file, workflow_dispatch-only, protected-environment gated, branch-only (reject main and all tags), attest only a synthetic subject (never dist/rigor.cjs or the archive), and create no tag/release/asset; each run remains a human-approved, human-dispatched action.",
+    "Do not enable GitHub immutable releases or change any GitHub repository setting; document enabling as a separately authorized owner action.",
+    "Do not claim a SLSA Build Level, a completed #26 marketplace consumer verifier, an enabled immutable release, or provider-attested runtime model identity anywhere. Configured model identity remains recorded as unverified.",
+    "Do not present a checksum or detached manifest distributed beside an artifact as independent proof; the trust anchor is the attestation verified against independently held consumer policy, and a bundle-only attestation must not be described as plugin-distribution integrity.",
+    "Deterministic packaging must be implemented in pure Node (not dependent on divergent system tar/gzip builds) and be byte-reproducible within a pinned toolchain; tests build/package twice and compare.",
+    "Negative provenance tests must run offline against committed fixtures and must not require live network access or a real attestation to pass npm run test:all.",
+    "The implementation agent must not approve or merge its own change."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

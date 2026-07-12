@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "rigor.consultation-session.v1",
+  "artifactId": "consultation-session_402d6acc-dcfc-41b6-8685-f1d722e0736e",
+  "taskId": "GH-25",
+  "createdAt": "2026-07-12T20:46:29.674Z",
+  "preflightArtifactId": "preflight_d012bf2b-8390-4f11-b2ab-99e06a831923",
+  "preflightHash": "6a3c134419c2ba447b5b65570f4ac46f810ade258f7cf70be36b71b51a22b3df",
+  "provider": "codex-plugin-cc",
+  "mode": "consultation",
+  "requestedDecision": "Design discussion for #25 (ADR 0001 producer provenance). Freeze five owner-reserved decisions the ADR left open: (1) exact file list + normalization rules for a deterministic complete-plugin archive (candidates: .claude-plugin/, agents/, bin/, dist/rigor.cjs, hooks/, skills/, README.md, LICENSE) so two builds byte-match; (2) detached release-manifest schema (fields, digests, source/tag/workflow binding) published beside the archive, never self-referential; (3) consumer verification: gh attestation verify flags plus which cert-extension values (numeric repo id 1296432215, trigger event, tag pattern) must be checked from JSON since flags don't enforce them, verifier/gh version pinning, trusted-root refresh cadence, max offline age, denylist distribution; (4) whether to recommend enabling GitHub immutable releases (separately authorized) or pin commit+digests treating tags as mutable; (5) a safe authorized non-production attestation smoke-test approach that proves the path without a real release. Separate facts, options, recommendation, uncertainty, and human decisions. Read-only.",
+  "transmissionDecision": "allowed",
+  "beforeHead": "e82f6f4136e0f478a46ad514cd63d690c9d70bd4",
+  "beforeTreeHash": "b27ec0a5828e446409327de24a908bc7146548d4cb95030d03350551a6bbd543",
+  "changedPathsBefore": []
+}

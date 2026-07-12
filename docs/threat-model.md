@@ -20,12 +20,24 @@ Rigor protects source confidentiality, secrets, repository integrity, production
   are not independent proof of the downloaded bytes. The proposed provenance
   trust roots, identities, and missing consumer enforcement point are defined in
   [ADR 0001](adr/0001-provenance-trust-model.md).
-- **Provenance services:** a future GitHub Artifact Attestation would add GitHub
-  Actions OIDC, Sigstore roots/services, the signer workflow, runner, and consumer
-  policy as trust boundaries. Its security value depends on a consumer checking
-  the exact bytes before use against repository, workflow, source, predicate, and
-  freshness/deny expectations. Publishing an attestation without that check is
-  not an enforced guarantee.
+- **Provenance services:** producer provenance is now implemented
+  ([#25](https://github.com/xhnagata/rigor/issues/25), [ADR 0001](adr/0001-provenance-trust-model.md)):
+  a tag-triggered signer generates keyless GitHub OIDC Artifact Attestations
+  (SLSA v1) over `dist/rigor.cjs`, a deterministic complete-plugin archive, and a
+  detached release manifest, verified by a fail-closed reference verifier
+  ([provenance.md](provenance.md)). This adds GitHub Actions OIDC, Sigstore
+  roots/services, the signer workflow, the runner, and the consumer policy as
+  trust boundaries. Its security value depends on a consumer checking the exact
+  bytes before use against repository, numeric repository id, workflow, source,
+  predicate, runner, and freshness/deny expectations held independently of the
+  release; publishing an attestation without that check is not an enforced
+  guarantee. No SLSA Build Level is claimed, runtime model identity stays
+  unverified, and the residual trust in GitHub/OIDC/Sigstore/runner/workflow
+  remains. Attestation deletion is not retroactive revocation, so a
+  consumer-distributed deny policy is still required. The ordinary marketplace
+  path still has no confirmed pre-activation verifier over the exact cached
+  bytes, so [#26](https://github.com/xhnagata/rigor/issues/26) remains blocked and
+  no end-to-end distribution guarantee is claimed.
 - **GitHub API (read-only, `rigor governance` only):** the single remote endpoint Rigor calls. Transmitted data is limited to the URL-encoded owner, repository, and branch in the request path plus an optional token in the `authorization` header; no repository content, evidence, or prose is sent. The host is fixed to `https://api.github.com`, the method is hard-coded to GET (there is no code path that issues another verb), redirects are refused, every request times out after 10 seconds, and response bodies over 1 MB or that fail to decode are discarded. List requests use `per_page=100`, and a response whose `Link` header advertises a `rel="next"` page is treated as unverifiable so no requirement is decided on partially fetched data. The token is read only from `RIGOR_GITHUB_TOKEN`, then `GITHUB_TOKEN`, then `GH_TOKEN`, is validated as printable ASCII, and is never logged or persisted. Transport and API errors are collapsed into an `unverifiable` finding without echoing response bodies, and unverifiable findings fail closed (exit 2). The API's answers are treated as observations about GitHub configuration, never as proof that a control cannot be bypassed by an administrator.
 
 ## Threats and responses

@@ -1,0 +1,41 @@
+[
+  {
+    "attestation": {
+      "bundle": {
+        "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json"
+      }
+    },
+    "verificationResult": {
+      "statement": {
+        "_type": "https://in-toto.io/Statement/v1",
+        "predicateType": "https://slsa.dev/provenance/v1",
+        "subject": [
+          {
+            "name": "rigor.cjs",
+            "digest": {
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        ]
+      },
+      "signature": {
+        "certificate": {
+          "issuer": "https://token.actions.githubusercontent.com",
+          "sourceRepositoryURI": "https://github.com/xhnagata/rigor",
+          "sourceRepositoryID": "1296432215",
+          "sourceRepositoryRef": "refs/tags/v0.11.0",
+          "sourceRepositoryDigest": "cccccccccccccccccccccccccccccccccccccccc",
+          "sourceRepositoryOwnerURI": "https://github.com/xhnagata",
+          "sourceRepositoryOwnerID": "0",
+          "buildSignerURI": "https://github.com/xhnagata/rigor/.github/workflows/release.yml@refs/tags/v0.11.0",
+          "buildSignerDigest": "cccccccccccccccccccccccccccccccccccccccc",
+          "runnerEnvironment": "github-hosted",
+          "buildTrigger": "push",
+          "extensions": {
+            "1.3.6.1.4.1.57264.1.14": "1296432215"
+          }
+        }
+      }
+    }
+  }
+]
