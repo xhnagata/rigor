@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_38136850-c7f3-47f5-a12e-e9cf83bc1e98",
+  "taskId": "REL-0-12-0",
+  "createdAt": "2026-07-12T21:40:39.844Z",
+  "preflightArtifactId": "preflight_24ee14e7-e2bc-4585-846c-b1e86f009f52",
+  "preflightHash": "dc72c38bf7f339a48d31b2a3bd61232620a336017ffda1bb7544027b82e32470",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "CHANGELOG.md contains a `## 0.12.0 - 2026-07-13` section describing the #23 test-integrity promotion governance feature",
+    "package.json and .claude-plugin/plugin.json both declare version 0.12.0 with no other content change",
+    "dist/rigor.cjs is byte-identical to a fresh build and to .rigor/rigor-ci.cjs (verified, not rebuilt or committed here)",
+    "The recorded required check git diff --check passes; npm run test:all passes on the release branch",
+    "The release lands through a protected pull request with rigor and quality checks green; rigor release-check passes on the merged main SHA before tagging v0.12.0"
+  ],
+  "allowedPaths": [
+    "CHANGELOG.md",
+    "package.json",
+    ".claude-plugin/plugin.json"
+  ],
+  "constraints": [
+    "version bump and changelog heading rename only; no source, schema, test, docs, or bundle changes",
+    "never direct-push to main; tag only after rigor release-check reports overall passed on the merged main commit",
+    "do not modify .rigor/**, .github/workflows/**, or CODEOWNERS"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
