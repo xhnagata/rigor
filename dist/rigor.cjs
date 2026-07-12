@@ -345,23 +345,23 @@ async function treeHash(root, excludedPrefixes = []) {
       (prefix) => file === prefix || file.startsWith(prefix)
     )
   ).sort();
-  const digest = (0, import_node_crypto.createHash)("sha256");
+  const digest2 = (0, import_node_crypto.createHash)("sha256");
   for (const file of files) {
-    digest.update(`path\0${file}\0`);
+    digest2.update(`path\0${file}\0`);
     const target = import_node_path2.default.join(root, file);
     let info;
     try {
       info = await (0, import_promises.lstat)(target);
     } catch (error) {
       if (error.code === "ENOENT") {
-        digest.update("deleted\0");
+        digest2.update("deleted\0");
         continue;
       }
       throw error;
     }
-    digest.update(`mode\0${info.mode}\0`);
+    digest2.update(`mode\0${info.mode}\0`);
     if (info.isSymbolicLink()) {
-      digest.update(`symlink\0${await (0, import_promises.readlink)(target)}\0`);
+      digest2.update(`symlink\0${await (0, import_promises.readlink)(target)}\0`);
       continue;
     }
     if (!info.isFile())
@@ -369,10 +369,10 @@ async function treeHash(root, excludedPrefixes = []) {
         `Cannot hash non-file repository path: ${file}`,
         EXIT.inputError
       );
-    for await (const chunk of (0, import_node_fs.createReadStream)(target)) digest.update(chunk);
-    digest.update("\0");
+    for await (const chunk of (0, import_node_fs.createReadStream)(target)) digest2.update(chunk);
+    digest2.update("\0");
   }
-  return digest.digest("hex");
+  return digest2.digest("hex");
 }
 
 // src/util.ts
@@ -797,6 +797,8 @@ var CONTRACT_INPUT_SCHEMA = "rigor.contract-input.v1";
 var VERIFY_SCHEMA = "rigor.verification.v1";
 var ESCALATION_SCHEMA = "rigor.escalation.v1";
 var ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1";
+var ESCALATION_DECISION_INPUT_SCHEMA = "rigor.escalation-decision-input.v1";
+var ESCALATION_DECISION_SCHEMA = "rigor.escalation-decision.v1";
 var REVIEW_SCHEMA = "rigor.review.v1";
 var ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1";
 var ROUTING_INPUT_V2_SCHEMA = "rigor.routing-input.v2";
@@ -1707,20 +1709,20 @@ async function setup(root, bundlePath) {
   return { created, unchanged };
 }
 function policyWeakening(base, head) {
-  const failures = [];
+  const failures2 = [];
   if (base.defaultExternalTransmission === "deny" && head.defaultExternalTransmission === "allow")
-    failures.push("default external-transmission policy was weakened");
+    failures2.push("default external-transmission policy was weakened");
   const headRules = new Map(head.rules.map((rule) => [rule.id, stable(rule)]));
   for (const rule of base.rules)
     if (headRules.get(rule.id) !== stable(rule))
-      failures.push(`base rule changed or removed: ${rule.id}`);
+      failures2.push(`base rule changed or removed: ${rule.id}`);
   const headChecks = new Map(
     head.checks.map((check) => [check.id, stable(check)])
   );
   for (const check of base.checks)
     if (headChecks.get(check.id) !== stable(check))
-      failures.push(`base check changed or removed: ${check.id}`);
-  return failures;
+      failures2.push(`base check changed or removed: ${check.id}`);
+  return failures2;
 }
 
 // src/ci.ts
@@ -1744,7 +1746,7 @@ async function evidenceFiles(root) {
   return found;
 }
 async function ciVerify(root, baseSha, headSha) {
-  const failures = [];
+  const failures2 = [];
   const baseText = await showFile(root, baseSha, ".rigor/policy.json");
   const headText = await showFile(root, headSha, ".rigor/policy.json");
   if (!headText)
@@ -1765,14 +1767,14 @@ async function ciVerify(root, baseSha, headSha) {
   }
   if (baseText) {
     try {
-      failures.push(
+      failures2.push(
         ...policyWeakening(
           parsePolicy(JSON.parse(baseText)),
           headPolicy
         )
       );
     } catch {
-      failures.push("base policy is invalid; repair it independently");
+      failures2.push("base policy is invalid; repair it independently");
     }
   }
   const changedPaths = await diffPaths(root, baseSha, headSha);
@@ -1786,7 +1788,7 @@ async function ciVerify(root, baseSha, headSha) {
   );
   for (const removed of deletion.stdout.toString("utf8").split("\0").filter(Boolean)) {
     if (matches(removed, ["test/**", "tests/**", "**/*.test.*", "**/*.spec.*"]))
-      failures.push(`existing test was deleted: ${removed}`);
+      failures2.push(`existing test was deleted: ${removed}`);
   }
   const protectedChanges = codePaths.filter(
     (item) => headPolicy.rules.some(
@@ -1808,7 +1810,7 @@ async function ciVerify(root, baseSha, headSha) {
         verifications.push(item);
       else if (item.schemaVersion === "rigor.review.v1") reviews.push(item);
     } catch {
-      failures.push(`invalid evidence file: ${import_node_path6.default.relative(root, file)}`);
+      failures2.push(`invalid evidence file: ${import_node_path6.default.relative(root, file)}`);
     }
   }
   let linked = false;
@@ -1831,7 +1833,7 @@ async function ciVerify(root, baseSha, headSha) {
     linked = true;
   }
   if (headPolicy.ci.requireEvidence && codePaths.length > 0 && !linked)
-    failures.push(
+    failures2.push(
       "no linked passing evidence covers the independently derived change set and head policy"
     );
   for (const check of headPolicy.checks) {
@@ -1839,15 +1841,15 @@ async function ciVerify(root, baseSha, headSha) {
     try {
       result = await run(check.command, check.args, root, check.timeoutMs);
     } catch {
-      failures.push(`check could not start: ${check.id}`);
+      failures2.push(`check could not start: ${check.id}`);
       continue;
     }
     if (result.timedOut || result.code !== 0)
-      failures.push(`independent check failed: ${check.id}`);
+      failures2.push(`independent check failed: ${check.id}`);
   }
   return {
-    status: failures.length === 0 ? "passed" : "failed",
-    failures,
+    status: failures2.length === 0 ? "passed" : "failed",
+    failures: failures2,
     changedPaths
   };
 }
@@ -2279,17 +2281,17 @@ async function readCodeowners(read, base) {
     text: ""
   };
 }
-async function governanceVerify(policy, options, read) {
-  const base = `/repos/${encodeURIComponent(options.owner)}/${encodeURIComponent(options.repo)}`;
-  const branch = encodeURIComponent(options.branch);
+async function governanceVerify(policy, options2, read) {
+  const base = `/repos/${encodeURIComponent(options2.owner)}/${encodeURIComponent(options2.repo)}`;
+  const branch = encodeURIComponent(options2.branch);
   const rules = await read(`${base}/rules/branches/${branch}?per_page=100`);
   const protection = await read(`${base}/branches/${branch}/protection`);
   const codeowners = await readCodeowners(read, base);
   const environments = await read(`${base}/environments?per_page=100`);
   return evaluateGovernance({
-    repository: `${options.owner}/${options.repo}`,
-    branch: options.branch,
-    requiredCheckContext: options.requiredCheckContext,
+    repository: `${options2.owner}/${options2.repo}`,
+    branch: options2.branch,
+    requiredCheckContext: options2.requiredCheckContext,
     sampledPaths: representativePaths(policy),
     rules,
     protection,
@@ -2594,7 +2596,7 @@ async function bundleMatchesFreshBuild(root) {
     await (0, import_promises7.rm)(temp, { force: true }).catch(() => void 0);
   }
 }
-async function releaseVerify(root, options, read) {
+async function releaseVerify(root, options2, read) {
   const packageVersion = await readJsonVersion(import_node_path8.default.join(root, "package.json"));
   const manifestVersion = await readJsonVersion(
     import_node_path8.default.join(root, ".claude-plugin", "plugin.json")
@@ -2609,15 +2611,15 @@ async function releaseVerify(root, options, read) {
   const changelogVersions = await readChangelogVersions(root);
   const bundleMatches = await bundleMatchesFreshBuild(root);
   let ci;
-  if (options.repo && read) {
+  if (options2.repo && read) {
     ci = facts.head === null ? {
       state: "unverifiable",
       detail: "there is no HEAD commit to check remote CI for"
     } : await releaseCiFact(
       read,
-      options.repo,
+      options2.repo,
       facts.head,
-      options.requiredChecks
+      options2.requiredChecks
     );
   } else {
     ci = {
@@ -2626,17 +2628,17 @@ async function releaseVerify(root, options, read) {
     };
   }
   return evaluateRelease({
-    version: options.version,
+    version: options2.version,
     packageVersion,
     manifestVersion,
     branch,
-    expectedBranch: options.expectedBranch,
+    expectedBranch: options2.expectedBranch,
     head: facts.head,
-    expectedSha: options.expectedSha,
+    expectedSha: options2.expectedSha,
     dirty: facts.dirty,
     changelogVersions,
     bundleMatches,
-    requiredChecks: options.requiredChecks,
+    requiredChecks: options2.requiredChecks,
     ci
   });
 }
@@ -4286,6 +4288,454 @@ function createOutcome(input, links, now = /* @__PURE__ */ new Date()) {
   return outcome;
 }
 
+// src/escalation.ts
+var INITIAL_ESCALATION_THRESHOLDS = {
+  unchangedAttemptsBeforeDirect: 2,
+  infrastructureRetries: 2
+};
+var capabilities2 = [
+  "economy",
+  "standard",
+  "premium",
+  "frontier"
+];
+var failures = [
+  "implementation",
+  "infrastructure",
+  "timeout",
+  "flaky",
+  "mixed"
+];
+var progressStatuses = [
+  "first",
+  "unchanged",
+  "reduced",
+  "expanded",
+  "incomparable"
+];
+var risks = ["low", "medium", "high", "critical"];
+var purposes3 = [
+  "implementation",
+  "consultation",
+  "review",
+  "adversarial-review",
+  "rescue"
+];
+function oneOf6(value, allowed, name) {
+  if (typeof value !== "string" || !allowed.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function integer3(value, name, minimum = 0, maximum = 1e9) {
+  if (!Number.isInteger(value) || value < minimum || value > maximum)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function bool3(value, name) {
+  if (typeof value !== "boolean")
+    throw new RigorError(`${name} must be boolean`, EXIT.inputError);
+  return value;
+}
+function digest(value, name) {
+  const result = textField(value, name, 128);
+  if (!/^[a-f0-9]{64}$/u.test(result))
+    throw new RigorError(`${name} must be a SHA-256 digest`, EXIT.inputError);
+  return result;
+}
+function attemptFact(value, name) {
+  const item = record(value, name);
+  const failureFingerprint = item.failureFingerprint;
+  if (failureFingerprint !== null)
+    digest(failureFingerprint, `${name}.failureFingerprint`);
+  return {
+    artifactId: textField(item.artifactId, `${name}.artifactId`, 128),
+    artifactHash: digest(item.artifactHash, `${name}.artifactHash`),
+    routingPlanArtifactId: textField(
+      item.routingPlanArtifactId,
+      `${name}.routingPlanArtifactId`,
+      128
+    ),
+    routingPlanHash: digest(item.routingPlanHash, `${name}.routingPlanHash`),
+    sequence: integer3(item.sequence, `${name}.sequence`, 1, 20),
+    capabilityClass: oneOf6(
+      item.capabilityClass,
+      capabilities2,
+      `${name}.capabilityClass`
+    ),
+    failureCategory: oneOf6(
+      item.failureCategory,
+      failures,
+      `${name}.failureCategory`
+    ),
+    progress: oneOf6(item.progress, progressStatuses, `${name}.progress`),
+    failureFingerprint,
+    durationMs: integer3(item.durationMs, `${name}.durationMs`),
+    relativeCost: integer3(item.relativeCost, `${name}.relativeCost`, 0)
+  };
+}
+function parseEscalationDecisionInput(value) {
+  const item = record(value, "escalation decision input");
+  if (item.schemaVersion !== ESCALATION_DECISION_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported escalation decision input schema",
+      EXIT.inputError
+    );
+  const contract = record(item.contract, "contract");
+  const plan = record(item.routingPlan, "routingPlan");
+  const budget = record(item.budget, "budget");
+  const concerns = record(item.concerns, "concerns");
+  const rawThresholds = item.thresholds === void 0 ? INITIAL_ESCALATION_THRESHOLDS : record(item.thresholds, "thresholds");
+  if (!Array.isArray(item.previousAttempts))
+    throw new RigorError("previousAttempts must be an array", EXIT.inputError);
+  const previousAttempts = item.previousAttempts.map(
+    (attempt, index) => attemptFact(attempt, `previousAttempts[${index}]`)
+  );
+  const currentAttempt = attemptFact(item.currentAttempt, "currentAttempt");
+  const result = {
+    schemaVersion: ESCALATION_DECISION_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    purpose: oneOf6(item.purpose, purposes3, "purpose"),
+    contract: {
+      artifactId: textField(contract.artifactId, "contract.artifactId", 128),
+      artifactHash: digest(contract.artifactHash, "contract.artifactHash")
+    },
+    routingPlan: {
+      artifactId: textField(plan.artifactId, "routingPlan.artifactId", 128),
+      artifactHash: digest(plan.artifactHash, "routingPlan.artifactHash"),
+      modelProfilesHash: digest(
+        plan.modelProfilesHash,
+        "routingPlan.modelProfilesHash"
+      )
+    },
+    currentAttempt,
+    previousAttempts,
+    riskTier: oneOf6(item.riskTier, risks, "riskTier"),
+    externalTransmission: oneOf6(
+      item.externalTransmission,
+      ["allowed", "denied"],
+      "externalTransmission"
+    ),
+    failureCategory: oneOf6(item.failureCategory, failures, "failureCategory"),
+    progress: oneOf6(item.progress, progressStatuses, "progress"),
+    fingerprintRepetitions: integer3(
+      item.fingerprintRepetitions,
+      "fingerprintRepetitions",
+      0,
+      20
+    ),
+    currentCapabilityClass: oneOf6(
+      item.currentCapabilityClass,
+      capabilities2,
+      "currentCapabilityClass"
+    ),
+    attemptCount: integer3(item.attemptCount, "attemptCount", 1, 20),
+    elapsedMs: integer3(item.elapsedMs, "elapsedMs"),
+    consumedRelativeCost: integer3(
+      item.consumedRelativeCost,
+      "consumedRelativeCost"
+    ),
+    budget: {
+      maxAttempts: integer3(budget.maxAttempts, "budget.maxAttempts", 1, 20),
+      maxDurationMs: integer3(
+        budget.maxDurationMs,
+        "budget.maxDurationMs",
+        1e3
+      ),
+      maxRelativeCost: integer3(
+        budget.maxRelativeCost,
+        "budget.maxRelativeCost",
+        1
+      )
+    },
+    concerns: {
+      requirementsChangeRequired: bool3(
+        concerns.requirementsChangeRequired,
+        "concerns.requirementsChangeRequired"
+      ),
+      acceptanceCriteriaChangeRequired: bool3(
+        concerns.acceptanceCriteriaChangeRequired,
+        "concerns.acceptanceCriteriaChangeRequired"
+      ),
+      humanOnlyDecision: bool3(
+        concerns.humanOnlyDecision,
+        "concerns.humanOnlyDecision"
+      ),
+      scopeViolation: bool3(concerns.scopeViolation, "concerns.scopeViolation"),
+      protectedTestMutation: bool3(
+        concerns.protectedTestMutation,
+        "concerns.protectedTestMutation"
+      ),
+      configuredCheckRemoval: bool3(
+        concerns.configuredCheckRemoval,
+        "concerns.configuredCheckRemoval"
+      ),
+      configuredCheckWeakening: bool3(
+        concerns.configuredCheckWeakening,
+        "concerns.configuredCheckWeakening"
+      ),
+      security: bool3(concerns.security, "concerns.security"),
+      dataIntegrity: bool3(concerns.dataIntegrity, "concerns.dataIntegrity"),
+      architectureChange: bool3(
+        concerns.architectureChange,
+        "concerns.architectureChange"
+      ),
+      contractContradiction: bool3(
+        concerns.contractContradiction,
+        "concerns.contractContradiction"
+      )
+    },
+    thresholds: {
+      unchangedAttemptsBeforeDirect: integer3(
+        rawThresholds.unchangedAttemptsBeforeDirect,
+        "thresholds.unchangedAttemptsBeforeDirect",
+        2,
+        20
+      ),
+      infrastructureRetries: integer3(
+        rawThresholds.infrastructureRetries,
+        "thresholds.infrastructureRetries",
+        0,
+        20
+      )
+    },
+    speculation: strings(item.speculation, "speculation", 100)
+  };
+  validateConsistency(result);
+  return result;
+}
+function validateConsistency(input) {
+  if (input.currentAttempt.routingPlanArtifactId !== input.routingPlan.artifactId || input.currentAttempt.routingPlanHash !== input.routingPlan.artifactHash)
+    throw new RigorError(
+      "currentAttempt is not linked to routingPlan",
+      EXIT.inputError
+    );
+  const attempts = [...input.previousAttempts, input.currentAttempt];
+  for (let index = 0; index < attempts.length; index += 1) {
+    if (attempts[index]?.sequence !== index + 1)
+      throw new RigorError(
+        "Attempt sequence is stale or inconsistent",
+        EXIT.inputError
+      );
+  }
+  const elapsedMs = attempts.reduce(
+    (sum, attempt) => sum + attempt.durationMs,
+    0
+  );
+  const relativeCost = attempts.reduce(
+    (sum, attempt) => sum + attempt.relativeCost,
+    0
+  );
+  if (input.attemptCount !== attempts.length || input.elapsedMs !== elapsedMs || input.consumedRelativeCost !== relativeCost || input.currentCapabilityClass !== input.currentAttempt.capabilityClass || input.failureCategory !== input.currentAttempt.failureCategory || input.progress !== input.currentAttempt.progress)
+    throw new RigorError(
+      "Escalation facts are stale or inconsistent",
+      EXIT.inputError
+    );
+  const matching = attempts.filter(
+    (attempt) => input.currentAttempt.failureFingerprint !== null && attempt.failureFingerprint === input.currentAttempt.failureFingerprint
+  ).length;
+  if (input.fingerprintRepetitions !== matching)
+    throw new RigorError(
+      "fingerprintRepetitions is stale or inconsistent",
+      EXIT.inputError
+    );
+}
+function validateEscalationArtifacts(input, contract, plans, attempts) {
+  const plansById = new Map(plans.map((plan) => [plan.artifactId, plan]));
+  const currentPlan = plansById.get(input.routingPlan.artifactId);
+  if (contract.taskId !== input.taskId || currentPlan === void 0 || currentPlan.taskId !== input.taskId || input.contract.artifactId !== contract.artifactId || input.contract.artifactHash !== hash(contract) || input.routingPlan.artifactHash !== hash(currentPlan) || input.routingPlan.modelProfilesHash !== currentPlan.modelProfilesHash || currentPlan.contractArtifactId !== contract.artifactId || currentPlan.contractHash !== hash(contract) || input.budget.maxAttempts !== currentPlan.budget.maxAttempts || input.budget.maxDurationMs !== currentPlan.budget.maxDurationMs || input.budget.maxRelativeCost !== currentPlan.budget.maxRelativeCost)
+    throw new RigorError(
+      "Linked escalation artifacts are stale or inconsistent",
+      EXIT.inputError
+    );
+  const expected = [...input.previousAttempts, input.currentAttempt];
+  if (attempts.length !== expected.length)
+    throw new RigorError("Attempt artifact set is incomplete", EXIT.inputError);
+  for (let index = 0; index < expected.length; index += 1) {
+    const actual = attempts[index];
+    const fact = expected[index];
+    const linkedPlan = fact === void 0 ? void 0 : plansById.get(fact.routingPlanArtifactId);
+    if (actual === void 0 || fact === void 0 || linkedPlan === void 0 || linkedPlan.selection === null || linkedPlan.taskId !== input.taskId || linkedPlan.contractArtifactId !== contract.artifactId || linkedPlan.contractHash !== hash(contract) || fact.routingPlanHash !== hash(linkedPlan) || fact.relativeCost !== linkedPlan.selection.relativeCost || actual.taskId !== input.taskId || actual.artifactId !== fact.artifactId || hash(actual) !== fact.artifactHash || actual.routingPlanArtifactId !== fact.routingPlanArtifactId || actual.routingPlanHash !== fact.routingPlanHash || actual.sequence !== fact.sequence || actual.capabilityClass !== fact.capabilityClass || actual.failureCategory !== fact.failureCategory || (actual.progress?.status ?? "first") !== fact.progress || (actual.failureFingerprint ?? null) !== fact.failureFingerprint || actual.durationMs !== fact.durationMs)
+      throw new RigorError(
+        "Attempt artifact is stale or inconsistent",
+        EXIT.inputError
+      );
+  }
+}
+function stop(input, profiles, availability, decision, reasonCode) {
+  return baseDecision(input, profiles, availability, {
+    decision,
+    reasonCode,
+    target: null,
+    selection: null,
+    eligible: [],
+    excluded: []
+  });
+}
+function baseDecision(input, profiles, availability, result) {
+  return {
+    schemaVersion: ESCALATION_DECISION_SCHEMA,
+    taskId: input.taskId,
+    inputHash: hash(input),
+    modelProfilesHash: hash(profiles),
+    availabilityReportHash: availability === void 0 ? null : hash(availability),
+    decision: result.decision,
+    reasonCode: result.reasonCode,
+    targetCapabilityClass: result.target,
+    selection: result.selection,
+    eligibleCandidates: result.eligible,
+    excludedCandidates: result.excluded,
+    budget: {
+      attemptCount: input.attemptCount,
+      maxAttempts: input.budget.maxAttempts,
+      elapsedMs: input.elapsedMs,
+      maxDurationMs: input.budget.maxDurationMs,
+      consumedRelativeCost: input.consumedRelativeCost,
+      remainingRelativeCost: input.budget.maxRelativeCost - input.consumedRelativeCost,
+      maxRelativeCost: input.budget.maxRelativeCost
+    },
+    facts: {
+      failureCategory: input.failureCategory,
+      progress: input.progress,
+      fingerprintRepetitions: input.fingerprintRepetitions,
+      riskTier: input.riskTier,
+      currentCapabilityClass: input.currentCapabilityClass,
+      concerns: input.concerns
+    },
+    speculation: input.speculation
+  };
+}
+function desiredClass(input) {
+  const currentIndex = capabilities2.indexOf(input.currentCapabilityClass);
+  if (input.progress === "reduced" || input.failureCategory === "flaky")
+    return {
+      decision: "retry-current",
+      reasonCode: input.progress === "reduced" ? "FAILURE_SET_REDUCED" : "FLAKY_RETRY",
+      target: input.currentCapabilityClass
+    };
+  const direct = input.concerns.contractContradiction || input.concerns.security || input.concerns.dataIntegrity || input.concerns.architectureChange || input.progress === "unchanged" && input.fingerprintRepetitions >= input.thresholds.unchangedAttemptsBeforeDirect;
+  if (direct) {
+    const frontier = input.riskTier === "critical" || input.concerns.security || input.concerns.dataIntegrity || input.concerns.architectureChange;
+    const targetIndex = Math.max(frontier ? 3 : 2, currentIndex + 1);
+    return {
+      decision: "escalate-direct",
+      reasonCode: input.concerns.contractContradiction ? "CONTRACT_CONTRADICTION" : input.concerns.architectureChange ? "ARCHITECTURE_CHANGE" : input.concerns.security || input.concerns.dataIntegrity ? "SAFETY_CONCERN" : "REPEATED_UNCHANGED_FAILURE",
+      target: capabilities2[targetIndex] ?? null
+    };
+  }
+  return {
+    decision: "escalate-adjacent",
+    reasonCode: input.progress === "expanded" ? "FAILURE_SET_EXPANDED" : input.progress === "incomparable" ? "FAILURE_SET_INCOMPARABLE" : "ORDINARY_IMPLEMENTATION_DEFECT",
+    target: capabilities2[currentIndex + 1] ?? null
+  };
+}
+function exclusionReason2(candidate, input, target, availability) {
+  if (!candidate.enabled) return "DISABLED";
+  if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
+  if (candidate.requiresAdditionalExternalTransmission && input.externalTransmission === "denied")
+    return "EXTERNAL_TRANSMISSION_DENIED";
+  if (availability.get(candidate.id) === "unavailable") return "UNAVAILABLE";
+  if (availability.get(candidate.id) === "incompatible") return "INCOMPATIBLE";
+  if (candidate.capabilityClass !== target) return "CAPABILITY_NOT_SELECTED";
+  if (input.consumedRelativeCost + candidate.relativeCost > input.budget.maxRelativeCost)
+    return "BUDGET_EXCEEDED";
+  return null;
+}
+function selectEscalation(input, profiles, availability) {
+  if (input.routingPlan.modelProfilesHash !== hash(profiles) || availability !== void 0 && availability.modelProfilesHash !== hash(profiles))
+    throw new RigorError(
+      "Profiles or availability are stale or inconsistent",
+      EXIT.inputError
+    );
+  if (input.concerns.scopeViolation || input.concerns.protectedTestMutation || input.concerns.configuredCheckRemoval || input.concerns.configuredCheckWeakening)
+    return stop(
+      input,
+      profiles,
+      availability,
+      "stop-policy-violation",
+      input.concerns.scopeViolation ? "SCOPE_VIOLATION" : input.concerns.protectedTestMutation ? "PROTECTED_TEST_MUTATION" : input.concerns.configuredCheckRemoval ? "CONFIGURED_CHECK_REMOVAL" : "CONFIGURED_CHECK_WEAKENING"
+    );
+  if (input.concerns.requirementsChangeRequired || input.concerns.acceptanceCriteriaChangeRequired || input.concerns.humanOnlyDecision)
+    return stop(
+      input,
+      profiles,
+      availability,
+      "stop-human-decision",
+      input.concerns.requirementsChangeRequired ? "REQUIREMENTS_CHANGE_REQUIRED" : input.concerns.acceptanceCriteriaChangeRequired ? "ACCEPTANCE_CRITERIA_CHANGE_REQUIRED" : "HUMAN_ONLY_DECISION"
+    );
+  if (input.attemptCount >= input.budget.maxAttempts || input.elapsedMs >= input.budget.maxDurationMs || input.consumedRelativeCost >= input.budget.maxRelativeCost)
+    return stop(
+      input,
+      profiles,
+      availability,
+      "stop-budget-exhausted",
+      input.attemptCount >= input.budget.maxAttempts ? "MAX_ATTEMPTS_EXHAUSTED" : input.elapsedMs >= input.budget.maxDurationMs ? "MAX_DURATION_EXHAUSTED" : "MAX_RELATIVE_COST_EXHAUSTED"
+    );
+  if (input.failureCategory === "infrastructure" || input.failureCategory === "timeout") {
+    const stopInfrastructure = input.fingerprintRepetitions > input.thresholds.infrastructureRetries;
+    return stop(
+      input,
+      profiles,
+      availability,
+      stopInfrastructure ? "stop-infrastructure" : "retry-infrastructure",
+      input.failureCategory === "timeout" ? stopInfrastructure ? "TIMEOUT_RETRY_LIMIT" : "TIMEOUT_RETRY" : stopInfrastructure ? "INFRASTRUCTURE_RETRY_LIMIT" : "INFRASTRUCTURE_RETRY"
+    );
+  }
+  const desired = desiredClass(input);
+  if (desired.target === null)
+    return stop(
+      input,
+      profiles,
+      availability,
+      "stop-no-eligible-candidate",
+      "NO_HIGHER_CAPABILITY_CLASS"
+    );
+  const availabilityStates2 = new Map(
+    availability?.candidates.map((candidate) => [
+      candidate.candidateId,
+      candidate.state
+    ]) ?? []
+  );
+  const eligible = [];
+  const excluded = [];
+  for (const candidate of profiles.candidates) {
+    const reasonCode = exclusionReason2(
+      candidate,
+      input,
+      desired.target,
+      availabilityStates2
+    );
+    if (reasonCode === null) eligible.push(candidate);
+    else excluded.push({ candidateId: candidate.id, reasonCode });
+  }
+  eligible.sort(
+    (left, right) => capabilities2.indexOf(left.capabilityClass) - capabilities2.indexOf(right.capabilityClass) || left.relativeCost - right.relativeCost || left.id.localeCompare(right.id)
+  );
+  const selected = eligible[0];
+  if (selected === void 0)
+    return baseDecision(input, profiles, availability, {
+      decision: "stop-no-eligible-candidate",
+      reasonCode: "NO_ELIGIBLE_CANDIDATE",
+      target: desired.target,
+      selection: null,
+      eligible: [],
+      excluded
+    });
+  return baseDecision(input, profiles, availability, {
+    decision: desired.decision,
+    reasonCode: desired.reasonCode,
+    target: desired.target,
+    selection: {
+      candidateId: selected.id,
+      provider: selected.provider,
+      ...selected.model === void 0 ? {} : { model: selected.model },
+      capabilityClass: selected.capabilityClass,
+      relativeCost: selected.relativeCost
+    },
+    eligible: eligible.map((candidate) => candidate.id),
+    excluded
+  });
+}
+
 // src/test-integrity.ts
 var import_promises9 = require("node:fs/promises");
 var import_node_path10 = __toESM(require("node:path"), 1);
@@ -4613,9 +5063,9 @@ function parseScripts(text) {
   }
 }
 var IGNORED_EVIDENCE = [".rigor/evidence/", ".rigor/events.jsonl"];
-async function scanTestIntegrity(root, options, now = /* @__PURE__ */ new Date()) {
-  const baseSha = await resolveCommit(root, options.base);
-  const headSha = options.head === null ? null : await resolveCommit(root, options.head);
+async function scanTestIntegrity(root, options2, now = /* @__PURE__ */ new Date()) {
+  const baseSha = await resolveCommit(root, options2.base);
+  const headSha = options2.head === null ? null : await resolveCommit(root, options2.head);
   const changes = await diffChanges(root, baseSha, headSha);
   const baseScripts = parseScripts(
     await showFile(root, baseSha, "package.json")
@@ -4636,13 +5086,13 @@ async function scanTestIntegrity(root, options, now = /* @__PURE__ */ new Date()
   const worktreeDigest = headSha === null ? await treeHash(root, IGNORED_EVIDENCE) : null;
   return buildTestIntegrityEvent(
     {
-      taskId: options.task,
+      taskId: options2.task,
       baseSha,
       headSha,
       worktreeDigest,
-      attemptArtifactId: options.attemptArtifactId,
-      verificationArtifactId: options.verificationArtifactId,
-      note: options.note
+      attemptArtifactId: options2.attemptArtifactId,
+      verificationArtifactId: options2.verificationArtifactId,
+      note: options2.note
     },
     signals,
     now
@@ -4787,6 +5237,17 @@ function option(args, name, required = true) {
   if (required && (!value || value.startsWith("--")))
     throw new RigorError(`Missing ${name}`, EXIT.inputError);
   return value;
+}
+function options(args, name) {
+  const result = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== name) continue;
+    const value = args[index + 1];
+    if (!value || value.startsWith("--"))
+      throw new RigorError(`Missing ${name}`, EXIT.inputError);
+    result.push(value);
+  }
+  return result;
 }
 function output(value) {
   import_node_process.default.stdout.write(`${JSON.stringify(value, null, 2)}
@@ -4968,9 +5429,58 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "escalate") {
-    const result = createEscalation(
-      parseEscalationInput(await readJson(option(args, "--input")))
-    );
+    const rawInput = await readJson(option(args, "--input"));
+    if (record(rawInput, "escalation input").schemaVersion === ESCALATION_DECISION_INPUT_SCHEMA) {
+      const input = parseEscalationDecisionInput(rawInput);
+      const profiles = parseModelProfiles(
+        await readJson(option(args, "--profiles"))
+      );
+      const availabilityPath = option(args, "--availability", false);
+      const availability = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
+      const contract = parseContract(
+        await readJson(option(args, "--contract"))
+      );
+      const planPaths = options(args, "--plan");
+      if (planPaths.length === 0)
+        throw new RigorError(
+          "At least one --plan is required",
+          EXIT.inputError
+        );
+      const plans = await Promise.all(
+        planPaths.map(async (file) => parseRoutingPlan(await readJson(file)))
+      );
+      const attemptPaths = options(args, "--attempt");
+      if (attemptPaths.length === 0)
+        throw new RigorError(
+          "At least one --attempt is required",
+          EXIT.inputError
+        );
+      const attempts = await Promise.all(
+        attemptPaths.map(async (file) => parseAttempt(await readJson(file)))
+      );
+      attempts.sort((left, right) => left.sequence - right.sequence);
+      validateEscalationArtifacts(input, contract, plans, attempts);
+      const decision = selectEscalation(input, profiles, availability);
+      if (args.includes("--dry-run")) {
+        output(decision);
+      } else {
+        const evidence = {
+          ...decision,
+          artifactId: artifactId("escalation-decision"),
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        const saved2 = await saveCollectionArtifact(
+          root,
+          input.taskId,
+          "escalations",
+          "escalation-decision",
+          evidence
+        );
+        output({ ...evidence, saved: saved2 });
+      }
+      return decision.decision.startsWith("stop-") ? EXIT.policyViolation : EXIT.success;
+    }
+    const result = createEscalation(parseEscalationInput(rawInput));
     const task = String(record(result, "escalation").taskId);
     const saved = await saveArtifact(root, task, "escalation", result);
     output({ ...record(result, "escalation"), saved });

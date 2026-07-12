@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_1f8d4713-3178-47e5-be7a-454f25acabc4",
+  "taskId": "GH-14",
+  "createdAt": "2026-07-12T05:32:26.217Z",
+  "preflightArtifactId": "preflight_db6148f4-73df-4e39-aa72-c0ff8f4985a4",
+  "preflightHash": "d17582b1e0f9c5ec3e9272e0cded0c34b78a09b6e60199c5e968bdbb40c2e255",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "The same validated input deterministically returns the same bounded escalation decision",
+    "Policy, human-decision, budget, and infrastructure stops precede candidate selection",
+    "Adjacent and direct escalation use eligible candidates only and record exclusions",
+    "Legacy escalation v1 remains accepted and new decision evidence is append-only",
+    "Targeted and repository-wide verification passes"
+  ],
+  "allowedPaths": [
+    "src/escalation.ts",
+    "src/types.ts",
+    "src/cli.ts",
+    "test/escalation.test.ts",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "schemas/artifacts.v1.schema.json",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "README.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Do not modify or weaken existing acceptance tests",
+    "Do not invoke model providers",
+    "Do not persist raw logs or secrets",
+    "Treat runtime identity, reasoning effort, tokens, and provider cost as unavailable"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

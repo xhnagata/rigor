@@ -11,6 +11,7 @@
         "rigor.contract.v1",
         "rigor.verification.v1",
         "rigor.escalation.v1",
+        "rigor.escalation-decision.v1",
         "rigor.review.v1",
         "rigor.routing-plan.v1",
         "rigor.attempt-session.v1",

@@ -3,6 +3,7 @@ import type {
   CheckFailure,
   FailureCategory,
   ProgressComparison,
+  ProgressStatus,
   TestStats,
 } from "./fingerprint.js";
 
@@ -14,6 +15,10 @@ export const CONTRACT_INPUT_SCHEMA = "rigor.contract-input.v1" as const;
 export const VERIFY_SCHEMA = "rigor.verification.v1" as const;
 export const ESCALATION_SCHEMA = "rigor.escalation.v1" as const;
 export const ESCALATION_INPUT_SCHEMA = "rigor.escalation-input.v1" as const;
+export const ESCALATION_DECISION_INPUT_SCHEMA =
+  "rigor.escalation-decision-input.v1" as const;
+export const ESCALATION_DECISION_SCHEMA =
+  "rigor.escalation-decision.v1" as const;
 export const REVIEW_SCHEMA = "rigor.review.v1" as const;
 export const ROUTING_INPUT_SCHEMA = "rigor.routing-input.v1" as const;
 export const ROUTING_INPUT_V2_SCHEMA = "rigor.routing-input.v2" as const;
@@ -182,6 +187,114 @@ export interface EscalationInput {
   disprovedHypotheses: string[];
   speculation: string[];
   requestedDecision: string;
+}
+
+export type EscalationFailureCategory = FailureCategory | "mixed";
+
+export type EscalationDecisionKind =
+  | "retry-current"
+  | "escalate-adjacent"
+  | "escalate-direct"
+  | "retry-infrastructure"
+  | "stop-infrastructure"
+  | "stop-human-decision"
+  | "stop-policy-violation"
+  | "stop-budget-exhausted"
+  | "stop-no-eligible-candidate";
+
+export interface EscalationAttemptFact {
+  artifactId: string;
+  artifactHash: string;
+  routingPlanArtifactId: string;
+  routingPlanHash: string;
+  sequence: number;
+  capabilityClass: CapabilityClass;
+  failureCategory: EscalationFailureCategory;
+  progress: ProgressStatus;
+  failureFingerprint: string | null;
+  durationMs: number;
+  relativeCost: number;
+}
+
+export interface EscalationDecisionInput {
+  schemaVersion: typeof ESCALATION_DECISION_INPUT_SCHEMA;
+  taskId: string;
+  purpose: RoutingPurpose;
+  contract: { artifactId: string; artifactHash: string };
+  routingPlan: {
+    artifactId: string;
+    artifactHash: string;
+    modelProfilesHash: string;
+  };
+  currentAttempt: EscalationAttemptFact;
+  previousAttempts: EscalationAttemptFact[];
+  riskTier: RiskTier;
+  externalTransmission: Transmission;
+  failureCategory: EscalationFailureCategory;
+  progress: ProgressStatus;
+  fingerprintRepetitions: number;
+  currentCapabilityClass: CapabilityClass;
+  attemptCount: number;
+  elapsedMs: number;
+  consumedRelativeCost: number;
+  budget: RoutingInput["budget"];
+  concerns: {
+    requirementsChangeRequired: boolean;
+    acceptanceCriteriaChangeRequired: boolean;
+    humanOnlyDecision: boolean;
+    scopeViolation: boolean;
+    protectedTestMutation: boolean;
+    configuredCheckRemoval: boolean;
+    configuredCheckWeakening: boolean;
+    security: boolean;
+    dataIntegrity: boolean;
+    architectureChange: boolean;
+    contractContradiction: boolean;
+  };
+  thresholds: {
+    unchangedAttemptsBeforeDirect: number;
+    infrastructureRetries: number;
+  };
+  speculation: string[];
+}
+
+export type EscalationCandidateExclusionReason =
+  | Exclude<RoutingExclusionReason, "INSUFFICIENT_CAPABILITY">
+  | "CAPABILITY_NOT_SELECTED";
+
+export interface EscalationDecision {
+  schemaVersion: typeof ESCALATION_DECISION_SCHEMA;
+  taskId: string;
+  inputHash: string;
+  modelProfilesHash: string;
+  availabilityReportHash: string | null;
+  decision: EscalationDecisionKind;
+  reasonCode: string;
+  targetCapabilityClass: CapabilityClass | null;
+  selection: RoutingDecision["selection"];
+  eligibleCandidates: string[];
+  excludedCandidates: Array<{
+    candidateId: string;
+    reasonCode: EscalationCandidateExclusionReason;
+  }>;
+  budget: {
+    attemptCount: number;
+    maxAttempts: number;
+    elapsedMs: number;
+    maxDurationMs: number;
+    consumedRelativeCost: number;
+    remainingRelativeCost: number;
+    maxRelativeCost: number;
+  };
+  facts: {
+    failureCategory: EscalationFailureCategory;
+    progress: ProgressStatus;
+    fingerprintRepetitions: number;
+    riskTier: RiskTier;
+    currentCapabilityClass: CapabilityClass;
+    concerns: EscalationDecisionInput["concerns"];
+  };
+  speculation: string[];
 }
 
 export type AssessmentConfidence = "low" | "medium" | "high";

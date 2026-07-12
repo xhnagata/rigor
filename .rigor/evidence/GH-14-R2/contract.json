@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_2f2f5e67-5159-490c-92c9-e4e21422b4b7",
+  "taskId": "GH-14-R2",
+  "createdAt": "2026-07-12T06:18:41.464Z",
+  "preflightArtifactId": "preflight_6c3d15c0-4e6b-47aa-9c84-961895a0f125",
+  "preflightHash": "09f17a8da790acf563e17cfb77629f7f1df60c7805adc2ad1a3b2e7cb55d0f74",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "The recorded required check passes over the full uncommitted GH-14 diff including this remediation; other verification commands (format:check, lint, typecheck, test, test:all, bench, validate-plugin, plugin validate --strict) are rerun and their results reported in the PR",
+    "The current attempt must be bound to the named routing plan and the input budget must equal the plan-authorized budget, both failing closed",
+    "Escalation decision schemas reject extra link properties, unbounded numerics, and reason codes the selector never emits",
+    "Threat-model and orchestration wording disclose that the infrastructure retry limit is identical-fingerprint-gated with the global budget as backstop",
+    "No existing test is modified, removed, or weakened; remediation behavior is covered by additive tests only"
+  ],
+  "allowedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "constraints": [
+    "Do not modify or weaken existing acceptance tests",
+    "Do not invoke model providers outside the recorded consultation protocol",
+    "Do not persist raw logs or secrets",
+    "Treat runtime identity, reasoning effort, tokens, and provider cost as unavailable"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "rigor.escalation.v1",
+  "artifactId": "escalation_99b74b06-4507-4c10-a194-3669ed1ad53c",
+  "createdAt": "2026-07-12T05:32:48.535Z",
+  "taskId": "GH-14",
+  "facts": [
+    "Implementation was performed by Codex in an isolated local clone because the shared repository .git directory was read-only.",
+    "The Claude Code-specific /rigor:orchestrate command was not available and was not run.",
+    "No Claude Code session was performed; the Rigor CLI made no model/provider API call, and implementation occurred only in the already active Codex collaboration.",
+    "Preflight, contract, a validated routing-input.v2 assessment, routing plan, verification, and review evidence were recorded after the implementation diff existed.",
+    "An attempt artifact was not created because attempt-start is required before provider execution and a post-hoc artifact would misrepresent the implementation history.",
+    "Runtime model identity, reasoning effort, token usage, and provider cost are unavailable and unattested."
+  ],
+  "attempts": [
+    {
+      "action": "Run Codex-local implementation and repository tests without Claude Code",
+      "result": "Local implementation and deterministic tests completed; independent dogfooding remains"
+    }
+  ],
+  "disprovedHypotheses": [],
+  "speculation": [
+    "The initial escalation thresholds may require adjustment after outcome data and independent review."
+  ],
+  "requestedDecision": "After Claude Code becomes available, run /rigor:orchestrate dogfooding from a fresh preflight and attempt session, independently review the thresholds and selector policy, and rely on PR CI before merge."
+}

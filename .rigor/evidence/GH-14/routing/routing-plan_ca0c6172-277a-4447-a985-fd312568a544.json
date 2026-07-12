@@ -1,0 +1,48 @@
+{
+  "taskId": "GH-14",
+  "preflightArtifactId": "preflight_db6148f4-73df-4e39-aa72-c0ff8f4985a4",
+  "preflightHash": "d17582b1e0f9c5ec3e9272e0cded0c34b78a09b6e60199c5e968bdbb40c2e255",
+  "routingInputHash": "a70db0d35e89f2003753ed9837522953f47c28b0482223648873bbaff5ac8e7c",
+  "modelProfilesHash": "81c32f57cd6d3ae4f60b5381c8a9b6884575532dd9341a8e10cc2bffdbc1fffe",
+  "purpose": "implementation",
+  "requiredCapabilityClass": "premium",
+  "eligibleCandidates": [
+    "claude-premium-unverified",
+    "codex-frontier-unverified"
+  ],
+  "excludedCandidates": [
+    {
+      "candidateId": "claude-standard-unverified",
+      "reasonCode": "INSUFFICIENT_CAPABILITY"
+    }
+  ],
+  "selection": {
+    "candidateId": "claude-premium-unverified",
+    "provider": "claude",
+    "capabilityClass": "premium",
+    "relativeCost": 25
+  },
+  "controls": {
+    "externalTransmission": "allowed",
+    "requireHumanApproval": true,
+    "requireIndependentReview": true
+  },
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 3600000,
+    "maxRelativeCost": 100
+  },
+  "assessment": {
+    "inputSchemaVersion": "rigor.routing-input.v2",
+    "confidence": "high",
+    "evidenceCount": 4
+  },
+  "schemaVersion": "rigor.routing-plan.v1",
+  "artifactId": "routing-plan_ca0c6172-277a-4447-a985-fd312568a544",
+  "createdAt": "2026-07-12T05:32:29.871Z",
+  "contractArtifactId": "contract_1f8d4713-3178-47e5-be7a-454f25acabc4",
+  "contractHash": "e054c9c160948801e4a22ca3d0fa9a2f01aff73ba9649e3ebebf122ddac40e47",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "plannedHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "status": "planned"
+}

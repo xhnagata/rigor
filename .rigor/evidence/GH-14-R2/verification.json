@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_c8eb2261-f01c-44f9-af10-07ce45f2ff6c",
+  "taskId": "GH-14-R2",
+  "contractArtifactId": "contract_2f2f5e67-5159-490c-92c9-e4e21422b4b7",
+  "createdAt": "2026-07-12T06:18:59.252Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "treeHash": "2cb3a8bbd23852a5e169647f88a160aeb0e981ca66bead31c12b4fdcb4ba1b3b",
+  "changedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 11,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}
