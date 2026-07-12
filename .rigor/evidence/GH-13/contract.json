@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_936c38a0-2186-40ce-a3e1-2071afc8d570",
+  "taskId": "GH-13",
+  "createdAt": "2026-07-11T15:33:28.314Z",
+  "preflightArtifactId": "preflight_883dc7d9-461c-481f-bdea-62868efca28d",
+  "preflightHash": "8f204f697ce25b566d16390b45a8fef8d028273ad5afd33c7a3df1bc94a96ec0",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "Identical normalized failures produce the same deterministic fingerprint across attempts.",
+    "Path, timestamp, random ID, and duration noise do not create a new fingerprint when covered by documented normalization rules.",
+    "New regressions cannot be hidden by deleting or weakening tests or checks: a failing check that later passes with fewer observed tests, or a disappearing previously-failing test, is flagged as a weakening signal and is not reported as genuine progress.",
+    "Infrastructure, timeout, and spawn-error failures are categorized separately from implementation failures and do not by themselves count as an unchanged implementation-failure loop.",
+    "Raw command logs and secrets are not persisted: only normalized structured facts (check id, exit code, category, error class, bounded normalized test ids) and digests are stored.",
+    "Failure sets are compared across attempts and recorded as first, unchanged, reduced, expanded, or incomparable.",
+    "Model-authored diagnosis remains separate from and is explicitly labeled as speculation, distinct from the deterministic Rigor-derived fingerprint and progress facts.",
+    "Pure verification and routing stay deterministic for identical inputs; existing v1 attempt and verification artifacts remain parseable (backward compatible).",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict all pass."
+  ],
+  "allowedPaths": [
+    "src/fingerprint.ts",
+    "src/artifacts.ts",
+    "src/attempt.ts",
+    "src/types.ts",
+    "src/cli.ts",
+    "schemas/attempt-result-input.v1.schema.json",
+    "test/fingerprint.test.ts",
+    "test/artifacts.test.ts",
+    "test/attempt.test.ts",
+    "docs/orchestration.md",
+    "docs/architecture.md",
+    "docs/threat-model.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Do not implement universal semantic log understanding; parse only documented, recognized runner output formats and fall back to an explicit unavailable marker otherwise.",
+    "Never auto-classify a failure as flaky; flaky/infrastructure categorization must come from deterministic observation (timeout, spawn error, documented infrastructure patterns) or explicit input, never inferred to make progress look better.",
+    "Do not choose an escalation target; that is follow-up issue #14.",
+    "Keep model-authored diagnosis (failureClass) separate and explicitly labeled as speculation; deterministic fingerprint and progress fields must be derived by Rigor, not taken from model input.",
+    "Do not persist raw logs, stack traces, or secrets; store only normalized facts and digests, bounded in size.",
+    "Do not invoke any model from the deterministic CLI; keep pure functions deterministic.",
+    "Additive, backward-compatible schema changes only; existing rigor.attempt.v1 and rigor.verification.v1 artifacts must remain valid and parseable.",
+    "Do not delete, weaken, skip, or otherwise disable existing tests to pass verification.",
+    "Do not modify protected paths, public API compatibility, security boundaries, or unrelated files; stop if such a change becomes necessary."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

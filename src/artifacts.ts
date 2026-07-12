@@ -3,6 +3,7 @@ import path from "node:path";
 import { EXIT, RigorError } from "./errors.js";
 import { matches } from "./paths.js";
 import { run, treeHash } from "./git.js";
+import { deriveCheckFacts, verificationFingerprint } from "./fingerprint.js";
 import { parsePolicy } from "./schema.js";
 import {
   artifactId,
@@ -23,6 +24,7 @@ import {
   PREFLIGHT_SCHEMA,
   REVIEW_SCHEMA,
   VERIFY_SCHEMA,
+  type CheckFacts,
   type Contract,
   type ContractInput,
   type EscalationInput,
@@ -58,6 +60,16 @@ export function parseVerification(value: unknown): Verification {
   strings(item.changedPaths, "verification.changedPaths");
   if (item.status !== "passed" && item.status !== "failed")
     throw new RigorError("Invalid verification status", EXIT.inputError);
+  // failureFingerprint/failureFacts are additive; older verification.json
+  // artifacts predate them and must still parse, so only validate shape when
+  // the fields are present.
+  if (item.failureFingerprint !== undefined && item.failureFingerprint !== null)
+    textField(item.failureFingerprint, "verification.failureFingerprint", 128);
+  if (item.failureFacts !== undefined && !Array.isArray(item.failureFacts))
+    throw new RigorError(
+      "verification.failureFacts must be an array",
+      EXIT.inputError,
+    );
   return item as unknown as Verification;
 }
 
@@ -132,6 +144,7 @@ export async function verify(
     (pathname) => !matches(pathname, contract.allowedPaths),
   );
   const checks = [];
+  const failureFacts: CheckFacts[] = [];
   for (const check of policy.checks.filter((item) =>
     contract.requiredChecks.includes(item.id),
   )) {
@@ -139,26 +152,47 @@ export async function verify(
     try {
       result = await run(check.command, check.args, root, check.timeoutMs);
     } catch {
+      // No process output is available; derive facts from a fixed,
+      // non-secret placeholder so no raw command text is ever persisted.
+      const facts = deriveCheckFacts({
+        checkId: check.id,
+        status: "error",
+        exitCode: null,
+        output: "spawn-error",
+      });
+      failureFacts.push(facts);
       checks.push({
         id: check.id,
         status: "error" as const,
         exitCode: null,
         durationMs: 0,
         outputDigest: hash("spawn-error"),
+        ...(facts.failure === null ? {} : { failure: facts.failure }),
       });
       continue;
     }
     const combined = Buffer.concat([result.stdout, result.stderr]);
+    const outputText = combined.toString("utf8");
+    const status = result.timedOut
+      ? ("timed_out" as const)
+      : result.code === 0
+        ? ("passed" as const)
+        : ("failed" as const);
+    const facts = deriveCheckFacts({
+      checkId: check.id,
+      status,
+      exitCode: result.code,
+      output: outputText,
+    });
+    failureFacts.push(facts);
     checks.push({
       id: check.id,
-      status: result.timedOut
-        ? ("timed_out" as const)
-        : result.code === 0
-          ? ("passed" as const)
-          : ("failed" as const),
+      status,
       exitCode: result.code,
       durationMs: result.durationMs,
-      outputDigest: hash(combined.toString("utf8")),
+      outputDigest: hash(outputText),
+      ...(facts.testStats === null ? {} : { testStats: facts.testStats }),
+      ...(facts.failure === null ? {} : { failure: facts.failure }),
     });
   }
   const passed =
@@ -177,6 +211,8 @@ export async function verify(
     scopeViolations,
     checks,
     status: passed ? "passed" : "failed",
+    failureFingerprint: verificationFingerprint(failureFacts),
+    failureFacts,
   };
 }
 

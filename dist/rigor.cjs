@@ -371,6 +371,321 @@ async function assertContainedPath(root, target) {
   }
 }
 
+// src/fingerprint.ts
+var ESC = String.fromCharCode(27);
+var BEL = String.fromCharCode(7);
+var ANSI_RE = new RegExp(
+  ESC + "\\[[0-9;]*[a-zA-Z]|" + ESC + "\\][^" + BEL + "]*" + BEL + "|" + ESC + "[@-Z\\\\\\]^_]",
+  "g"
+);
+var UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+var ISO_TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
+var CLOCK_TIME_RE = /\b\d{2}:\d{2}:\d{2}\b/g;
+var DURATION_RE = /\b\d+(?:\.\d+)?(?:ms|s|m)\b/g;
+var HEX_PREFIXED_RE = /0x[0-9a-fA-F]+/g;
+var HEX_RUN_RE = /\b[0-9a-fA-F]{8,}\b/g;
+var WINDOWS_PATH_RE = /[A-Za-z]:\\(?:[\w.@+-]+\\)*[\w.@+-]+\.[A-Za-z0-9]+/g;
+var POSIX_PATH_RE = /(?:[\w.@+-]+\/)+[\w.@+-]+\.[A-Za-z0-9]+/g;
+var LINE_COL_RE = /:\d+(?::\d+)?/g;
+var SIGNAL_RE = /error|fail|expect|received|assert|not ok|✖|✗|✘|\bat /iu;
+function dedupePreserveOrder(lines) {
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  for (const line of lines) {
+    if (!seen.has(line)) {
+      seen.add(line);
+      result.push(line);
+    }
+  }
+  return result;
+}
+function applyNoiseMasks(text) {
+  let normalized = text;
+  normalized = normalized.replace(ANSI_RE, "");
+  normalized = normalized.replace(UUID_RE, "<uuid>");
+  normalized = normalized.replace(ISO_TIMESTAMP_RE, "<ts>");
+  normalized = normalized.replace(CLOCK_TIME_RE, "<time>");
+  normalized = normalized.replace(DURATION_RE, "<dur>");
+  normalized = normalized.replace(HEX_PREFIXED_RE, "<hex>");
+  normalized = normalized.replace(WINDOWS_PATH_RE, "<path>");
+  normalized = normalized.replace(POSIX_PATH_RE, "<path>");
+  normalized = normalized.replace(HEX_RUN_RE, "<hex>");
+  normalized = normalized.replace(LINE_COL_RE, ":<n>");
+  return normalized;
+}
+function normalizeSignature(text) {
+  const normalized = applyNoiseMasks(text);
+  const lines = normalized.split(/\r\n|\r|\n/u).map((line) => line.trim().replace(/\s+/gu, " ")).filter((line) => line.length > 0);
+  const signalLines = lines.filter((line) => SIGNAL_RE.test(line));
+  const capped = signalLines.slice(0, 40);
+  return dedupePreserveOrder(capped);
+}
+var NODE_TEST_TOTAL_RE = /^# tests (\d+)/m;
+var NODE_TEST_PASS_RE = /^# pass (\d+)/m;
+var NODE_TEST_FAIL_RE = /^# fail (\d+)/m;
+function parseNodeTestSummary(output2) {
+  const total = NODE_TEST_TOTAL_RE.exec(output2)?.[1];
+  const passed = NODE_TEST_PASS_RE.exec(output2)?.[1];
+  const failed = NODE_TEST_FAIL_RE.exec(output2)?.[1];
+  if (total === void 0 || passed === void 0 || failed === void 0)
+    return null;
+  return {
+    total: Number(total),
+    passed: Number(passed),
+    failed: Number(failed)
+  };
+}
+var JEST_SUMMARY_RE = /Tests:\s*([^\n]+)/i;
+var JEST_SEGMENT_RE = /(\d+)\s*(failed|passed|total|skipped|todo)/i;
+function parseJestSummary(output2) {
+  const segment = JEST_SUMMARY_RE.exec(output2)?.[1];
+  if (segment === void 0) return null;
+  const counts = {};
+  for (const part of segment.split(",")) {
+    const match = JEST_SEGMENT_RE.exec(part.trim());
+    const value = match?.[1];
+    const label = match?.[2];
+    if (value !== void 0 && label !== void 0)
+      counts[label.toLowerCase()] = Number(value);
+  }
+  if (counts.total === void 0) return null;
+  const failed = counts.failed ?? 0;
+  const passed = counts.passed ?? counts.total - failed;
+  return { total: counts.total, passed, failed };
+}
+function parseTestStats(output2) {
+  return parseNodeTestSummary(output2) ?? parseJestSummary(output2);
+}
+var INFRA_PATTERN = /\b(?:ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|ENETUNREACH|ECONNRESET|ENETDOWN)\b|getaddrinfo|socket hang up|rate limit|Too Many Requests|network is unreachable|network error/i;
+function deriveCategory(status, normalizedText) {
+  if (status === "timed_out") return "timeout";
+  if (status === "error") return "infrastructure";
+  return INFRA_PATTERN.test(normalizedText) ? "infrastructure" : "implementation";
+}
+var ERROR_CLASS_PATTERNS = [
+  ["assertion", /AssertionError|assert|Expected|Received|toBe|to equal/i],
+  ["type", /TypeError|error TS\d+|is not a function/i],
+  ["syntax", /SyntaxError/i],
+  ["reference", /ReferenceError/i],
+  ["range", /RangeError/i],
+  ["module", /Cannot find module|ERR_MODULE_NOT_FOUND/i],
+  ["lint", /eslint|problems \(|✖ \d+ problems/i],
+  ["timeout", /timed out|timeout/i],
+  ["runtime", /Error/i]
+];
+function deriveErrorClass(normalizedText) {
+  for (const [label, pattern] of ERROR_CLASS_PATTERNS) {
+    if (pattern.test(normalizedText)) return label;
+  }
+  return "unknown";
+}
+var FAILED_TEST_PATTERNS = [
+  /^not ok \d+ - (.+)$/gm,
+  /^\s*✗\s+(.+)$/gm,
+  /^\s*✖\s+(.+)$/gm,
+  /^FAIL\s+(.+)$/gm
+];
+var TRAILING_DURATION_RE = /\s*\(\d+(?:\.\d+)?(?:ms|s|m)\)\s*$/u;
+var MAX_TEST_NAME_LENGTH = 200;
+function normalizeTestName(name) {
+  const withoutDuration = name.replace(TRAILING_DURATION_RE, "");
+  const masked = applyNoiseMasks(withoutDuration).replace(/\s+/gu, " ").trim();
+  return masked.slice(0, MAX_TEST_NAME_LENGTH);
+}
+function extractFailedTests(output2) {
+  const names = [];
+  for (const pattern of FAILED_TEST_PATTERNS) {
+    for (const match of output2.matchAll(pattern)) {
+      const raw = match[1];
+      if (raw !== void 0) names.push(normalizeTestName(raw));
+    }
+  }
+  names.sort();
+  return [...new Set(names)].slice(0, 50);
+}
+function deriveCheckFacts(input) {
+  const { checkId, status, output: output2 } = input;
+  const testStats = parseTestStats(output2);
+  if (status === "passed") {
+    return { checkId, status, testStats, failure: null };
+  }
+  const normalizedText = normalizeSignature(output2).join("\n");
+  const category = deriveCategory(status, normalizedText);
+  const errorClass = deriveErrorClass(normalizedText);
+  const failedTests = extractFailedTests(output2);
+  const signatureDigest = hash(normalizedText);
+  const fingerprint = hash({
+    checkId,
+    category,
+    errorClass,
+    failedTests,
+    signatureDigest
+  });
+  return {
+    checkId,
+    status,
+    testStats,
+    failure: {
+      category,
+      errorClass,
+      failedTests,
+      signatureDigest,
+      fingerprint
+    }
+  };
+}
+function verificationFingerprint(facts) {
+  const failing = facts.filter(
+    (fact) => fact.failure !== null
+  );
+  if (failing.length === 0) return null;
+  const sorted = [...failing].sort(
+    (a, b) => a.checkId < b.checkId ? -1 : a.checkId > b.checkId ? 1 : 0
+  );
+  return hash(sorted.map((fact) => fact.failure.fingerprint));
+}
+function aggregateCategory(facts) {
+  const categories = facts.filter(
+    (fact) => fact.failure !== null
+  ).map((fact) => fact.failure.category);
+  if (categories.length === 0) return null;
+  const unique = new Set(categories);
+  if (unique.size === 1) {
+    const [only] = unique;
+    if (only !== void 0) return only;
+  }
+  return "mixed";
+}
+function implFailureMap(facts) {
+  const map = /* @__PURE__ */ new Map();
+  for (const fact of facts) {
+    if (fact.failure !== null && fact.failure.category === "implementation") {
+      map.set(fact.checkId, {
+        fingerprint: fact.failure.fingerprint,
+        failedTests: new Set(fact.failure.failedTests)
+      });
+    }
+  }
+  return map;
+}
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const value of a) if (!b.has(value)) return false;
+  return true;
+}
+function isSubset(subset, superset) {
+  for (const value of subset) if (!superset.has(value)) return false;
+  return true;
+}
+function resolvedImplCheckIds(prevImpl, curImpl) {
+  return [...prevImpl.keys()].filter((checkId) => !curImpl.has(checkId));
+}
+function confirmCoverageForResolvedChecks(resolvedCheckIds, previousByCheck, currentByCheck) {
+  const signals = [];
+  for (const checkId of resolvedCheckIds) {
+    const priorStats = previousByCheck.get(checkId)?.testStats ?? null;
+    const curStats = currentByCheck.get(checkId)?.testStats ?? null;
+    const confirmed = priorStats !== null && curStats !== null && curStats.total >= priorStats.total;
+    if (!confirmed) {
+      signals.push(
+        `check ${checkId}: cannot confirm test coverage did not shrink (no parseable test counts)`
+      );
+    }
+  }
+  return signals;
+}
+function reducedOrIncomparable(prevImpl, curImpl, weakeningSignals, previousByCheck, currentByCheck) {
+  if (weakeningSignals.length > 0) {
+    return { status: "incomparable", weakeningSignals };
+  }
+  const coverageSignals = confirmCoverageForResolvedChecks(
+    resolvedImplCheckIds(prevImpl, curImpl),
+    previousByCheck,
+    currentByCheck
+  );
+  if (coverageSignals.length === 0) {
+    return { status: "reduced", weakeningSignals };
+  }
+  return {
+    status: "incomparable",
+    weakeningSignals: [...weakeningSignals, ...coverageSignals]
+  };
+}
+function compareFailures(previous, current) {
+  if (previous === null || previous.length === 0) {
+    return { status: "first", weakeningSignals: [] };
+  }
+  const weakeningSignals = [];
+  const currentByCheck = new Map(current.map((fact) => [fact.checkId, fact]));
+  const previousByCheck = new Map(previous.map((fact) => [fact.checkId, fact]));
+  for (const prevFact of previous) {
+    const curFact = currentByCheck.get(prevFact.checkId);
+    if (curFact === void 0) {
+      weakeningSignals.push(
+        `check ${prevFact.checkId}: no longer present in verification`
+      );
+      continue;
+    }
+    if (prevFact.testStats !== null && curFact.testStats !== null && curFact.testStats.total < prevFact.testStats.total) {
+      weakeningSignals.push(
+        `check ${prevFact.checkId}: observed test total dropped from ${prevFact.testStats.total} to ${curFact.testStats.total}`
+      );
+    }
+  }
+  const prevImpl = implFailureMap(previous);
+  const curImpl = implFailureMap(current);
+  const prevImplEmpty = prevImpl.size === 0;
+  const curImplEmpty = curImpl.size === 0;
+  if (!prevImplEmpty && curImplEmpty) {
+    return reducedOrIncomparable(
+      prevImpl,
+      curImpl,
+      weakeningSignals,
+      previousByCheck,
+      currentByCheck
+    );
+  }
+  if (prevImplEmpty) {
+    return { status: "incomparable", weakeningSignals };
+  }
+  const prevFingerprints = new Set(
+    [...prevImpl.values()].map((value) => value.fingerprint)
+  );
+  const curFingerprints = new Set(
+    [...curImpl.values()].map((value) => value.fingerprint)
+  );
+  const sameKeys = prevImpl.size === curImpl.size && [...prevImpl.keys()].every((key) => curImpl.has(key));
+  const sameFailedTests = sameKeys && [...prevImpl.entries()].every(([key, value]) => {
+    const curValue = curImpl.get(key);
+    return curValue !== void 0 && setsEqual(value.failedTests, curValue.failedTests);
+  });
+  if (setsEqual(prevFingerprints, curFingerprints) && sameFailedTests) {
+    return { status: "unchanged", weakeningSignals };
+  }
+  const curStrictSubsetOfPrev = curFingerprints.size < prevFingerprints.size && isSubset(curFingerprints, prevFingerprints);
+  if (curStrictSubsetOfPrev) {
+    return reducedOrIncomparable(
+      prevImpl,
+      curImpl,
+      weakeningSignals,
+      previousByCheck,
+      currentByCheck
+    );
+  }
+  const prevStrictSubsetOfCur = prevFingerprints.size < curFingerprints.size && isSubset(prevFingerprints, curFingerprints);
+  const newFailingAppeared = [...curImpl.keys()].some((key) => !prevImpl.has(key)) || [...curImpl.entries()].some(([key, value]) => {
+    const prevValue = prevImpl.get(key);
+    if (prevValue === void 0) return false;
+    for (const test of value.failedTests)
+      if (!prevValue.failedTests.has(test)) return true;
+    return false;
+  });
+  if (prevStrictSubsetOfCur || newFailingAppeared) {
+    return { status: "expanded", weakeningSignals };
+  }
+  return { status: "incomparable", weakeningSignals };
+}
+
 // src/types.ts
 var POLICY_SCHEMA = "rigor.policy.v1";
 var INTENT_SCHEMA = "rigor.intent.v1";
@@ -535,6 +850,13 @@ function parseVerification(value) {
   strings(item.changedPaths, "verification.changedPaths");
   if (item.status !== "passed" && item.status !== "failed")
     throw new RigorError("Invalid verification status", EXIT.inputError);
+  if (item.failureFingerprint !== void 0 && item.failureFingerprint !== null)
+    textField(item.failureFingerprint, "verification.failureFingerprint", 128);
+  if (item.failureFacts !== void 0 && !Array.isArray(item.failureFacts))
+    throw new RigorError(
+      "verification.failureFacts must be an array",
+      EXIT.inputError
+    );
   return item;
 }
 function parseContractInput(value) {
@@ -589,6 +911,7 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     (pathname) => !matches(pathname, contract.allowedPaths)
   );
   const checks = [];
+  const failureFacts = [];
   for (const check of policy.checks.filter(
     (item) => contract.requiredChecks.includes(item.id)
   )) {
@@ -596,22 +919,41 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     try {
       result = await run(check.command, check.args, root, check.timeoutMs);
     } catch {
+      const facts2 = deriveCheckFacts({
+        checkId: check.id,
+        status: "error",
+        exitCode: null,
+        output: "spawn-error"
+      });
+      failureFacts.push(facts2);
       checks.push({
         id: check.id,
         status: "error",
         exitCode: null,
         durationMs: 0,
-        outputDigest: hash("spawn-error")
+        outputDigest: hash("spawn-error"),
+        ...facts2.failure === null ? {} : { failure: facts2.failure }
       });
       continue;
     }
     const combined = Buffer.concat([result.stdout, result.stderr]);
+    const outputText = combined.toString("utf8");
+    const status = result.timedOut ? "timed_out" : result.code === 0 ? "passed" : "failed";
+    const facts = deriveCheckFacts({
+      checkId: check.id,
+      status,
+      exitCode: result.code,
+      output: outputText
+    });
+    failureFacts.push(facts);
     checks.push({
       id: check.id,
-      status: result.timedOut ? "timed_out" : result.code === 0 ? "passed" : "failed",
+      status,
       exitCode: result.code,
       durationMs: result.durationMs,
-      outputDigest: hash(combined.toString("utf8"))
+      outputDigest: hash(outputText),
+      ...facts.testStats === null ? {} : { testStats: facts.testStats },
+      ...facts.failure === null ? {} : { failure: facts.failure }
     });
   }
   const passed = scopeViolations.length === 0 && checks.every((check) => check.status === "passed");
@@ -627,7 +969,9 @@ async function verify(root, policy, contract, changedPaths, head, now = /* @__PU
     changedPaths,
     scopeViolations,
     checks,
-    status: passed ? "passed" : "failed"
+    status: passed ? "passed" : "failed",
+    failureFingerprint: verificationFingerprint(failureFacts),
+    failureFacts
   };
 }
 function parseEscalationInput(value) {
@@ -3056,11 +3400,12 @@ async function attemptState(root, task) {
     names = await (0, import_promises8.readdir)(directory);
   } catch (error) {
     if (error.code === "ENOENT")
-      return { count: 0, unfinished: [] };
+      return { count: 0, unfinished: [], finishedAttempts: [] };
     throw error;
   }
   const sessions = /* @__PURE__ */ new Set();
   const finished = /* @__PURE__ */ new Set();
+  const finishedAttempts = [];
   for (const name of names.filter((item) => item.endsWith(".json"))) {
     let item;
     try {
@@ -3078,13 +3423,29 @@ async function attemptState(root, task) {
     }
     if (item.schemaVersion === ATTEMPT_SESSION_SCHEMA)
       sessions.add(textField(item.artifactId, "artifactId", 128));
-    if (item.schemaVersion === ATTEMPT_SCHEMA)
+    if (item.schemaVersion === ATTEMPT_SCHEMA) {
       finished.add(textField(item.sessionArtifactId, "sessionArtifactId", 128));
+      finishedAttempts.push(item);
+    }
   }
   return {
     count: sessions.size,
-    unfinished: [...sessions].filter((id) => !finished.has(id))
+    unfinished: [...sessions].filter((id) => !finished.has(id)),
+    finishedAttempts
   };
+}
+function mostRecentPriorAttempt(finishedAttempts, beforeSequence) {
+  let best = null;
+  let bestSequence = -1;
+  for (const item of finishedAttempts) {
+    const sequence = item.sequence;
+    if (typeof sequence !== "number" || !(sequence < beforeSequence)) continue;
+    if (sequence > bestSequence) {
+      bestSequence = sequence;
+      best = item;
+    }
+  }
+  return best;
 }
 function parseAttemptSession(value) {
   const item = record(value, "attempt session");
@@ -3176,6 +3537,34 @@ function parseAttempt(value) {
       "attempt.verificationArtifactId",
       128
     );
+  if (item.failureFingerprint !== void 0 && item.failureFingerprint !== null)
+    textField(item.failureFingerprint, "attempt.failureFingerprint", 128);
+  if (item.failureCategory !== void 0 && item.failureCategory !== null)
+    oneOf4(
+      item.failureCategory,
+      ["implementation", "infrastructure", "timeout", "flaky", "mixed"],
+      "attempt.failureCategory"
+    );
+  if (item.failureFacts !== void 0 && !Array.isArray(item.failureFacts))
+    throw new RigorError(
+      "attempt.failureFacts must be an array",
+      EXIT.inputError
+    );
+  if (item.progress !== void 0) {
+    const progress = record(item.progress, "attempt.progress");
+    oneOf4(
+      progress.status,
+      ["first", "unchanged", "reduced", "expanded", "incomparable"],
+      "attempt.progress.status"
+    );
+    strings(progress.weakeningSignals, "attempt.progress.weakeningSignals");
+    if (progress.comparedToAttemptArtifactId !== null && progress.comparedToAttemptArtifactId !== void 0)
+      textField(
+        progress.comparedToAttemptArtifactId,
+        "attempt.progress.comparedToAttemptArtifactId",
+        128
+      );
+  }
   return item;
 }
 function parseAttemptResultInput(value) {
@@ -3316,6 +3705,40 @@ async function finishAttempt(root, session, contract, input, verification, now =
   if (!Number.isFinite(durationMs) || durationMs < 0)
     throw new RigorError("Attempt timestamps are invalid", EXIT.inputError);
   const status = scopeViolations.length > 0 ? "scope-violation" : durationMs > session.budget.maxDurationMs ? "budget-exceeded" : input.status;
+  const failureFacts = verification?.failureFacts ?? [];
+  const failureFingerprint = verification?.failureFingerprint ?? null;
+  const failureCategory = aggregateCategory(failureFacts);
+  const { finishedAttempts } = await attemptState(root, session.taskId);
+  const prior = mostRecentPriorAttempt(finishedAttempts, session.sequence);
+  let progress;
+  if (prior === null) {
+    progress = {
+      status: "first",
+      comparedToAttemptArtifactId: null,
+      weakeningSignals: []
+    };
+  } else {
+    const comparedToAttemptArtifactId = textField(
+      prior.artifactId,
+      "prior attempt artifactId",
+      128
+    );
+    const priorFailureFacts = Array.isArray(prior.failureFacts) ? prior.failureFacts : null;
+    if (priorFailureFacts === null) {
+      progress = {
+        status: "incomparable",
+        comparedToAttemptArtifactId,
+        weakeningSignals: []
+      };
+    } else {
+      const comparison = compareFailures(priorFailureFacts, failureFacts);
+      progress = {
+        status: comparison.status,
+        comparedToAttemptArtifactId,
+        weakeningSignals: comparison.weakeningSignals
+      };
+    }
+  }
   const attempt = {
     schemaVersion: ATTEMPT_SCHEMA,
     artifactId: artifactId("attempt"),
@@ -3344,7 +3767,11 @@ async function finishAttempt(root, session, contract, input, verification, now =
     changedPathsBefore: session.changedPathsBefore,
     changedPaths,
     scopeViolations,
-    ...verification === void 0 ? {} : { verificationArtifactId: verification.artifactId }
+    ...verification === void 0 ? {} : { verificationArtifactId: verification.artifactId },
+    failureFingerprint,
+    failureCategory,
+    failureFacts,
+    progress
   };
   for (const key of [
     "failureClass",
