@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_714309c3-eb89-4214-8c6a-47777fdf1652",
+  "taskId": "OPS-CI-SYNC-2026-07-12",
+  "createdAt": "2026-07-12T06:33:33.934Z",
+  "preflightArtifactId": "preflight_b627deb5-7d72-440d-940a-bc3fab979f00",
+  "preflightHash": "37edfe07841f22fb611b64533fbde69b286ae57f7bd5f47a7e5789ad5d5c2d74",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs at the pull request head",
+    "dist/rigor.cjs itself is unchanged",
+    "the refreshed verifier passes a local gate run against origin/main..HEAD before the pull request is opened",
+    "CHANGELOG.md gains an Unreleased entry describing the verifier refresh",
+    "the recorded required check git diff --check passes; npm run test:all, npm run bench, and claude plugin validate . --strict are rerun and reported in the pull request"
+  ],
+  "allowedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "protected-path change explicitly authorized by the repository owner in-session on 2026-07-12 (\"最新化してください\")",
+    "no change to .rigor/policy.json, src/**, dist/**, schemas/**, or workflows",
+    "the copy is taken from the committed dist/rigor.cjs on the branch head, not from a local rebuild"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

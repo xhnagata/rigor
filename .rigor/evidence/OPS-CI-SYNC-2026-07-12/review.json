@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_15d2c177-d8ed-4a19-872d-02b4df7a3fef",
+  "taskId": "OPS-CI-SYNC-2026-07-12",
+  "createdAt": "2026-07-12T06:35:02.979Z",
+  "externalTransmission": "allowed",
+  "riskTier": "critical",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_714309c3-eb89-4214-8c6a-47777fdf1652",
+  "verificationArtifactId": "verification_28f63773-6481-445c-82e7-f32f2fdbf8f5",
+  "changedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "CHANGELOG.md"
+  ],
+  "acceptanceCriteria": [
+    ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs at the pull request head",
+    "dist/rigor.cjs itself is unchanged",
+    "the refreshed verifier passes a local gate run against origin/main..HEAD before the pull request is opened",
+    "CHANGELOG.md gains an Unreleased entry describing the verifier refresh",
+    "the recorded required check git diff --check passes; npm run test:all, npm run bench, and claude plugin validate . --strict are rerun and reported in the pull request"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
