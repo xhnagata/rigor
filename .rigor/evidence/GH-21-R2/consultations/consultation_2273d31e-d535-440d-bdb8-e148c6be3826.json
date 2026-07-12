@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.consultation.v1",
+  "artifactId": "consultation_2273d31e-d535-440d-bdb8-e148c6be3826",
+  "taskId": "GH-21-R2",
+  "createdAt": "2026-07-12T06:27:34.936Z",
+  "sessionArtifactId": "consultation-session_4e999d02-808b-4bc2-9fcf-067ea818dd09",
+  "sessionHash": "863f31b0203be672c6958e88456d5abf85d75043f9579047c921d1fea2275462",
+  "provider": "codex-plugin-cc",
+  "mode": "adversarial-review",
+  "requestedDecision": "For each of the sixteen signals TI-01..TI-16 in the docs/test-integrity.md classification table: is the assigned label (deterministic fact / tool-derived measurement / advisory interpretation), confidence-when-fired, false-positive risk, and enforcement level (rejected / advisory only / shadow candidate #22 / conditional shadow / gate implemented) correct and honest, or should any cell change? Specifically challenge: (a) any advisory signal that could be over-promoted to deterministic fact or vice versa, (b) the shadow-candidate set {TI-05, TI-06, TI-07, TI-08, TI-09, conditional TI-11} versus the advisory-only set {TI-10, TI-13, TI-14, TI-15}, (c) the outright rejections {TI-12 mutation score, TI-16 authoritative LLM verdict}, and (d) whether any falsifiable must-fire/must-not-fire test in the document contradicts its own signal's classification. Output: per-signal verdict (agree / change with proposed new value and reason), separated into facts, options, recommendation, uncertainty, and decisions that must remain human.",
+  "transmissionDecision": "allowed",
+  "beforeTreeHash": "e51c72edbc6040c16a2d31a14e1d6def5c1d01a2f7b30514015b06eb45fa8f65",
+  "afterTreeHash": "e51c72edbc6040c16a2d31a14e1d6def5c1d01a2f7b30514015b06eb45fa8f65",
+  "beforeHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "afterHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "changedPathsBefore": [],
+  "changedPathsAfter": [],
+  "usageStatus": "unavailable",
+  "status": "completed",
+  "outcome": "revise",
+  "findingCount": 6,
+  "requiredActions": [
+    "TI-12 mutation-score decline: change enforcement level from rejected to conditional shadow, restricted to repositories that already run a pinned mutation tool as a configured check with comparable scores; no default mutation run.",
+    "TI-13 tolerance widening and TI-15 weaker-matcher substitution: change enforcement level from advisory only to shadow candidate (#22) at lower priority than TI-05/TI-06/TI-09, with confidence split into deterministic rule-match versus advisory weakening interpretation.",
+    "TI-11 coverage decline: split confidence wording into measurement accuracy under identical tool/version/config/scope versus interpretation that the decline indicates weakening.",
+    "TI-01 configured-check change: narrow false-positive-risk wording to detection of a definition change without inferring intent, and strengthen the must-not-fire case to an unrelated .rigor/policy.json edit.",
+    "TI-08 snapshot churn: add a must-not-fire case covering snapshot-only changes without accompanying implementation changes, since the trigger is conjunctive.",
+    "TI-02/TI-03/TI-04: state explicitly that the implemented gate constrains progress classification (reduced/incomparable), not verification or merge outcomes."
+  ],
+  "externalSessionId": "019f54fd-524b-7dc1-9950-8a124c26fea1",
+  "externalTurnId": "019f54fd-5d33-7402-8297-3aee2460abf9"
+}

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_dfcd3fd9-a6b9-4b1e-a8f7-5a899225fb8a",
+  "taskId": "GH-21-R2",
+  "createdAt": "2026-07-12T05:43:25.996Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "c5563b9dc1154ad784a6ef1b2a9f2e9a1f65987907dec52634a18fe813c0e1c6",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-21-r2",
+    "head": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "docs/test-integrity.md"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/test-integrity.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}
