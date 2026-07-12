@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "rigor.evaluation-manifest.v1",
+  "manifestVersion": 1,
+  "createdAt": "2023-11-14T22:13:20.000Z",
+  "owner": "repository owner (calibration owner of record)",
+  "reviewInterval": "every release",
+  "categories": ["refactor"],
+  "expansionPolicy": "Single-task manifest exercising an accepted change with one valid and one malformed attempt, so the malformed attempt's cost is counted unknown rather than the valid attempt's known cost silently standing in for the whole task.",
+  "tasks": [
+    {
+      "taskId": "EVAL-MIXED-1",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: accepted change with one valid attempt (known relative cost) and one attempt malformed (missing routingPlanArtifactId, excluded); the task's relative cost is unknown, not the valid attempt's cost."
+    }
+  ]
+}

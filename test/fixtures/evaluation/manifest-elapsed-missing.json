@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "rigor.evaluation-manifest.v1",
+  "manifestVersion": 1,
+  "createdAt": "2023-11-14T22:13:20.000Z",
+  "owner": "repository owner (calibration owner of record)",
+  "reviewInterval": "every release",
+  "categories": ["refactor"],
+  "expansionPolicy": "Single-task manifest exercising an accepted change with no recorded elapsed time, so the per-accepted-change elapsedMs average is null rather than a partial mean.",
+  "tasks": [
+    {
+      "taskId": "EVAL-ELAPSED-1",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: accepted change whose outcome omits the optional-by-schema attemptDurationMs field entirely, so elapsed is counted missing, not zero."
+    }
+  ]
+}

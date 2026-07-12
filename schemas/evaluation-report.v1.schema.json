@@ -1,0 +1,1317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/evaluation-report.v1.schema.json",
+  "title": "Rigor evaluation report v1",
+  "description": "A deterministic report joining an evaluation manifest to recorded evidence artifacts. Every field is fully typed and every object is closed (additionalProperties false). Per-accepted-change rates are denominated by accepted changes and are null when unavailable (no accepted changes, an unresolved-plan attempt, or incomplete elapsed coverage), so a partial value never reads as complete or zero. Every count is a non-negative integer and every missing-data field is enumerated. `configuredRelativeCost` is an abstract configured routing weight, never a price, token count, or verified charge. Over-routing and under-routing are reviewable heuristic counts with explicit definitions, never verdicts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "manifest", "splits"],
+  "properties": {
+    "schemaVersion": {
+      "const": "rigor.evaluation-report.v1"
+    },
+    "generatedAt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestVersion", "taskCount", "hash"],
+      "properties": {
+        "manifestVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "taskCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "splits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calibration", "holdout"],
+      "properties": {
+        "calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "split",
+            "evaluationOnly",
+            "manifestTaskCount",
+            "outcomes",
+            "missingData",
+            "signals",
+            "byCapabilityClass",
+            "byCandidate"
+          ],
+          "properties": {
+            "split": {
+              "const": "calibration"
+            },
+            "evaluationOnly": {
+              "const": false
+            },
+            "manifestTaskCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outcomes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["accepted", "rejected", "absent", "malformed"],
+              "properties": {
+                "accepted": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "rejected": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "absent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "malformed": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "missingData": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "usageRecorded",
+                "usageUnavailable",
+                "usageUnknown",
+                "modelIdentityPresent",
+                "modelIdentityAbsent",
+                "providerCostPresent",
+                "elapsedPresent",
+                "elapsedMissing",
+                "attemptLinked",
+                "attemptUnlinked",
+                "verificationLinked",
+                "relativeCostUnknownAttempts",
+                "malformedArtifacts"
+              ],
+              "properties": {
+                "usageRecorded": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "usageUnavailable": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "usageUnknown": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "modelIdentityPresent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "modelIdentityAbsent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "providerCostPresent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "elapsedPresent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "elapsedMissing": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attemptLinked": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attemptUnlinked": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "verificationLinked": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "relativeCostUnknownAttempts": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "malformedArtifacts": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "signals": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "overRouting",
+                "underRouting",
+                "retryCost",
+                "escapedDefects"
+              ],
+              "properties": {
+                "overRouting": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["count", "denominator", "definition"],
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "denominator": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "definition": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "underRouting": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["count", "denominator", "definition"],
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "denominator": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "definition": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "retryCost": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "acceptedChanges",
+                    "retriesTotal",
+                    "retriesPerAcceptedChange",
+                    "configuredRelativeCostTotal",
+                    "configuredRelativeCostPerAcceptedChange",
+                    "relativeCostUnknownAttempts"
+                  ],
+                  "properties": {
+                    "acceptedChanges": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "retriesTotal": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "retriesPerAcceptedChange": {
+                      "type": ["number", "null"]
+                    },
+                    "configuredRelativeCostTotal": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "configuredRelativeCostPerAcceptedChange": {
+                      "type": ["number", "null"]
+                    },
+                    "relativeCostUnknownAttempts": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "escapedDefects": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["suspected", "confirmed", "acceptedChanges"],
+                  "properties": {
+                    "suspected": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "confirmed": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "acceptedChanges": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "byCapabilityClass": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "capabilityClass",
+                  "acceptedChanges",
+                  "rejectedOutcomes",
+                  "perAcceptedChange",
+                  "totals",
+                  "missingData",
+                  "escapedDefects",
+                  "signals"
+                ],
+                "properties": {
+                  "capabilityClass": {
+                    "enum": ["economy", "standard", "premium", "frontier"]
+                  },
+                  "acceptedChanges": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rejectedOutcomes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "perAcceptedChange": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": ["number", "null"]
+                      },
+                      "configuredRelativeCost": {
+                        "type": ["number", "null"]
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": ["number", "null"]
+                      },
+                      "reviewFindings": {
+                        "type": ["number", "null"]
+                      },
+                      "elapsedMs": {
+                        "type": ["number", "null"]
+                      }
+                    }
+                  },
+                  "totals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "configuredRelativeCost": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "reviewFindings": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "elapsedMs": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["total", "present", "missing"],
+                        "properties": {
+                          "total": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "present": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "missing": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "missingData": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "usageRecorded",
+                      "usageUnavailable",
+                      "usageUnknown",
+                      "modelIdentityPresent",
+                      "providerCostPresent",
+                      "relativeCostUnknownAttempts"
+                    ],
+                    "properties": {
+                      "usageRecorded": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnavailable": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnknown": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "modelIdentityPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "providerCostPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "relativeCostUnknownAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "escapedDefects": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["suspected", "confirmed"],
+                    "properties": {
+                      "suspected": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "confirmed": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "signals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["overRouting", "underRouting"],
+                    "properties": {
+                      "overRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "underRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "byCandidate": {
+              "type": "array",
+              "maxItems": 1000,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "candidate",
+                  "provider",
+                  "model",
+                  "capabilityClass",
+                  "acceptedChanges",
+                  "rejectedOutcomes",
+                  "perAcceptedChange",
+                  "totals",
+                  "missingData",
+                  "escapedDefects",
+                  "signals"
+                ],
+                "properties": {
+                  "candidate": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "An internal, collision-proof aggregation key: JSON.stringify([provider, model, capabilityClass]) (each element string or null) when the outcome is linked to an attempt, or the literal string \"unlinked\" otherwise. It is not intended to be parsed by hand for display; use the sibling `provider`, `model`, and `capabilityClass` fields for a human-readable identification of the row. A delimiter-joined string (e.g. \"provider/model/class\") is not used because a provider or model name containing \"/\" could collide with a different candidate's joined string; JSON's quoting and comma-separation keep such tuples distinct."
+                  },
+                  "provider": {
+                    "type": ["string", "null"]
+                  },
+                  "model": {
+                    "type": ["string", "null"]
+                  },
+                  "capabilityClass": {
+                    "type": ["string", "null"]
+                  },
+                  "acceptedChanges": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rejectedOutcomes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "perAcceptedChange": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": ["number", "null"]
+                      },
+                      "configuredRelativeCost": {
+                        "type": ["number", "null"]
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": ["number", "null"]
+                      },
+                      "reviewFindings": {
+                        "type": ["number", "null"]
+                      },
+                      "elapsedMs": {
+                        "type": ["number", "null"]
+                      }
+                    }
+                  },
+                  "totals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "configuredRelativeCost": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "reviewFindings": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "elapsedMs": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["total", "present", "missing"],
+                        "properties": {
+                          "total": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "present": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "missing": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "missingData": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "usageRecorded",
+                      "usageUnavailable",
+                      "usageUnknown",
+                      "modelIdentityPresent",
+                      "providerCostPresent",
+                      "relativeCostUnknownAttempts"
+                    ],
+                    "properties": {
+                      "usageRecorded": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnavailable": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnknown": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "modelIdentityPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "providerCostPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "relativeCostUnknownAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "escapedDefects": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["suspected", "confirmed"],
+                    "properties": {
+                      "suspected": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "confirmed": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "signals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["overRouting", "underRouting"],
+                    "properties": {
+                      "overRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "underRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "holdout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "split",
+            "evaluationOnly",
+            "manifestTaskCount",
+            "outcomes",
+            "missingData",
+            "signals",
+            "byCapabilityClass",
+            "byCandidate"
+          ],
+          "properties": {
+            "split": {
+              "const": "holdout"
+            },
+            "evaluationOnly": {
+              "const": true
+            },
+            "manifestTaskCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outcomes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["accepted", "rejected", "absent", "malformed"],
+              "properties": {
+                "accepted": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "rejected": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "absent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "malformed": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "missingData": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "usageRecorded",
+                "usageUnavailable",
+                "usageUnknown",
+                "modelIdentityPresent",
+                "modelIdentityAbsent",
+                "providerCostPresent",
+                "elapsedPresent",
+                "elapsedMissing",
+                "attemptLinked",
+                "attemptUnlinked",
+                "verificationLinked",
+                "relativeCostUnknownAttempts",
+                "malformedArtifacts"
+              ],
+              "properties": {
+                "usageRecorded": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "usageUnavailable": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "usageUnknown": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "modelIdentityPresent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "modelIdentityAbsent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "providerCostPresent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "elapsedPresent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "elapsedMissing": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attemptLinked": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attemptUnlinked": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "verificationLinked": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "relativeCostUnknownAttempts": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "malformedArtifacts": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "signals": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "overRouting",
+                "underRouting",
+                "retryCost",
+                "escapedDefects"
+              ],
+              "properties": {
+                "overRouting": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["count", "denominator", "definition"],
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "denominator": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "definition": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "underRouting": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["count", "denominator", "definition"],
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "denominator": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "definition": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "retryCost": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "acceptedChanges",
+                    "retriesTotal",
+                    "retriesPerAcceptedChange",
+                    "configuredRelativeCostTotal",
+                    "configuredRelativeCostPerAcceptedChange",
+                    "relativeCostUnknownAttempts"
+                  ],
+                  "properties": {
+                    "acceptedChanges": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "retriesTotal": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "retriesPerAcceptedChange": {
+                      "type": ["number", "null"]
+                    },
+                    "configuredRelativeCostTotal": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "configuredRelativeCostPerAcceptedChange": {
+                      "type": ["number", "null"]
+                    },
+                    "relativeCostUnknownAttempts": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "escapedDefects": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["suspected", "confirmed", "acceptedChanges"],
+                  "properties": {
+                    "suspected": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "confirmed": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "acceptedChanges": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "byCapabilityClass": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "capabilityClass",
+                  "acceptedChanges",
+                  "rejectedOutcomes",
+                  "perAcceptedChange",
+                  "totals",
+                  "missingData",
+                  "escapedDefects",
+                  "signals"
+                ],
+                "properties": {
+                  "capabilityClass": {
+                    "enum": ["economy", "standard", "premium", "frontier"]
+                  },
+                  "acceptedChanges": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rejectedOutcomes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "perAcceptedChange": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": ["number", "null"]
+                      },
+                      "configuredRelativeCost": {
+                        "type": ["number", "null"]
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": ["number", "null"]
+                      },
+                      "reviewFindings": {
+                        "type": ["number", "null"]
+                      },
+                      "elapsedMs": {
+                        "type": ["number", "null"]
+                      }
+                    }
+                  },
+                  "totals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "configuredRelativeCost": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "reviewFindings": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "elapsedMs": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["total", "present", "missing"],
+                        "properties": {
+                          "total": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "present": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "missing": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "missingData": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "usageRecorded",
+                      "usageUnavailable",
+                      "usageUnknown",
+                      "modelIdentityPresent",
+                      "providerCostPresent",
+                      "relativeCostUnknownAttempts"
+                    ],
+                    "properties": {
+                      "usageRecorded": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnavailable": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnknown": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "modelIdentityPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "providerCostPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "relativeCostUnknownAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "escapedDefects": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["suspected", "confirmed"],
+                    "properties": {
+                      "suspected": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "confirmed": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "signals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["overRouting", "underRouting"],
+                    "properties": {
+                      "overRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "underRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "byCandidate": {
+              "type": "array",
+              "maxItems": 1000,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "candidate",
+                  "provider",
+                  "model",
+                  "capabilityClass",
+                  "acceptedChanges",
+                  "rejectedOutcomes",
+                  "perAcceptedChange",
+                  "totals",
+                  "missingData",
+                  "escapedDefects",
+                  "signals"
+                ],
+                "properties": {
+                  "candidate": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "An internal, collision-proof aggregation key: JSON.stringify([provider, model, capabilityClass]) (each element string or null) when the outcome is linked to an attempt, or the literal string \"unlinked\" otherwise. It is not intended to be parsed by hand for display; use the sibling `provider`, `model`, and `capabilityClass` fields for a human-readable identification of the row. A delimiter-joined string (e.g. \"provider/model/class\") is not used because a provider or model name containing \"/\" could collide with a different candidate's joined string; JSON's quoting and comma-separation keep such tuples distinct."
+                  },
+                  "provider": {
+                    "type": ["string", "null"]
+                  },
+                  "model": {
+                    "type": ["string", "null"]
+                  },
+                  "capabilityClass": {
+                    "type": ["string", "null"]
+                  },
+                  "acceptedChanges": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rejectedOutcomes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "perAcceptedChange": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": ["number", "null"]
+                      },
+                      "configuredRelativeCost": {
+                        "type": ["number", "null"]
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": ["number", "null"]
+                      },
+                      "reviewFindings": {
+                        "type": ["number", "null"]
+                      },
+                      "elapsedMs": {
+                        "type": ["number", "null"]
+                      }
+                    }
+                  },
+                  "totals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "retries",
+                      "configuredRelativeCost",
+                      "humanCorrectionMinutes",
+                      "reviewFindings",
+                      "elapsedMs"
+                    ],
+                    "properties": {
+                      "retries": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "configuredRelativeCost": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "humanCorrectionMinutes": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "reviewFindings": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "elapsedMs": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["total", "present", "missing"],
+                        "properties": {
+                          "total": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "present": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "missing": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "missingData": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "usageRecorded",
+                      "usageUnavailable",
+                      "usageUnknown",
+                      "modelIdentityPresent",
+                      "providerCostPresent",
+                      "relativeCostUnknownAttempts"
+                    ],
+                    "properties": {
+                      "usageRecorded": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnavailable": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "usageUnknown": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "modelIdentityPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "providerCostPresent": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "relativeCostUnknownAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "escapedDefects": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["suspected", "confirmed"],
+                    "properties": {
+                      "suspected": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "confirmed": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "signals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["overRouting", "underRouting"],
+                    "properties": {
+                      "overRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "underRouting": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["count", "denominator"],
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "denominator": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

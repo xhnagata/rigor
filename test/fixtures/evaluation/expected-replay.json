@@ -1,0 +1,203 @@
+{
+  "schemaVersion": "rigor.evaluation-replay.v1",
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "split": "calibration",
+  "holdoutFinal": false,
+  "proposedModelProfilesHash": "f281b61cf45aa50047b5bfcbed69e1976664e52784690156e022bc28a99b9f52",
+  "manifest": {
+    "manifestVersion": 1,
+    "taskCount": 16,
+    "hash": "e381466af159491daa4d1057d026e627cc278475cd2efe40e3e4abba854e3f74"
+  },
+  "excludedSplitTaskCount": 2,
+  "summary": {
+    "tasksReplayed": 9,
+    "changed": 1,
+    "unchanged": 8,
+    "nowSelected": 9,
+    "nowUnroutable": 0,
+    "nowRequiresReview": 0,
+    "noPlan": 5
+  },
+  "diffs": [
+    {
+      "taskId": "EVAL-BUG-1",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-BUG-2",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-BUG-3",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-FEAT-1",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-premium",
+        "capabilityClass": "premium",
+        "relativeCost": 40
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-premium",
+        "capabilityClass": "premium",
+        "relativeCost": 40
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-FEAT-2",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-frontier",
+        "capabilityClass": "frontier",
+        "relativeCost": 80
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-frontier-v2",
+        "capabilityClass": "frontier",
+        "relativeCost": 90
+      },
+      "changed": true
+    },
+    {
+      "taskId": "EVAL-REF-1",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-economy",
+        "capabilityClass": "economy",
+        "relativeCost": 5
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-economy",
+        "capabilityClass": "economy",
+        "relativeCost": 5
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-REF-2",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-premium",
+        "capabilityClass": "premium",
+        "relativeCost": 40
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-premium",
+        "capabilityClass": "premium",
+        "relativeCost": 40
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-DOC-1",
+      "original": null,
+      "proposed": null,
+      "changed": false,
+      "note": "no recorded routing plan"
+    },
+    {
+      "taskId": "EVAL-DOC-2",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-economy",
+        "capabilityClass": "economy",
+        "relativeCost": 5
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-economy",
+        "capabilityClass": "economy",
+        "relativeCost": 5
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-MALF-1",
+      "original": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "proposed": {
+        "status": "selected",
+        "candidateId": "claude-standard",
+        "capabilityClass": "standard",
+        "relativeCost": 20
+      },
+      "changed": false
+    },
+    {
+      "taskId": "EVAL-MALF-2",
+      "original": null,
+      "proposed": null,
+      "changed": false,
+      "note": "no recorded routing plan"
+    },
+    {
+      "taskId": "EVAL-MALF-3",
+      "original": null,
+      "proposed": null,
+      "changed": false,
+      "note": "no recorded routing plan"
+    },
+    {
+      "taskId": "EVAL-MALF-4",
+      "original": null,
+      "proposed": null,
+      "changed": false,
+      "note": "no recorded routing plan"
+    },
+    {
+      "taskId": "EVAL-MALF-5",
+      "original": null,
+      "proposed": null,
+      "changed": false,
+      "note": "no recorded routing plan"
+    }
+  ]
+}

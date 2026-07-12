@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/evaluation-manifest.v1.schema.json",
+  "title": "Rigor evaluation manifest v1",
+  "description": "A versioned, contamination-aware description of the dogfooding evaluation task set. It is an input document, never an evidence artifact; the CLI never invokes a model on its behalf. `split` is the only barrier between calibration fitting and the holdout set: holdout tasks must never be used to fit thresholds or profiles.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "manifestVersion",
+    "createdAt",
+    "owner",
+    "reviewInterval",
+    "categories",
+    "expansionPolicy",
+    "tasks"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.evaluation-manifest.v1" },
+    "manifestVersion": { "type": "integer", "minimum": 1, "maximum": 100000 },
+    "createdAt": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "The recurring calibration owner responsible for reviewing evaluation reports and proposals."
+    },
+    "reviewInterval": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "A concrete recurring review interval, for example \"every release\" or \"monthly\"."
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+    },
+    "expansionPolicy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "A statement of how the initial 10-20 task set expands toward 30-100 tasks without contaminating the holdout set."
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["taskId", "category", "split", "source"],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "maxLength": 128
+          },
+          "category": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "split": { "enum": ["calibration", "holdout"] },
+          "source": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "fixtureRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "description": "Optional repository-relative reference to an isolated worktree or fixture used for a documented cross-model comparison. It is never an absolute path and is never executed by the CLI."
+          },
+          "crossModelComparison": {
+            "type": "boolean",
+            "description": "Marks a task selected for a documented, human-approved cross-model comparison. It records process intent only; the CLI performs no live multi-model run."
+          }
+        }
+      }
+    }
+  }
+}

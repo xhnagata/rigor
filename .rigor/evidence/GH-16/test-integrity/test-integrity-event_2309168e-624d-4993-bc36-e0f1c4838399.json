@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "rigor.test-integrity-event.v1",
+  "artifactId": "test-integrity-event_2309168e-624d-4993-bc36-e0f1c4838399",
+  "taskId": "GH-16",
+  "createdAt": "2026-07-12T14:40:48.372Z",
+  "mode": "shadow",
+  "enforcement": "none",
+  "attemptArtifactId": "attempt_832b6b14-4d96-41db-836c-1c990d1b0f53",
+  "verificationArtifactId": "verification_1f3d0f69-1799-4eb4-8544-85200ffb9924",
+  "diff": {
+    "baseSha": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+    "headSha": null,
+    "worktreeDigest": "d6306921758100640dd61854b4c2713564a9e02ffe402d0eb4cd6685a3e8a042"
+  },
+  "signalsEvaluated": [
+    "TI-05",
+    "TI-06",
+    "TI-07",
+    "TI-08",
+    "TI-09"
+  ],
+  "signals": [],
+  "signalsTruncated": false,
+  "note": null
+}

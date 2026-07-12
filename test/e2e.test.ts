@@ -411,6 +411,95 @@ test("install-to-review smoke flow and independent CI work in an empty repositor
   );
 });
 
+test("evaluation commands run deterministically over the checked-in synthetic fixtures", async () => {
+  const parent = await mkdtemp(path.join(tmpdir(), "rigor-e2e-eval-"));
+  const root = path.join(parent, "repo");
+  await mkdir(root);
+  await git(root, ["init", "-q", "-b", "main"]);
+  await git(root, ["config", "user.email", "rigor@example.invalid"]);
+  await git(root, ["config", "user.name", "Rigor Test"]);
+  await rigor(root, ["setup"]);
+  await git(root, ["add", "."]);
+  await git(root, ["commit", "-q", "-m", "configure rigor"]);
+
+  const fix = path.join(pluginRoot, "test", "fixtures", "evaluation");
+  const manifest = path.join(fix, "manifest.json");
+  const evidence = path.join(fix, "evidence");
+  const profiles = path.join(fix, "proposed-model-profiles.json");
+
+  const report = await rigor(root, [
+    "eval-report",
+    "--manifest",
+    manifest,
+    "--evidence-root",
+    evidence,
+  ]);
+  assert.equal(report.schemaVersion, "rigor.evaluation-report.v1");
+  type SplitView = {
+    outcomes: { accepted: number };
+    evaluationOnly: boolean;
+    signals: { overRouting: { denominator: number } };
+  };
+  const splits = report.splits as {
+    calibration: SplitView;
+    holdout: SplitView;
+  };
+  assert.equal(splits.calibration.outcomes.accepted, 8);
+  assert.equal(splits.calibration.signals.overRouting.denominator, 8);
+  assert.equal(splits.holdout.evaluationOnly, true);
+  // No absolute path from the evidence root is embedded in the report.
+  assert.ok(!JSON.stringify(report).includes(evidence));
+
+  const replay = await rigor(root, [
+    "eval-replay",
+    "--manifest",
+    manifest,
+    "--evidence-root",
+    evidence,
+    "--profiles",
+    profiles,
+  ]);
+  assert.equal(replay.split, "calibration");
+  assert.equal(replay.holdoutFinal, false);
+  assert.equal((replay.summary as { changed: number }).changed, 1);
+
+  const holdoutReplay = await rigor(root, [
+    "eval-replay",
+    "--manifest",
+    manifest,
+    "--evidence-root",
+    evidence,
+    "--profiles",
+    profiles,
+    "--holdout-final",
+  ]);
+  assert.equal(holdoutReplay.split, "holdout");
+  assert.equal(holdoutReplay.holdoutFinal, true);
+
+  const proposal = await rigor(root, [
+    "calibration-proposal",
+    "--manifest",
+    manifest,
+    "--input",
+    path.join(fix, "proposal-input.json"),
+    "--report",
+    path.join(fix, "expected-report.json"),
+  ]);
+  assert.equal(proposal.schemaVersion, "rigor.calibration-proposal.v1");
+  assert.equal(proposal.status, "proposed");
+  assert.equal(proposal.approvalEffect, "none");
+  assert.ok(String(proposal.saved).includes(path.join("calibration")));
+  // Provenance is manifest-bound: the cited evidence task's split is recorded.
+  const provenance = proposal.provenance as {
+    manifestHash: string;
+    evidenceTaskSplits: Array<{ taskId: string; split: string }>;
+  };
+  assert.match(provenance.manifestHash, /^[a-f0-9]{64}$/u);
+  assert.deepEqual(provenance.evidenceTaskSplits, [
+    { taskId: "EVAL-FEAT-2", split: "calibration" },
+  ]);
+});
+
 // GH-11: /rigor:assess produces a rigor.routing-input.v2 whose validation is
 // `rigor route --dry-run`. These fixtures exercise the CLI directly for both
 // the allowed (economy-selected) and stopped (requires-review) flows.

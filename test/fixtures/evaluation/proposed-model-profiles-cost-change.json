@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rigor.model-profiles.v1",
+  "candidates": [
+    {
+      "id": "claude-economy",
+      "provider": "synthetic",
+      "capabilityClass": "economy",
+      "purposes": ["implementation"],
+      "relativeCost": 5,
+      "requiresAdditionalExternalTransmission": false,
+      "enabled": true
+    },
+    {
+      "id": "claude-standard",
+      "provider": "synthetic",
+      "capabilityClass": "standard",
+      "purposes": ["implementation"],
+      "relativeCost": 25,
+      "requiresAdditionalExternalTransmission": false,
+      "enabled": true
+    },
+    {
+      "id": "claude-premium",
+      "provider": "synthetic",
+      "capabilityClass": "premium",
+      "purposes": ["implementation"],
+      "relativeCost": 40,
+      "requiresAdditionalExternalTransmission": false,
+      "enabled": true
+    },
+    {
+      "id": "claude-frontier",
+      "provider": "synthetic",
+      "capabilityClass": "frontier",
+      "purposes": ["implementation"],
+      "relativeCost": 80,
+      "requiresAdditionalExternalTransmission": false,
+      "enabled": true
+    }
+  ]
+}

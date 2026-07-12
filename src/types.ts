@@ -52,6 +52,14 @@ export const TEST_INTEGRITY_CLASSIFICATION_INPUT_SCHEMA =
   "rigor.test-integrity-classification-input.v1" as const;
 export const TEST_INTEGRITY_CLASSIFICATION_SCHEMA =
   "rigor.test-integrity-classification.v1" as const;
+export const EVALUATION_MANIFEST_SCHEMA =
+  "rigor.evaluation-manifest.v1" as const;
+export const EVALUATION_REPORT_SCHEMA = "rigor.evaluation-report.v1" as const;
+export const EVALUATION_REPLAY_SCHEMA = "rigor.evaluation-replay.v1" as const;
+export const CALIBRATION_PROPOSAL_SCHEMA =
+  "rigor.calibration-proposal.v1" as const;
+export const CALIBRATION_PROPOSAL_INPUT_SCHEMA =
+  "rigor.calibration-proposal-input.v1" as const;
 
 export type {
   CheckFacts,
@@ -836,4 +844,99 @@ export interface Outcome {
     modelIdentity: { value: string; attestation: "unverified" } | null;
   };
   notes: string[];
+}
+
+export type EvaluationSplit = "calibration" | "holdout";
+
+export interface EvaluationTask {
+  taskId: string;
+  category: string;
+  split: EvaluationSplit;
+  source: string;
+  fixtureRef?: string;
+  crossModelComparison?: boolean;
+}
+
+/**
+ * A versioned, contamination-aware description of the dogfooding evaluation
+ * task set. It is an input document, never an evidence artifact: the CLI never
+ * invokes a model on its behalf, and its `split` field is the only barrier
+ * between calibration fitting and the holdout set.
+ */
+export interface EvaluationManifest {
+  schemaVersion: typeof EVALUATION_MANIFEST_SCHEMA;
+  manifestVersion: number;
+  createdAt: string;
+  owner: string;
+  reviewInterval: string;
+  categories: string[];
+  expansionPolicy: string;
+  tasks: EvaluationTask[];
+}
+
+export type CalibrationProposalTarget =
+  | "model-profiles"
+  | "escalation-thresholds"
+  | "routing-heuristic-constant";
+
+/**
+ * A proposed routing-policy change authored by a human for human review. It is
+ * inert: `status` is always "proposed" and `approvalEffect` always "none", so
+ * no code path may read it to change routing, thresholds, or profiles. The
+ * `relativeCost` referenced in its evidence is an abstract configured weight,
+ * never a price, token count, or verified charge.
+ */
+export interface CalibrationProposalEvidence {
+  reportHashes: string[];
+  taskIds: string[];
+  replayHash: string | null;
+}
+
+/**
+ * Records, for each cited evidence task, the split it belongs to in the
+ * cross-checked manifest. Written by the CLI (never provided by input) so a
+ * saved proposal carries provenance for every task it cites.
+ */
+export interface CalibrationProposalProvenance {
+  manifestHash: string;
+  manifestVersion: number;
+  holdoutFinalEvaluation: boolean;
+  evidenceTaskSplits: Array<{ taskId: string; split: EvaluationSplit }>;
+}
+
+export interface CalibrationProposal {
+  schemaVersion: typeof CALIBRATION_PROPOSAL_SCHEMA;
+  artifactId: string;
+  taskId: string;
+  createdAt: string;
+  target: CalibrationProposalTarget;
+  summary: string;
+  evidence: CalibrationProposalEvidence;
+  proposedChange: string;
+  expectedTradeOffs: string[];
+  rollbackCriteria: string[];
+  status: "proposed";
+  approvalEffect: "none";
+  provenance: CalibrationProposalProvenance;
+}
+
+/**
+ * The human-authored input to `rigor calibration-proposal`. It carries its own
+ * schema version (`rigor.calibration-proposal-input.v1`) distinct from the saved
+ * artifact: the CLI generates the artifactId, createdAt, and provenance. A
+ * proposal may only cite a holdout task when `holdoutFinalEvaluation` is true,
+ * marking the citation as a deliberate final-evaluation reference.
+ */
+export interface CalibrationProposalInput {
+  schemaVersion: typeof CALIBRATION_PROPOSAL_INPUT_SCHEMA;
+  taskId: string;
+  target: CalibrationProposalTarget;
+  summary: string;
+  evidence: CalibrationProposalEvidence;
+  proposedChange: string;
+  expectedTradeOffs: string[];
+  rollbackCriteria: string[];
+  status: "proposed";
+  approvalEffect: "none";
+  holdoutFinalEvaluation: boolean;
 }

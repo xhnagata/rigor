@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.outcome.v1",
+  "artifactId": "outcome_EVAL-BUG-2",
+  "taskId": "EVAL-BUG-2",
+  "createdAt": "2023-11-14T22:13:25.000Z",
+  "decision": "rejected",
+  "acceptedWithoutModelCodeChanges": false,
+  "humanCorrectionMinutes": 15,
+  "escalationCount": 0,
+  "retryCount": 0,
+  "reviewFindings": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0,
+    "total": 3
+  },
+  "revertStatus": "none",
+  "escapedDefectStatus": "none",
+  "executionIdentityStatus": "unverified",
+  "routingPlanArtifactId": "routing-plan_EVAL-BUG-2_1",
+  "attemptArtifactId": "attempt_EVAL-BUG-2_1",
+  "attemptSequence": 1,
+  "attemptStatus": "failed",
+  "attemptDurationMs": 60000,
+  "provider": "synthetic",
+  "model": "synthetic-standard",
+  "capabilityClass": "standard",
+  "verificationArtifactId": "verification_EVAL-BUG-2",
+  "usage": {
+    "status": "unavailable",
+    "inputTokens": null,
+    "outputTokens": null,
+    "totalTokens": null,
+    "reasoningEffort": null,
+    "providerCost": null,
+    "modelIdentity": null
+  },
+  "notes": []
+}

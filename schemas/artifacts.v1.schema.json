@@ -19,7 +19,8 @@
         "rigor.consultation-session.v1",
         "rigor.consultation.v1",
         "rigor.consultation.v2",
-        "rigor.outcome.v1"
+        "rigor.outcome.v1",
+        "rigor.calibration-proposal.v1"
       ]
     },
     "artifactId": { "type": "string", "minLength": 1 },
@@ -267,6 +268,26 @@
           "executionIdentityStatus",
           "usage",
           "notes"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": { "const": "rigor.calibration-proposal.v1" }
+        }
+      },
+      "then": {
+        "required": [
+          "target",
+          "summary",
+          "evidence",
+          "proposedChange",
+          "expectedTradeOffs",
+          "rollbackCriteria",
+          "status",
+          "approvalEffect",
+          "provenance"
         ]
       }
     }

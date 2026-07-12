@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_1e803230-ffd3-48da-a7b5-146f1e8ea3f1",
+  "taskId": "GH-16-R2",
+  "createdAt": "2026-07-12T14:55:44.507Z",
+  "preflightArtifactId": "preflight_708770a4-212f-4a69-9ded-e3df096a18bc",
+  "preflightHash": "d050b9c6d822aed6d7ff9c052cdc04ed11cfeb06f5f3879193d71eac5a7322de",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "perAcceptedChange.elapsedMs is denominated by accepted changes and is null unless elapsed data is complete for every accepted change, with present/missing counts retained",
+    "Evidence artifacts are validated strictly per artifact; malformed outcomes, attempts, and routing plans are counted as malformed instead of aggregated with defaulted fields, and malformed-field fixtures cover this",
+    "Configured-relative-cost totals and per-accepted-change values are null or explicitly partial whenever any contributing attempt's routing plan is unresolved; known and unknown numerators are separated",
+    "Calibration proposals bind evidence to manifest/split provenance and reject holdout task IDs for calibration-fitting proposals",
+    "Replay marks a task changed when any part of the selection differs (status, candidate ID, capability class, or configured relative cost), with same-candidate mutation tests",
+    "The evaluation-report JSON schema fully specifies report fields with additionalProperties false and negative schema tests",
+    "Evidence reads resolve and validate containment of the evidence root and per-task paths before reading, refusing symlink escape while still supporting an explicitly selected fixture root",
+    "Candidate aggregation uses a composite identity (provider/model/capability class) so distinct candidates never collapse",
+    "A distinct rigor.calibration-proposal-input.v1 schema describes the CLI input; the checked-in fixture validates against it and the saved artifact validates against rigor.calibration-proposal.v1",
+    "All existing tests and checks still pass: npm run test:all, npm run bench, claude plugin validate . --strict, git diff --check",
+    "The sample report is still produced entirely from checked-in synthetic fixtures"
+  ],
+  "allowedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/evaluation.md",
+    "docs/orchestration.md",
+    "docs/mvp-limitations.md",
+    "docs/product.md",
+    "docs/architecture.md",
+    "schemas/evaluation-manifest.v1.schema.json",
+    "schemas/evaluation-report.v1.schema.json",
+    "schemas/calibration-proposal.v1.schema.json",
+    "schemas/calibration-proposal-input.v1.schema.json",
+    "schemas/artifacts.v1.schema.json",
+    "src/cli.ts",
+    "src/evaluation.ts",
+    "src/schema.ts",
+    "src/types.ts",
+    "src/paths.ts",
+    "src/artifacts.ts",
+    "test/evaluation.test.ts",
+    "test/schema.test.ts",
+    "test/e2e.test.ts",
+    "test/fixtures/evaluation/**"
+  ],
+  "constraints": [
+    "Remediate exactly the nine recorded independent-review findings (consultation_456a5541-d37f-4a57-859f-336e26a039ec under GH-16-R2); no unrelated changes",
+    "Do not delete, weaken, or skip existing tests or configured checks",
+    "Existing artifact schemas and consumers outside this change remain accepted unchanged",
+    "Configured relative cost remains an abstract comparison weight; never a price, token count, or provider charge",
+    "Unknown data stays unknown/null; never inferred",
+    "Proposals remain inert: no code path applies them to routing, thresholds, or profiles",
+    "Fixtures stay synthetic, secret-free, without absolute paths",
+    "Stop if remediation requires paths outside the allowed list or weakening a security boundary"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

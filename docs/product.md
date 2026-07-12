@@ -17,10 +17,11 @@ Rigor is for teams that use Claude Code in Git repositories and need evidence th
 9. Branch protection, CODEOWNERS, and an independent human approver remain the authoritative merge controls.
 10. `rigor outcome` records the human-reported disposition of the task and links it to its attempt, verification, and review. Tokens, provider cost, and model identity are stored as measured-or-unavailable and never fabricated.
 11. `rigor retrospect` aggregates local redacted events and outcome artifacts for calibration, reporting per-candidate success rates and data-completeness counts.
+12. `rigor eval-report`, `rigor eval-replay`, and `rigor calibration-proposal` support a contamination-aware evaluation that compares capability choices by accepted-change cost, shadow-replays proposed routing changes on the calibration split only, and records inert proposals for human review. Holdout tasks never fit thresholds and no proposal changes routing automatically. See [the evaluation guide](evaluation.md).
 
 ## MVP
 
-The MVP provides a versioned JSON policy and artifacts; setup/upgrade; preflight; contract; deterministic routing preview and recorded plans; append-only bounded attempts and Codex consultations; deterministic verification; escalation; review preparation; outcome recording with linked evidence; retrospective aggregation of events and outcome metrics; a lightweight hook; a read-only reviewer agent; skills for the workflow; and independent pull-request verification. It supports Git and Node.js on macOS/Linux.
+The MVP provides a versioned JSON policy and artifacts; setup/upgrade; preflight; contract; deterministic routing preview and recorded plans; append-only bounded attempts and Codex consultations; deterministic verification; escalation; review preparation; outcome recording with linked evidence; retrospective aggregation of events and outcome metrics; a contamination-aware evaluation benchmark with accepted-change cost reporting, shadow routing replay, and inert calibration proposals; a lightweight hook; a read-only reviewer agent; skills for the workflow; and independent pull-request verification. It supports Git and Node.js on macOS/Linux.
 
 ## Non-goals
 

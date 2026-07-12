@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "rigor.outcome.v1",
+  "artifactId": "outcome_EVAL-MALF-1",
+  "taskId": "EVAL-MALF-1",
+  "decision": "maybe"
+}

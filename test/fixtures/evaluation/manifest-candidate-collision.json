@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "rigor.evaluation-manifest.v1",
+  "manifestVersion": 1,
+  "createdAt": "2023-11-14T22:13:20.000Z",
+  "owner": "repository owner (calibration owner of record)",
+  "reviewInterval": "every release",
+  "categories": ["refactor"],
+  "expansionPolicy": "Two-task manifest exercising a provider/model pair whose delimiter-joined forms collide (\"a/b\" + \"c\" vs \"a\" + \"b/c\"), so byCandidate must aggregate them as two rows, never one.",
+  "tasks": [
+    {
+      "taskId": "EVAL-COLL-A",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: provider \"a/b\", model \"c\"; a naive provider/model/class join would read \"a/b/c/standard\"."
+    },
+    {
+      "taskId": "EVAL-COLL-B",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: provider \"a\", model \"b/c\"; a naive provider/model/class join would collide with EVAL-COLL-A's \"a/b/c/standard\"."
+    }
+  ]
+}

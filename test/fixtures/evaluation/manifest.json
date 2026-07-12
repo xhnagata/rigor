@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "rigor.evaluation-manifest.v1",
+  "manifestVersion": 1,
+  "createdAt": "2023-11-14T22:13:20.000Z",
+  "owner": "repository owner (calibration owner of record)",
+  "reviewInterval": "every release",
+  "categories": ["bugfix", "feature", "refactor", "docs"],
+  "expansionPolicy": "Start with these 10-20 dogfooding tasks. Expand toward 30-100 by adding newly completed tasks to the calibration split only; holdout tasks are frozen and never used to fit thresholds. New detector or profile versions start a fresh stratum.",
+  "tasks": [
+    {
+      "taskId": "EVAL-BUG-1",
+      "category": "bugfix",
+      "split": "calibration",
+      "source": "Synthetic: small bug fix accepted on the first attempt."
+    },
+    {
+      "taskId": "EVAL-BUG-2",
+      "category": "bugfix",
+      "split": "calibration",
+      "source": "Synthetic: bug fix rejected at the routed class."
+    },
+    {
+      "taskId": "EVAL-BUG-3",
+      "category": "bugfix",
+      "split": "calibration",
+      "source": "Synthetic: clean fix with human correction time."
+    },
+    {
+      "taskId": "EVAL-FEAT-1",
+      "category": "feature",
+      "split": "calibration",
+      "source": "Synthetic: feature escalated from standard to premium."
+    },
+    {
+      "taskId": "EVAL-FEAT-2",
+      "category": "feature",
+      "split": "calibration",
+      "source": "Synthetic: frontier change accepted trivially, later escaped defect."
+    },
+    {
+      "taskId": "EVAL-REF-1",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: economy refactor with review findings."
+    },
+    {
+      "taskId": "EVAL-REF-2",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: premium refactor with an expanded failure set on retry."
+    },
+    {
+      "taskId": "EVAL-DOC-1",
+      "category": "docs",
+      "split": "calibration",
+      "source": "Synthetic: docs task with no recorded outcome yet."
+    },
+    {
+      "taskId": "EVAL-DOC-2",
+      "category": "docs",
+      "split": "calibration",
+      "source": "Synthetic: economy docs change accepted cleanly."
+    },
+    {
+      "taskId": "EVAL-MALF-1",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: malformed outcome file, tolerated and counted."
+    },
+    {
+      "taskId": "EVAL-MALF-2",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: well-versioned artifacts with wrong-typed consumed fields (string retryCount, non-object attempt progress, non-numeric selection.relativeCost); counted as malformed, never guessed."
+    },
+    {
+      "taskId": "EVAL-MALF-3",
+      "category": "bugfix",
+      "split": "calibration",
+      "source": "Synthetic: well-versioned outcome missing the schema-required retryCount field entirely; malformed, never defaulted to zero."
+    },
+    {
+      "taskId": "EVAL-MALF-4",
+      "category": "docs",
+      "split": "calibration",
+      "source": "Synthetic: well-versioned outcome with a wrong-typed provider field (a number, not a string); malformed, never silently read as absent."
+    },
+    {
+      "taskId": "EVAL-MALF-5",
+      "category": "refactor",
+      "split": "calibration",
+      "source": "Synthetic: accepted outcome whose sole attempt omits the schema-required routingPlanArtifactId; the attempt is malformed and excluded, so its relative cost is unknown rather than zero."
+    },
+    {
+      "taskId": "EVAL-HOLD-1",
+      "category": "feature",
+      "split": "holdout",
+      "source": "Synthetic holdout: feature accepted at standard.",
+      "fixtureRef": "test/fixtures/evaluation/worktrees/EVAL-HOLD-1",
+      "crossModelComparison": true
+    },
+    {
+      "taskId": "EVAL-HOLD-2",
+      "category": "bugfix",
+      "split": "holdout",
+      "source": "Synthetic holdout: bug fix rejected."
+    }
+  ]
+}

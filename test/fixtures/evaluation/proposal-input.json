@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "rigor.calibration-proposal-input.v1",
+  "taskId": "EVAL-CALIBRATION-2026-Q3",
+  "target": "model-profiles",
+  "summary": "Rename the frontier candidate to claude-frontier-v2 in model profiles.",
+  "evidence": {
+    "reportHashes": [
+      "af32d613d48705b485c869ba21c13d8f0752cfbd89b3dbbeaa3d225de9d104bc"
+    ],
+    "taskIds": ["EVAL-FEAT-2"],
+    "replayHash": null
+  },
+  "proposedChange": "Replace the frontier candidate id claude-frontier with claude-frontier-v2 (relativeCost 90). relativeCost is an abstract configured weight, never a price.",
+  "expectedTradeOffs": [
+    "Frontier-required tasks route to the renamed candidate; per-accepted-change configured relative cost rises slightly."
+  ],
+  "rollbackCriteria": [
+    "Revert if the escaped-defect count on frontier-routed accepted changes does not improve within one review interval."
+  ],
+  "status": "proposed",
+  "approvalEffect": "none"
+}

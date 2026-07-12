@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_e624e075-3fa1-4d30-a0c1-5e762ecbb370",
+  "taskId": "GH-16",
+  "createdAt": "2026-07-12T14:08:37.310Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "c789ac01de00a08731b12ee84803df7f14e6f69f800261b2d5a0074033d9c82b",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-16",
+    "head": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/architecture.md",
+    "docs/evaluation.md",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/product.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/calibration-proposal.v1.schema.json",
+    "schemas/evaluation-manifest.v1.schema.json",
+    "schemas/evaluation-report.v1.schema.json",
+    "src/artifacts.ts",
+    "src/cli.ts",
+    "src/evaluation.ts",
+    "src/paths.ts",
+    "src/schema.ts",
+    "src/types.ts",
+    "test/e2e.test.ts",
+    "test/evaluation.test.ts",
+    "test/fixtures/evaluation/evidence/**",
+    "test/fixtures/evaluation/expected-report.json",
+    "test/fixtures/evaluation/manifest.json",
+    "test/schema.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/architecture.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/evaluation.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/mvp-limitations.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/product.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/artifacts.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/evaluation.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/paths.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/schema.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/e2e.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/evaluation.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fixtures/evaluation/evidence/**",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fixtures/evaluation/expected-report.json",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fixtures/evaluation/manifest.json",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/schema.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}
