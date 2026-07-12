@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_df2cadee-29d9-4868-895f-551b356d2b48",
+  "taskId": "GH-51-R2",
+  "createdAt": "2026-07-12T14:34:24.613Z",
+  "sessionArtifactId": "attempt-session_dce2a4f4-2b4e-4e0d-a35c-b6e519888f63",
+  "sessionHash": "fbad032a195401472431cb48cd76c175d1bde5315845712e292703bcc4ec0952",
+  "routingPlanArtifactId": "routing-plan_4c6aa4b6-27d5-4711-ba4b-b50a2aed3e19",
+  "routingPlanHash": "be15130e3c1381a95380b51cdb8be24ea62697175dfd49a830e66f3ba89c1d43",
+  "contractArtifactId": "contract_d0a25458-7331-480a-9d08-646d08a7b5df",
+  "contractHash": "68d1a7a9eff925d3bb464130f660f5131ef088e9bd6c1d6c87b30ecaa298d17e",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-haiku-4-5-20251001",
+  "capabilityClass": "economy",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T14:34:13.411Z",
+  "completedAt": "2026-07-12T14:34:24.613Z",
+  "durationMs": 11202,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "afterHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "beforeTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "afterTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "changedPathsBefore": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_c393fa45-06d7-4e54-9fe4-c55184541e44",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  }
+}

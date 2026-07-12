@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_8d0cbaaf-2732-4f2b-a87f-1acc1f100055",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:13:29.921Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_a75640f9-3600-4712-852a-1c1655613157",
+  "routingPlanHash": "429d6c23900680fc5ddd2986478b09025399c38dc78f55ee414cd646b66dbd61",
+  "contractArtifactId": "contract_447d3ec1-82b6-4333-b144-6b6b0039a277",
+  "contractHash": "83d7d1e25e3d0a061bf9fead2cc85d238d574354fa2b3c3777affa3e1a1243cb",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 14400000,
+    "maxRelativeCost": 100
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "beforeTreeHash": "f2768047fa24c330daf3428d0e4e86fa416aec8b4ea6a4ed059ac81e9f3b6437",
+  "changedPathsBefore": [],
+  "selection": {
+    "provider": "claude",
+    "model": "claude-haiku-4-5-20251001",
+    "capabilityClass": "economy"
+  }
+}

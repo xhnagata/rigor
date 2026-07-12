@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_fbf2001f-9079-4a43-b2ab-afef5c3a2a83",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:19:53.321Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_447d3ec1-82b6-4333-b144-6b6b0039a277",
+  "verificationArtifactId": "verification_c0e82c6a-b73f-4d4f-89b6-a72a8bde36ad",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "rigor consult-decide persists each independent-review decision as an append-only artifact under .rigor/evidence/<task>/review-decisions/ with a UUID-suffixed filename, mirroring how rigor escalate persists to escalations/",
+    "The persisted artifact contains the pure decision fields plus artifactId and createdAt and the existing inputHash, and validates against independent-review-decision.v1",
+    "selectConsultation remains pure with no I/O, clock read, or model call; the write happens only in the CLI layer",
+    "A --dry-run flag preserves the prior stdout-only behavior and writes nothing",
+    "Decisions stay advisory: approvalEffect remains none, no linkage into verification/review/CI, and exit codes are unchanged (stop-required-review yields 2, otherwise 0)",
+    "Existing tests plus a new persistence test pass and required repository checks pass"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

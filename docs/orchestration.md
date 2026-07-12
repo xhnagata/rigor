@@ -115,7 +115,7 @@ The three model-using purposes are distinct:
 
 `unknown` is not treated as available at this invocation boundary. A decision that requests review is still only advisory: `consult-start` independently rechecks the saved preflight against the current policy, HEAD, planned paths, and external-transmission decision and must succeed immediately before any provider call. Thus a fabricated or stale decision input cannot bypass transmission denial. The CLI never invokes Codex itself.
 
-The decision output fixes `approvalEffect: "none"`. Neither the decision nor the final consultation creates or changes a verification, review approval, human approval, CI result, or merge state. When Codex is absent, policy can skip an optional review, stop explicitly when the review is required, or select Claude-only continuation. When transmission is denied, Claude-only continuation is mandatory regardless of trigger or plugin availability.
+The decision output fixes `approvalEffect: "none"`. Neither the decision nor the final consultation creates or changes a verification, review approval, human approval, CI result, or merge state. When Codex is absent, policy can skip an optional review, stop explicitly when the review is required, or select Claude-only continuation. When transmission is denied, Claude-only continuation is mandatory regardless of trigger or plugin availability. Each decision is persisted as an append-only artifact under `.rigor/evidence/<task>/review-decisions/` with a UUID-suffixed filename and its `inputHash`, allowing skipped or discarded decisions to be auditable from evidence; `--dry-run` prints the decision without persisting, and persistence does not change that the decision is advisory or that `consult-start` remains the hard transmission gate.
 
 ## Schemas
 
@@ -133,7 +133,7 @@ The decision output fixes `approvalEffect: "none"`. Neither the decision nor the
 - `consultation-request.v1.schema.json` bounds the decision sent to `codex-plugin-cc`.
 - `consultation-session.v1.schema.json` records the pre-consultation Git snapshot.
 - `independent-review-input.v1.schema.json` bounds trigger facts, availability, transmission, threshold, and unavailable-plugin policy for `consult-decide`.
-- `independent-review-decision.v1.schema.json` records the pure decision, ordered reason codes, invocation permission, and explicit absence of approval effect.
+- `independent-review-decision.v1.schema.json` records the pure decision, ordered reason codes, invocation permission, and explicit absence of approval effect; may carry optional `artifactId` and `createdAt` persistence fields when recorded in evidence.
 - `consultation-result-input.v1.schema.json` remains accepted unchanged for backward compatibility.
 - `consultation-result-input.v2.schema.json` accepts zero to one hundred structured findings with enumerated severity/reproducibility/confidence, bounded required actions, repository-relative evidence locations, and explicit usage/model/effort availability.
 - `consultation.v1.schema.json` remains the output for v1 inputs; `consultation.v2.schema.json` adds the structured findings and metadata statuses. Both reuse the same mandatory post-consultation content, changed-path, and HEAD mutation check.

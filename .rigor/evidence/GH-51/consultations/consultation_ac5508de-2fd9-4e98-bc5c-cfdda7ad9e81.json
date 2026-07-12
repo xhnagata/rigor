@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "rigor.consultation.v2",
+  "artifactId": "consultation_ac5508de-2fd9-4e98-bc5c-cfdda7ad9e81",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:30:21.579Z",
+  "sessionArtifactId": "consultation-session_e27d97e7-8ff6-40ba-ad9e-de3851b8073c",
+  "sessionHash": "e1870765e3dcdf6ef3799956a086f19a4f05b17619c03f40a453077834c057f7",
+  "provider": "codex-plugin-cc",
+  "mode": "adversarial-review",
+  "requestedDecision": "Final adversarial review of the GH-51 change (now including remediation of a prior pass: README wording corrected and the persistence test strengthened with schema-conformance and UUID-filename assertions). Confirm no correctness bug, no broken selector-purity boundary, no schema violation, no exit-code regression, and that persistence never becomes an authorization to transmit or an approval. Read-only.",
+  "transmissionDecision": "allowed",
+  "beforeTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "afterTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "afterHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "changedPathsBefore": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "changedPathsAfter": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "usageStatus": "unavailable",
+  "status": "completed",
+  "outcome": "accept",
+  "findingCount": 2,
+  "requiredActions": [
+    "Reviewer flagged the bundle as not updated, but this is a false positive: dist/rigor.cjs was excluded from the diff shown to the reviewer to limit transmission. The bundle is rebuilt by npm run build (run inside test:all) and git shows it modified; end-to-end run confirmed the rebuilt CLI persists review-decisions.",
+    "Schema-conformance test checks declared/required keys but not types/enums/patterns; filename regex is permissive. Non-substantive because the test validates the tool's own randomUUID output, not adversarial input. Accepted as-is."
+  ],
+  "findings": [
+    {
+      "severity": "high",
+      "evidenceLocation": {
+        "path": "dist/rigor.cjs"
+      },
+      "reproducibility": "not-reproduced",
+      "requiredAction": "Reviewer flagged the bundle as not updated, but this is a false positive: dist/rigor.cjs was excluded from the diff shown to the reviewer to limit transmission. The bundle is rebuilt by npm run build (run inside test:all) and git shows it modified; end-to-end run confirmed the rebuilt CLI persists review-decisions.",
+      "confidence": "low"
+    },
+    {
+      "severity": "low",
+      "evidenceLocation": {
+        "path": "test/review-selection.test.ts"
+      },
+      "reproducibility": "not-reproduced",
+      "requiredAction": "Schema-conformance test checks declared/required keys but not types/enums/patterns; filename regex is permissive. Non-substantive because the test validates the tool's own randomUUID output, not adversarial input. Accepted as-is.",
+      "confidence": "low"
+    }
+  ],
+  "modelStatus": "unavailable",
+  "reasoningEffortStatus": "unavailable"
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_d0a25458-7331-480a-9d08-646d08a7b5df",
+  "taskId": "GH-51-R2",
+  "createdAt": "2026-07-12T14:33:57.594Z",
+  "preflightArtifactId": "preflight_26cd0639-99b0-46a4-ac23-edbf4cafa0b4",
+  "preflightHash": "6ee478cd711dd1c689c8772962a2225c1cda70bf64ff9836d0088f1ba1dd6666",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "The final tree (round 1 implementation plus review remediation) passes all required repository verification",
+    "rigor consult-decide persists each independent-review decision as an append-only review-decisions artifact including its input hash, --dry-run writes nothing, and the selector stays pure",
+    "The persisted artifact validates against independent-review-decision.v1 and a test now asserts schema conformance and the UUID-suffixed filename",
+    "Decisions remain advisory (approvalEffect none) with no verification/review/CI linkage; exit codes unchanged",
+    "README no longer overstates command-level purity"
+  ],
+  "allowedPaths": [
+    "src/cli.ts",
+    "schemas/independent-review-decision.v1.schema.json",
+    "test/review-selection.test.ts",
+    "docs/orchestration.md",
+    "README.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "No runtime behavior change relative to round 1",
+    "Keep selectConsultation pure; persistence only in the CLI layer",
+    "No external transmission beyond the completed bounded Codex review",
+    "Do not weaken or skip tests"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

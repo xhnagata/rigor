@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.attempt-session.v1",
+  "artifactId": "attempt-session_dce2a4f4-2b4e-4e0d-a35c-b6e519888f63",
+  "taskId": "GH-51-R2",
+  "createdAt": "2026-07-12T14:34:13.411Z",
+  "sequence": 1,
+  "routingPlanArtifactId": "routing-plan_4c6aa4b6-27d5-4711-ba4b-b50a2aed3e19",
+  "routingPlanHash": "be15130e3c1381a95380b51cdb8be24ea62697175dfd49a830e66f3ba89c1d43",
+  "contractArtifactId": "contract_d0a25458-7331-480a-9d08-646d08a7b5df",
+  "contractHash": "68d1a7a9eff925d3bb464130f660f5131ef088e9bd6c1d6c87b30ecaa298d17e",
+  "purpose": "implementation",
+  "budget": {
+    "maxAttempts": 3,
+    "maxDurationMs": 14400000,
+    "maxRelativeCost": 100
+  },
+  "executionIdentityStatus": "unverified",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "beforeTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "changedPathsBefore": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "selection": {
+    "provider": "claude",
+    "model": "claude-haiku-4-5-20251001",
+    "capabilityClass": "economy"
+  }
+}

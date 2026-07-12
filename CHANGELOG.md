@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add append-only persistence for `rigor consult-decide` decisions. Each decision is recorded under `.rigor/evidence/<task>/review-decisions/` with a UUID-suffixed filename, including its `inputHash` for auditability; the `--dry-run` flag prints without persisting. Decisions remain advisory (`approvalEffect: none`) with no verification/review/CI linkage, and `consult-start` stays the hard transmission gate ([#51](https://github.com/xhnagata/rigor/issues/51)).
+
 ## 0.9.0 - 2026-07-12
 
 - Add `rigor escalate-decide`, a pure deterministic escalation selector over `rigor.escalation-decision-input.v1`/`rigor.escalation-decision.v1`: fixed-order stop rules (policy violation, required human decision, exhausted attempt/duration/relative-cost budget, repeated identical-fingerprint infrastructure failure) precede progress- and capability-class-based adjacent or direct escalation; candidate eligibility is exact-capability with every exclusion recorded, ties break by capability order, then relative cost, then candidate ID, and initial thresholds (`unchangedAttemptsBeforeDirect: 2`, `infrastructureRetries: 2`) are human-reviewed hypotheses, not calibrated values. The `escalate` CLI validates linked contract/plan/attempt hashes fail-closed and appends decision evidence under `escalations/`; the legacy `rigor.escalation-input.v1` path is unchanged. The base implementation was produced by Codex in an isolated clone with unknown/unattested model identity and, by design, no bracketing attempt artifact; takeover remediation, seventeen additive tests, and independent review are evidenced as `GH-14-R2` ([#14](https://github.com/xhnagata/rigor/issues/14)).

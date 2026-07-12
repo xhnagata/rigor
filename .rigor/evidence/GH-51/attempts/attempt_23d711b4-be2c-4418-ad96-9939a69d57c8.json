@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_23d711b4-be2c-4418-ad96-9939a69d57c8",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:33:32.445Z",
+  "sessionArtifactId": "attempt-session_e3f401a3-605a-460d-9285-f2a5ba97d844",
+  "sessionHash": "02b3b8390a2e5f3bd565f17ee86a5d97283c15dd6d961de4b3c3ff5bbc3dff52",
+  "routingPlanArtifactId": "routing-plan_a75640f9-3600-4712-852a-1c1655613157",
+  "routingPlanHash": "429d6c23900680fc5ddd2986478b09025399c38dc78f55ee414cd646b66dbd61",
+  "contractArtifactId": "contract_447d3ec1-82b6-4333-b144-6b6b0039a277",
+  "contractHash": "83d7d1e25e3d0a061bf9fead2cc85d238d574354fa2b3c3777affa3e1a1243cb",
+  "sequence": 2,
+  "provider": "claude",
+  "model": "claude-haiku-4-5-20251001",
+  "capabilityClass": "economy",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T14:30:54.002Z",
+  "completedAt": "2026-07-12T14:33:32.445Z",
+  "durationMs": 158443,
+  "executionIdentityStatus": "unverified",
+  "status": "cancelled",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "afterHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "beforeTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "afterTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "changedPathsBefore": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "scopeViolations": [],
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [],
+  "progress": {
+    "status": "incomparable",
+    "comparedToAttemptArtifactId": "attempt_d402aea4-354c-4325-9b66-e4a5e62f14db",
+    "weakeningSignals": [
+      "check git-diff-check: no longer present in verification"
+    ]
+  },
+  "failureClass": "superseded-by-round-R2-due-to-write-once-verification"
+}

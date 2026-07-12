@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_26cd0639-99b0-46a4-ac23-edbf4cafa0b4",
+  "taskId": "GH-51-R2",
+  "createdAt": "2026-07-12T14:33:57.540Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "681052faed28c80201f32599fea874486d77a5d4fc930bd5dbf6533768cba771",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-51",
+    "head": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-51/attempts/attempt-session_8d0cbaaf-2732-4f2b-a87f-1acc1f100055.json",
+      ".rigor/evidence/GH-51/attempts/attempt-session_e3f401a3-605a-460d-9285-f2a5ba97d844.json",
+      ".rigor/evidence/GH-51/attempts/attempt_23d711b4-be2c-4418-ad96-9939a69d57c8.json",
+      ".rigor/evidence/GH-51/attempts/attempt_d402aea4-354c-4325-9b66-e4a5e62f14db.json",
+      ".rigor/evidence/GH-51/consultations/consultation-session_97e1d93a-13c7-4e1a-af69-8f7f9ff9f0ff.json",
+      ".rigor/evidence/GH-51/consultations/consultation-session_e27d97e7-8ff6-40ba-ad9e-de3851b8073c.json",
+      ".rigor/evidence/GH-51/consultations/consultation_ac5508de-2fd9-4e98-bc5c-cfdda7ad9e81.json",
+      ".rigor/evidence/GH-51/consultations/consultation_e3b27109-630a-482e-8cd2-0a37e8ddcb0f.json",
+      ".rigor/evidence/GH-51/contract.json",
+      ".rigor/evidence/GH-51/preflight.json",
+      ".rigor/evidence/GH-51/review.json",
+      ".rigor/evidence/GH-51/routing/routing-plan_a75640f9-3600-4712-852a-1c1655613157.json",
+      ".rigor/evidence/GH-51/verification.json",
+      "CHANGELOG.md",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "schemas/independent-review-decision.v1.schema.json",
+      "src/cli.ts",
+      "test/review-selection.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/review-selection.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}
