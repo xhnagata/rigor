@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_ec085dc3-e07a-41c9-b849-03e6d453ce21",
+  "taskId": "GH-24-R3",
+  "createdAt": "2026-07-12T05:10:11.520Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_d6d4db66-0cb6-4bfe-836f-e7ff1ab0d6c8",
+  "verificationArtifactId": "verification_c80e1588-91c0-46d4-b842-12c538c2a89d",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md"
+  ],
+  "acceptanceCriteria": [
+    "The #26-blocked sentence counts only the marketplace, seed-pipeline, and verified-local-clone paths and explicitly states the host-required CI path protects only the CI consumer and does not by itself unblock #26",
+    "The verifier paragraph states that the numeric repository ID, trigger event, and tag pattern are certificate-extension values not enforced by the enumerated gh CLI flags and must be checked from the verifier's certificate or JSON output",
+    "The host-required CI table row states the dependency that .rigor/rigor-ci.cjs remain byte-identical to the attested dist/rigor.cjs or become its own attested subject",
+    "The #25 negative-test list includes substitution of an archive with a mismatched detached release manifest (mix-and-match)",
+    "All GH-24-R2 acceptance criteria remain satisfied by the combined working-tree diff",
+    "The recorded required check (git-diff-check) passes; npm run test:all, npm run bench, and claude plugin validate . --strict are additionally rerun and reported in the pull request, not recorded as verification checks"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

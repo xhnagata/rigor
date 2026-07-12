@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_407ae13b-c951-4c18-ba65-fa72851459ce",
+  "taskId": "GH-24-R2",
+  "createdAt": "2026-07-12T05:03:55.470Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_35b77969-68d8-4852-a2d6-64be817d4a54",
+  "verificationArtifactId": "verification_24f26d3a-fdf7-4870-87dc-17c1fad86d90",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md"
+  ],
+  "acceptanceCriteria": [
+    "ADR 0001 states that GitHub immutable releases are a complementary control whose enablement is a separately authorized repository-settings decision, and that until enabled consumer policy must treat tags as mutable and pin the exact source commit and subject digests",
+    "ADR 0001's #25 packaging step requires the final archive digest to live in a detached release manifest rather than inside the archive it describes, with mix-and-match substitution tested",
+    "ADR 0001's consumer policy pins the immutable numeric repository ID and the allowed release trigger event in addition to the repository name",
+    "ADR 0001's consumer enforcement table includes a host-required CI workflow that verifies the attested CI verifier bundle before executing .rigor/rigor-ci.cjs, scoped as a CI-consumer-only boundary",
+    "CHANGELOG.md gains an Unreleased entry describing the amendment",
+    "npm run test:all, npm run bench, claude plugin validate . --strict, and git diff --check pass"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

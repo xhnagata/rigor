@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_193c11a6-60b7-4c88-9394-4abb4c74b780",
+  "taskId": "GH-24-R3",
+  "createdAt": "2026-07-12T05:08:46.437Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "4d414808d1d7eacee91422dfa35a187fe97a37b1ea60e563dc3f46438df09eff",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "1c082b7ff88113f0085a295e74366e435c914dd2",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-24-R2/contract.json",
+      ".rigor/evidence/GH-24-R2/preflight.json",
+      ".rigor/evidence/GH-24-R2/review.json",
+      ".rigor/evidence/GH-24-R2/verification.json",
+      "CHANGELOG.md",
+      "docs/adr/0001-provenance-trust-model.md"
+    ]
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/adr/0001-provenance-trust-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

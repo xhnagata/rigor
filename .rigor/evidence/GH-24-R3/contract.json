@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_d6d4db66-0cb6-4bfe-836f-e7ff1ab0d6c8",
+  "taskId": "GH-24-R3",
+  "createdAt": "2026-07-12T05:08:46.486Z",
+  "preflightArtifactId": "preflight_193c11a6-60b7-4c88-9394-4abb4c74b780",
+  "preflightHash": "4e713aca731788eb54de7efd63a234e83be12feb66c591403e838931e61085e4",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "The #26-blocked sentence counts only the marketplace, seed-pipeline, and verified-local-clone paths and explicitly states the host-required CI path protects only the CI consumer and does not by itself unblock #26",
+    "The verifier paragraph states that the numeric repository ID, trigger event, and tag pattern are certificate-extension values not enforced by the enumerated gh CLI flags and must be checked from the verifier's certificate or JSON output",
+    "The host-required CI table row states the dependency that .rigor/rigor-ci.cjs remain byte-identical to the attested dist/rigor.cjs or become its own attested subject",
+    "The #25 negative-test list includes substitution of an archive with a mismatched detached release manifest (mix-and-match)",
+    "All GH-24-R2 acceptance criteria remain satisfied by the combined working-tree diff",
+    "The recorded required check (git-diff-check) passes; npm run test:all, npm run bench, and claude plugin validate . --strict are additionally rerun and reported in the pull request, not recorded as verification checks"
+  ],
+  "allowedPaths": [
+    "docs/adr/0001-provenance-trust-model.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "documentation-only change: no source, workflow, CI-permission, repository-settings, key, release, or attestation change",
+    "do not claim any SLSA Build level, enforcement capability, or executed attestation smoke test",
+    "do not enable GitHub immutable releases or alter repository settings",
+    "self-merge only after presenting the reviewer findings; no release in this task; merge authorization was given by the human in-session and is restated in the pull request"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
