@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_20196488-6f08-450b-8096-575f57a65ab0",
+  "taskId": "GH-51-R2",
+  "createdAt": "2026-07-12T14:34:24.706Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_d0a25458-7331-480a-9d08-646d08a7b5df",
+  "verificationArtifactId": "verification_c393fa45-06d7-4e54-9fe4-c55184541e44",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "The final tree (round 1 implementation plus review remediation) passes all required repository verification",
+    "rigor consult-decide persists each independent-review decision as an append-only review-decisions artifact including its input hash, --dry-run writes nothing, and the selector stays pure",
+    "The persisted artifact validates against independent-review-decision.v1 and a test now asserts schema conformance and the UUID-suffixed filename",
+    "Decisions remain advisory (approvalEffect none) with no verification/review/CI linkage; exit codes unchanged",
+    "README no longer overstates command-level purity"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

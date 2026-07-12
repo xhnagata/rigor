@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "rigor.consultation.v2",
+  "artifactId": "consultation_e3b27109-630a-482e-8cd2-0a37e8ddcb0f",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:26:52.511Z",
+  "sessionArtifactId": "consultation-session_97e1d93a-13c7-4e1a-af69-8f7f9ff9f0ff",
+  "sessionHash": "e6d1c4d500592af7c9796d6a48d927435f0ea18ad453033b5d4a49fb4082a8bc",
+  "provider": "codex-plugin-cc",
+  "mode": "adversarial-review",
+  "requestedDecision": "Adversarially review the GH-51 change that makes rigor consult-decide persist each independent-review decision as an append-only review-decisions artifact. Look for correctness bugs, a broken selector-purity boundary, schema violations, exit-code regressions, or any way persistence could become an authorization to transmit or an approval. Read-only.",
+  "transmissionDecision": "allowed",
+  "beforeTreeHash": "80c1ae60aadca26d921c8af863002abd961a1b4fc0fa3942939dbff2e0981706",
+  "afterTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "afterHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "changedPathsBefore": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "changedPathsAfter": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "usageStatus": "unavailable",
+  "status": "mutated-worktree",
+  "outcome": "revise",
+  "findingCount": 3,
+  "requiredActions": [
+    "README still states consult-decide is pure, but the command now performs filesystem I/O by default; clarify that only the decision selection is pure while the command persists by default.",
+    "Persistence test does not validate the saved artifact against independent-review-decision.v1 (additionalProperties/required) nor assert a UUID-suffixed filename; a schema regression would pass.",
+    "Dry-run test does not assert stdout preserves the pure decision output or exit codes; existing exit-code test already covers stop=2/request=0."
+  ],
+  "findings": [
+    {
+      "severity": "low",
+      "evidenceLocation": {
+        "path": "README.md",
+        "line": 175
+      },
+      "reproducibility": "not-reproduced",
+      "requiredAction": "README still states consult-decide is pure, but the command now performs filesystem I/O by default; clarify that only the decision selection is pure while the command persists by default.",
+      "confidence": "high"
+    },
+    {
+      "severity": "low",
+      "evidenceLocation": {
+        "path": "test/review-selection.test.ts"
+      },
+      "reproducibility": "not-reproduced",
+      "requiredAction": "Persistence test does not validate the saved artifact against independent-review-decision.v1 (additionalProperties/required) nor assert a UUID-suffixed filename; a schema regression would pass.",
+      "confidence": "medium"
+    },
+    {
+      "severity": "low",
+      "evidenceLocation": {
+        "path": "test/review-selection.test.ts"
+      },
+      "reproducibility": "not-reproduced",
+      "requiredAction": "Dry-run test does not assert stdout preserves the pure decision output or exit codes; existing exit-code test already covers stop=2/request=0.",
+      "confidence": "low"
+    }
+  ],
+  "modelStatus": "unavailable",
+  "reasoningEffortStatus": "unavailable"
+}

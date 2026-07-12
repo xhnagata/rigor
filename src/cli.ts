@@ -264,7 +264,23 @@ export async function main(
       await readJson(option(args, "--input")!),
     );
     const result = selectConsultation(input);
-    output(result);
+    if (args.includes("--dry-run")) {
+      output(result);
+    } else {
+      const evidence = {
+        ...result,
+        artifactId: artifactId("independent-review-decision"),
+        createdAt: new Date().toISOString(),
+      };
+      const saved = await saveCollectionArtifact(
+        root,
+        input.taskId,
+        "review-decisions",
+        "independent-review-decision",
+        evidence,
+      );
+      output({ ...evidence, saved });
+    }
     return result.decision === "stop-required-review"
       ? EXIT.policyViolation
       : EXIT.success;

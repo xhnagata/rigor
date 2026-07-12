@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_447d3ec1-82b6-4333-b144-6b6b0039a277",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:11:29.964Z",
+  "preflightArtifactId": "preflight_37c70c01-4d44-4982-ad1a-563b9867e68d",
+  "preflightHash": "d76a84fc6a96305af7b600f4699e7ce8e2b3f4400cebf33e29e0588c6c52784c",
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "rigor consult-decide persists each independent-review decision as an append-only artifact under .rigor/evidence/<task>/review-decisions/ with a UUID-suffixed filename, mirroring how rigor escalate persists to escalations/",
+    "The persisted artifact contains the pure decision fields plus artifactId and createdAt and the existing inputHash, and validates against independent-review-decision.v1",
+    "selectConsultation remains pure with no I/O, clock read, or model call; the write happens only in the CLI layer",
+    "A --dry-run flag preserves the prior stdout-only behavior and writes nothing",
+    "Decisions stay advisory: approvalEffect remains none, no linkage into verification/review/CI, and exit codes are unchanged (stop-required-review yields 2, otherwise 0)",
+    "Existing tests plus a new persistence test pass and required repository checks pass"
+  ],
+  "allowedPaths": [
+    "src/cli.ts",
+    "schemas/independent-review-decision.v1.schema.json",
+    "test/review-selection.test.ts",
+    "docs/orchestration.md",
+    "README.md",
+    "CHANGELOG.md",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Do not modify the pure selectConsultation selector to perform I/O",
+    "Do not touch .rigor/ governance config, consult-start/consult-finish transmission gates, or make the decision an authorization to transmit",
+    "Do not block consult-start when no decision artifact exists (preserve v1 compatibility)",
+    "No external transmission or live Codex invocation",
+    "Do not delete, weaken, or skip existing tests",
+    "Do not persist absolute paths, secrets, transcripts, or unnecessary command output"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ]
+}

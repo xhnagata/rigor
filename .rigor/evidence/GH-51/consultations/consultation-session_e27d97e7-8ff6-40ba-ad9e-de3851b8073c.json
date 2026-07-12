@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "rigor.consultation-session.v1",
+  "artifactId": "consultation-session_e27d97e7-8ff6-40ba-ad9e-de3851b8073c",
+  "taskId": "GH-51",
+  "createdAt": "2026-07-12T14:28:15.722Z",
+  "preflightArtifactId": "preflight_37c70c01-4d44-4982-ad1a-563b9867e68d",
+  "preflightHash": "d76a84fc6a96305af7b600f4699e7ce8e2b3f4400cebf33e29e0588c6c52784c",
+  "provider": "codex-plugin-cc",
+  "mode": "adversarial-review",
+  "requestedDecision": "Final adversarial review of the GH-51 change (now including remediation of a prior pass: README wording corrected and the persistence test strengthened with schema-conformance and UUID-filename assertions). Confirm no correctness bug, no broken selector-purity boundary, no schema violation, no exit-code regression, and that persistence never becomes an authorization to transmit or an approval. Read-only.",
+  "transmissionDecision": "allowed",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "beforeTreeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "changedPathsBefore": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ]
+}

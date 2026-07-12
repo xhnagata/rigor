@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_c393fa45-06d7-4e54-9fe4-c55184541e44",
+  "taskId": "GH-51-R2",
+  "contractArtifactId": "contract_d0a25458-7331-480a-9d08-646d08a7b5df",
+  "createdAt": "2026-07-12T14:34:24.526Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "treeHash": "e1547a127e25120586213d7fb5bade8f267a2d3b0fe414b5fe1ac5a4a43091b7",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "schemas/independent-review-decision.v1.schema.json",
+    "src/cli.ts",
+    "test/review-selection.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 10,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

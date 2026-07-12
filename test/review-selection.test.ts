@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile, readdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -226,4 +226,128 @@ test("review input parser fails closed", () => {
       policy: { unchangedFailureThreshold: 1, unavailableAction: "skip" },
     }),
   );
+});
+
+test("consult-decide writes review-decisions artifact by default", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "rigor-artifact-"));
+  await promisify(execFile)("git", ["init", "-q"], { cwd: root });
+  await writeJson(
+    path.join(root, ".rigor", "policy.json"),
+    defaultPolicy("repo"),
+  );
+  const input = {
+    schemaVersion: "rigor.independent-review-input.v1",
+    taskId: "GH-51",
+    riskTier: "high",
+    assessmentConfidence: "high",
+    failureProgress: "none",
+    fingerprintRepetitions: 0,
+    concerns: { security: false, dataIntegrity: false },
+    humanRequested: false,
+    externalTransmission: "allowed",
+    pluginAvailability: "available",
+    policy: { unchangedFailureThreshold: 2, unavailableAction: "skip" },
+  };
+  const inputFile = path.join(root, "input.json");
+  await writeFile(inputFile, JSON.stringify(input));
+
+  // First invocation should write one file
+  await runCli(["consult-decide", "--input", inputFile], root);
+  const reviewDir = path.join(
+    root,
+    ".rigor",
+    "evidence",
+    "GH-51",
+    "review-decisions",
+  );
+  let files = await readdir(reviewDir);
+  assert.equal(files.length, 1);
+
+  // The saved filename carries a UUID suffix
+  assert.match(files[0]!, /^independent-review-decision_[0-9a-f-]{36}\.json$/);
+
+  // Parse the first file
+  const firstFile = JSON.parse(
+    await readFile(path.join(reviewDir, files[0]!), "utf8"),
+  ) as Record<string, unknown>;
+  assert.match(firstFile.inputHash as string, /^[a-f0-9]{64}$/);
+  assert.match(firstFile.artifactId as string, /^independent-review-decision_/);
+  assert.match(firstFile.createdAt as string, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(firstFile.approvalEffect, "none");
+
+  // The saved artifact conforms to the decision schema
+  const schema = JSON.parse(
+    await readFile(
+      path.join(
+        import.meta.dirname,
+        "..",
+        "schemas",
+        "independent-review-decision.v1.schema.json",
+      ),
+      "utf8",
+    ),
+  ) as {
+    properties: Record<string, unknown>;
+    required: string[];
+  };
+  // additionalProperties: false — every artifact key must be declared
+  for (const key of Object.keys(firstFile)) {
+    assert.ok(
+      key in schema.properties,
+      `saved key "${key}" is not declared in the schema properties`,
+    );
+  }
+  // every required property must be present in the artifact
+  for (const key of schema.required) {
+    assert.ok(
+      key in firstFile,
+      `required key "${key}" is missing from the saved artifact`,
+    );
+  }
+
+  // Second invocation should append
+  await runCli(["consult-decide", "--input", inputFile], root);
+  files = await readdir(reviewDir);
+  assert.equal(files.length, 2);
+});
+
+test("consult-decide --dry-run writes no artifact", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "rigor-dry-run-"));
+  await promisify(execFile)("git", ["init", "-q"], { cwd: root });
+  await writeJson(
+    path.join(root, ".rigor", "policy.json"),
+    defaultPolicy("repo"),
+  );
+  const input = {
+    schemaVersion: "rigor.independent-review-input.v1",
+    taskId: "GH-52",
+    riskTier: "high",
+    assessmentConfidence: "high",
+    failureProgress: "none",
+    fingerprintRepetitions: 0,
+    concerns: { security: false, dataIntegrity: false },
+    humanRequested: false,
+    externalTransmission: "allowed",
+    pluginAvailability: "available",
+    policy: { unchangedFailureThreshold: 2, unavailableAction: "skip" },
+  };
+  const inputFile = path.join(root, "input.json");
+  await writeFile(inputFile, JSON.stringify(input));
+
+  // Dry-run should not write
+  await runCli(["consult-decide", "--dry-run", "--input", inputFile], root);
+  const reviewDirPath = path.join(
+    root,
+    ".rigor",
+    "evidence",
+    "GH-52",
+    "review-decisions",
+  );
+  try {
+    await readdir(reviewDirPath);
+    assert.fail("Directory should not exist after --dry-run");
+  } catch (error) {
+    // Expected: directory does not exist
+    assert((error as NodeJS.ErrnoException).code === "ENOENT");
+  }
 });
