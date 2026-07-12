@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_a0416603-bd67-415c-85fa-1fcd4763d403",
+  "taskId": "GH-44",
+  "createdAt": "2026-07-12T14:15:37.662Z",
+  "preflightArtifactId": "preflight_6a35c1cc-6cf6-4afb-b022-175eb63bc52e",
+  "preflightHash": "21c8d0ef261525b875ff6c24d5def917804ef1673eb853bf9aaf9a573da4f933",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "cmp dist/rigor.cjs .rigor/rigor-ci.cjs succeeds on the merged tree (the committed CI bundle is byte-identical to the committed dist bundle).",
+    "node .rigor/rigor-ci.cjs ci --base <base> --head <head> on a real PR range produces non-empty JSON and enforces evidence linkage; recorded as manual verification in .rigor/evidence/GH-44/.",
+    "A deterministic, repository-specific mechanism makes byte-drift between dist/rigor.cjs and .rigor/rigor-ci.cjs fail loudly: a rigor release-check finding (ci-bundle-sync) and a node:test check that runs under npm run test:all, both gated on both files existing so consumer repositories without a source dist/ tree are not broken.",
+    "A negative fixture proves the drift check fails when only dist/rigor.cjs is mutated, and an entry-guard smoke proves node .rigor/rigor-ci.cjs ci produces non-empty JSON (the #29 entry-guard failure mode).",
+    "docs/release.md states the regeneration rule (any release whose dist/rigor.cjs bytes change must regenerate the CI bundle) and documents the new release-check finding and its consumer-repository false-positive behavior.",
+    "docs/threat-model.md wording on CI verifier freshness reflects the new deterministic local drift detection where needed.",
+    "npm run test:all, npm run bench, claude plugin validate . --strict, and git diff --check all pass."
+  ],
+  "allowedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "dist/rigor.cjs",
+    "src/release.ts",
+    "test/release.test.ts",
+    "test/ci-bundle.test.ts",
+    "docs/release.md",
+    "docs/threat-model.md"
+  ],
+  "constraints": [
+    "Implement only Issue #44 Scope and Acceptance criteria; add no unrelated features.",
+    "Do not change the write-once behavior of setup/upgrade for consumer repositories (Non-goal).",
+    "Do not implement consumer-side provenance/authentication of the bundle (Non-goal; that is #26/ADR 0001).",
+    "The drift check must be repository-specific and must not fail in consumer repositories where dist/rigor.cjs does not exist alongside .rigor/rigor-ci.cjs.",
+    "Do not delete, weaken, or skip any pre-existing test.",
+    "Because src/release.ts changes, dist/rigor.cjs must be rebuilt with npm run build and committed (repo release flow), and .rigor/rigor-ci.cjs must then be a byte-identical copy of that rebuilt dist/rigor.cjs, not hand-edited.",
+    "Do not modify schema files, public CLI surface, or the ci/verification artifact formats."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

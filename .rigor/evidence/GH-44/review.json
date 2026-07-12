@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_699da5c7-4167-4aa8-adb5-999f1b71be6b",
+  "taskId": "GH-44",
+  "createdAt": "2026-07-12T14:23:25.675Z",
+  "externalTransmission": "allowed",
+  "riskTier": "critical",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_a0416603-bd67-415c-85fa-1fcd4763d403",
+  "verificationArtifactId": "verification_9e975bc2-ff24-47c8-90b9-31abbf6b9011",
+  "changedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "dist/rigor.cjs",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "src/release.ts",
+    "test/ci-bundle.test.ts",
+    "test/release.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "cmp dist/rigor.cjs .rigor/rigor-ci.cjs succeeds on the merged tree (the committed CI bundle is byte-identical to the committed dist bundle).",
+    "node .rigor/rigor-ci.cjs ci --base <base> --head <head> on a real PR range produces non-empty JSON and enforces evidence linkage; recorded as manual verification in .rigor/evidence/GH-44/.",
+    "A deterministic, repository-specific mechanism makes byte-drift between dist/rigor.cjs and .rigor/rigor-ci.cjs fail loudly: a rigor release-check finding (ci-bundle-sync) and a node:test check that runs under npm run test:all, both gated on both files existing so consumer repositories without a source dist/ tree are not broken.",
+    "A negative fixture proves the drift check fails when only dist/rigor.cjs is mutated, and an entry-guard smoke proves node .rigor/rigor-ci.cjs ci produces non-empty JSON (the #29 entry-guard failure mode).",
+    "docs/release.md states the regeneration rule (any release whose dist/rigor.cjs bytes change must regenerate the CI bundle) and documents the new release-check finding and its consumer-repository false-positive behavior.",
+    "docs/threat-model.md wording on CI verifier freshness reflects the new deterministic local drift detection where needed.",
+    "npm run test:all, npm run bench, claude plugin validate . --strict, and git diff --check all pass."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

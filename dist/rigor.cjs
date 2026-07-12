@@ -2460,6 +2460,25 @@ function evaluateRelease(facts) {
       detail: "committed dist/rigor.cjs differs from a fresh build; rebuild and commit it"
     }
   );
+  if (facts.ciBundleMatches === null) {
+    findings2.push({
+      id: "ci-bundle-sync",
+      status: "satisfied",
+      detail: "no committed dist/rigor.cjs and .rigor/rigor-ci.cjs pair in this repository; the dogfooding CI-verifier sync invariant does not apply"
+    });
+  } else if (facts.ciBundleMatches) {
+    findings2.push({
+      id: "ci-bundle-sync",
+      status: "satisfied",
+      detail: ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs"
+    });
+  } else {
+    findings2.push({
+      id: "ci-bundle-sync",
+      status: "failed",
+      detail: "committed .rigor/rigor-ci.cjs differs from dist/rigor.cjs; regenerate it with /bin/cp -f dist/rigor.cjs .rigor/rigor-ci.cjs"
+    });
+  }
   findings2.push(
     facts.branch === facts.expectedBranch ? {
       id: "expected-branch",
@@ -2606,6 +2625,17 @@ async function bundleMatchesFreshBuild(root) {
     await (0, import_promises7.rm)(temp, { force: true }).catch(() => void 0);
   }
 }
+async function ciBundleFact(root) {
+  try {
+    const [dist, ci] = await Promise.all([
+      (0, import_promises7.readFile)(import_node_path8.default.join(root, "dist", "rigor.cjs")),
+      (0, import_promises7.readFile)(import_node_path8.default.join(root, ".rigor", "rigor-ci.cjs"))
+    ]);
+    return dist.equals(ci);
+  } catch {
+    return null;
+  }
+}
 async function releaseVerify(root, options2, read) {
   const packageVersion = await readJsonVersion(import_node_path8.default.join(root, "package.json"));
   const manifestVersion = await readJsonVersion(
@@ -2620,6 +2650,7 @@ async function releaseVerify(root, options2, read) {
   const branch = branchResult.stdout.toString("utf8").trim();
   const changelogVersions = await readChangelogVersions(root);
   const bundleMatches = await bundleMatchesFreshBuild(root);
+  const ciBundleMatches = await ciBundleFact(root);
   let ci;
   if (options2.repo && read) {
     ci = facts.head === null ? {
@@ -2648,6 +2679,7 @@ async function releaseVerify(root, options2, read) {
     dirty: facts.dirty,
     changelogVersions,
     bundleMatches,
+    ciBundleMatches,
     requiredChecks: options2.requiredChecks,
     ci
   });

@@ -1,0 +1,23 @@
+{
+  "note": "Manual verification for GH-44 acceptance criterion: the refreshed .rigor/rigor-ci.cjs (byte-identical to the rebuilt dist/rigor.cjs) executes under the rigor-ci.cjs filename (the #29 entry-guard failure mode) and enforces evidence linkage, producing non-empty JSON.",
+  "taskId": "GH-44",
+  "recordedAt": "2026-07-12T14:20:00Z",
+  "bundleParity": "cmp dist/rigor.cjs .rigor/rigor-ci.cjs succeeds (byte-identical)",
+  "checks": [
+    {
+      "case": "positive-real-range",
+      "command": "node .rigor/rigor-ci.cjs ci --base c1b57de --head 8b349ce (release PR #52 range on origin/main)",
+      "result": "status=passed, failures=[], 7 changed paths derived; linkage evaluated against REL-0-9-0 evidence and confirmed",
+      "exit": 0,
+      "nonEmptyJson": true
+    },
+    {
+      "case": "negative-uncovered-code-change",
+      "command": "node .rigor/rigor-ci.cjs ci --base <origin/main> --head <scratch commit adding an uncovered line to src/util.ts>, run with the new refreshed bundle in a throwaway detached worktree",
+      "result": "status=failed, failures=[\"no linked passing evidence covers the independently derived change set and head policy\"], changedPaths=[\"src/util.ts\"]",
+      "exit": 2,
+      "nonEmptyJson": true
+    }
+  ],
+  "conclusion": "The refreshed CI verifier bundle fires under the rigor-ci.cjs entry name (non-empty stdout, not the #29 silent empty-output exit-0) and enforces evidence linkage with real pass/fail verdicts."
+}

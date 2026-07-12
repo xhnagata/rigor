@@ -28,6 +28,7 @@ export interface ReleaseFacts {
   dirty: boolean;
   changelogVersions: string[];
   bundleMatches: boolean;
+  ciBundleMatches: boolean | null;
   requiredChecks: string[];
   ci: ReleaseCiFact;
 }
@@ -109,6 +110,29 @@ export function evaluateRelease(facts: ReleaseFacts): ReleaseReport {
             "committed dist/rigor.cjs differs from a fresh build; rebuild and commit it",
         },
   );
+
+  if (facts.ciBundleMatches === null) {
+    findings.push({
+      id: "ci-bundle-sync",
+      status: "satisfied",
+      detail:
+        "no committed dist/rigor.cjs and .rigor/rigor-ci.cjs pair in this repository; the dogfooding CI-verifier sync invariant does not apply",
+    });
+  } else if (facts.ciBundleMatches) {
+    findings.push({
+      id: "ci-bundle-sync",
+      status: "satisfied",
+      detail:
+        ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs",
+    });
+  } else {
+    findings.push({
+      id: "ci-bundle-sync",
+      status: "failed",
+      detail:
+        "committed .rigor/rigor-ci.cjs differs from dist/rigor.cjs; regenerate it with /bin/cp -f dist/rigor.cjs .rigor/rigor-ci.cjs",
+    });
+  }
 
   findings.push(
     facts.branch === facts.expectedBranch
@@ -299,6 +323,23 @@ async function bundleMatchesFreshBuild(root: string): Promise<boolean> {
   }
 }
 
+export async function ciBundleFact(root: string): Promise<boolean | null> {
+  // Repository-specific: the sync invariant only applies where BOTH the source
+  // build output dist/rigor.cjs and the committed CI verifier .rigor/rigor-ci.cjs
+  // exist. Consumer repositories carry only .rigor/rigor-ci.cjs (written
+  // write-once by setup) and no source dist/ tree, so the check is not applicable
+  // there and must fail safe to null rather than closed.
+  try {
+    const [dist, ci] = await Promise.all([
+      readFile(path.join(root, "dist", "rigor.cjs")),
+      readFile(path.join(root, ".rigor", "rigor-ci.cjs")),
+    ]);
+    return dist.equals(ci);
+  } catch {
+    return null;
+  }
+}
+
 export async function releaseVerify(
   root: string,
   options: ReleaseOptions,
@@ -317,6 +358,7 @@ export async function releaseVerify(
   const branch = branchResult.stdout.toString("utf8").trim();
   const changelogVersions = await readChangelogVersions(root);
   const bundleMatches = await bundleMatchesFreshBuild(root);
+  const ciBundleMatches = await ciBundleFact(root);
 
   let ci: ReleaseCiFact;
   if (options.repo && read) {
@@ -350,6 +392,7 @@ export async function releaseVerify(
     dirty: facts.dirty,
     changelogVersions,
     bundleMatches,
+    ciBundleMatches,
     requiredChecks: options.requiredChecks,
     ci,
   });

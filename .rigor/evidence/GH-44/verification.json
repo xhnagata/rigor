@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_9e975bc2-ff24-47c8-90b9-31abbf6b9011",
+  "taskId": "GH-44",
+  "contractArtifactId": "contract_a0416603-bd67-415c-85fa-1fcd4763d403",
+  "createdAt": "2026-07-12T14:23:01.896Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "treeHash": "27d16b18b4f5636918e69ad0815294136c9cd05690f0a098fbccdf09eef940d1",
+  "changedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "dist/rigor.cjs",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "src/release.ts",
+    "test/ci-bundle.test.ts",
+    "test/release.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 12,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}
