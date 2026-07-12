@@ -119,9 +119,11 @@ long-lived signing key. The required consumer policy is:
 
 - exact bundle and complete-plugin subject bytes and SHA-256 digests;
 - predicate type `https://slsa.dev/provenance/v1`;
-- repository `xhnagata/rigor`;
+- repository `xhnagata/rigor` and its immutable numeric repository ID, so a
+  renamed or recreated repository cannot satisfy the name expectation alone;
 - OIDC issuer `https://token.actions.githubusercontent.com`;
 - exact signer workflow path and an approved signer workflow digest/ref policy;
+- the trigger event and tag pattern allowed to run the signer workflow;
 - exact source commit equal to the approved release tag target;
 - GitHub-hosted runner requirement unless a separately assessed builder is
   approved;
@@ -129,8 +131,19 @@ long-lived signing key. The required consumer policy is:
 
 The verifier must use GitHub CLI restrictions such as `--repo`,
 `--signer-workflow`, `--signer-digest`, `--source-digest`, `--source-ref`, and
-`--deny-self-hosted-runners`, or implement equivalent checks. It must not trust
-workflow-controlled predicate fields as certificate-backed identity.
+`--deny-self-hosted-runners`, or implement equivalent checks. The numeric
+repository ID, trigger event, and tag pattern are certificate-extension values
+that none of those flags enforces; the consumer must check them from the
+verifier's certificate or JSON output. It must not trust workflow-controlled
+predicate fields as certificate-backed identity.
+
+GitHub immutable releases are a complementary control, not a substitute for
+build provenance: once enabled they lock a published tag and its release assets,
+while the attestation binds the artifact to its builder and source. Enabling
+them is a separately authorized repository-settings decision reserved to
+maintainers, and this ADR does not enable them. Until they are enabled and used,
+consumer policy must treat every tag as mutable and pin the exact source commit
+and subject digests rather than the tag name.
 
 No SLSA Build Level is claimed by this ADR. #25 may demonstrate that the
 selected format is SLSA-compatible; a level claim requires a separate assessment
@@ -138,17 +151,21 @@ of the final build platform and provenance generation path.
 
 ### Consumer enforcement points
 
-| Candidate point                                      | Can inspect the exact bytes that execute?                                                                                                                                             | Can fail before execution?                                                          | Result                                                                 |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Claude Code marketplace install/update itself        | The documented cache contains the executing bytes, but no attestation-policy callback or required verification command is documented                                                  | Not currently demonstrated                                                          | **Not an enforcement point yet**; #26 must test or upstream-confirm it |
-| Organization image/seed promotion pipeline           | Yes, if it downloads an immutable commit/tree, verifies the complete plugin artifact and its `dist/rigor.cjs`, and promotes those same bytes into a read-only Claude Code plugin seed | Yes                                                                                 | **Recommended managed consumer/verifier**                              |
-| Verified local clone used with `claude --plugin-dir` | Yes, if verification and execution use the same immutable local tree and mutation is prevented/detected                                                                               | Yes for a disciplined wrapper; ordinary manual use is bypassable                    | Useful developer path, not an organization-wide guarantee              |
-| Post-install cache scanner                           | Usually, but the plugin may already have loaded and cache internals can change                                                                                                        | No reliable pre-use guarantee                                                       | Monitoring only; reject as primary control                             |
-| PR CI or release workflow                            | Sees source/build output before distribution                                                                                                                                          | It can block publication, not consumer execution or a compromised distribution path | Necessary producer control, insufficient consumer enforcement          |
-| Manual README command                                | Can verify a user-selected file                                                                                                                                                       | User can skip it and a later marketplace fetch may differ                           | Guidance only; no security guarantee                                   |
+| Candidate point                                      | Can inspect the exact bytes that execute?                                                                                                                                                                                                     | Can fail before execution?                                                          | Result                                                                                   |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Claude Code marketplace install/update itself        | The documented cache contains the executing bytes, but no attestation-policy callback or required verification command is documented                                                                                                          | Not currently demonstrated                                                          | **Not an enforcement point yet**; #26 must test or upstream-confirm it                   |
+| Organization image/seed promotion pipeline           | Yes, if it downloads an immutable commit/tree, verifies the complete plugin artifact and its `dist/rigor.cjs`, and promotes those same bytes into a read-only Claude Code plugin seed                                                         | Yes                                                                                 | **Recommended managed consumer/verifier**                                                |
+| Verified local clone used with `claude --plugin-dir` | Yes, if verification and execution use the same immutable local tree and mutation is prevented/detected                                                                                                                                       | Yes for a disciplined wrapper; ordinary manual use is bypassable                    | Useful developer path, not an organization-wide guarantee                                |
+| Host-required CI verification of the verifier bundle | Yes for the CI consumer: a ruleset-required workflow can verify the attested verifier subject before executing it, provided `.rigor/rigor-ci.cjs` remains byte-identical to the attested `dist/rigor.cjs` or becomes its own attested subject | Yes, before the pull request's verifier bytes run                                   | Viable consumer for the CI boundary only; it does not protect a locally installed plugin |
+| Post-install cache scanner                           | Usually, but the plugin may already have loaded and cache internals can change                                                                                                                                                                | No reliable pre-use guarantee                                                       | Monitoring only; reject as primary control                                               |
+| PR CI or release workflow                            | Sees source/build output before distribution                                                                                                                                                                                                  | It can block publication, not consumer execution or a compromised distribution path | Necessary producer control, insufficient consumer enforcement                            |
+| Manual README command                                | Can verify a user-selected file                                                                                                                                                                                                               | User can skip it and a later marketplace fetch may differ                           | Guidance only; no security guarantee                                                     |
 
 Until one of the first three paths is implemented and tested with the exact
-bytes subsequently executed, #26 is blocked by a missing consumer boundary.
+bytes subsequently executed, #26 is blocked by a missing consumer boundary. The
+host-required CI path protects only the CI verifier consumer; it does not verify
+the plugin bytes that hooks, skills, agents, and `bin/rigor` execute, so it does
+not by itself unblock #26.
 
 ## Implementation split
 
@@ -164,7 +181,11 @@ Artifact Attestations are available for the public repository.
 2. Compare the produced bundle with the committed release bundle and fail on a
    mismatch. Deterministically package the complete distributable plugin file set
    so hooks, skills, agents, launcher, manifests, and bundle share a verifiable
-   release subject. Do not attest arbitrary caller-supplied paths or digests.
+   release subject. A manifest packaged inside the archive cannot record the
+   digest of the archive that contains it; publish the final archive digest and
+   its companion metadata as a detached release manifest beside the archive so
+   no subject is self-referential. Do not attest arbitrary caller-supplied paths
+   or digests.
 3. Grant only `contents: read`, `id-token: write`, and `attestations: write` to
    the attestation job; pin third-party actions to reviewed full commit SHAs.
 4. Generate GitHub Artifact Attestations for `dist/rigor.cjs` and the complete
@@ -174,9 +195,10 @@ Artifact Attestations are available for the public repository.
 5. Add tests that build/package twice, assert deterministic bundle and package
    digests, inspect the attestation predicate/schema, and show verification
    succeeds only for the expected subjects/repository/workflow/source. Negative
-   tests must cover changed bundle bytes, changed non-bundle plugin files, wrong
-   source SHA, wrong signer, wrong predicate, absent attestation, and self-hosted
-   runner rejection.
+   tests must cover changed bundle bytes, changed non-bundle plugin files, an
+   archive presented with a mismatched detached release manifest (mix-and-match
+   substitution), wrong source SHA, wrong signer, wrong predicate, absent
+   attestation, and self-hosted runner rejection.
 6. Document root rotation, attestation deletion/withdrawal, compromised digest
    denylisting, offline bundle/root refresh, and release rollback. Do not create
    keys or claim a SLSA level.

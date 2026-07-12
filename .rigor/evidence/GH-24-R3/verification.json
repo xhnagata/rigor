@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_c80e1588-91c0-46d4-b842-12c538c2a89d",
+  "taskId": "GH-24-R3",
+  "contractArtifactId": "contract_d6d4db66-0cb6-4bfe-836f-e7ff1ab0d6c8",
+  "createdAt": "2026-07-12T05:10:11.446Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "1c082b7ff88113f0085a295e74366e435c914dd2",
+  "treeHash": "521c80b6106beb54c2bf3673d49200d1e8808bd3bd12c6a2e9a72976a6a0d08f",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/adr/0001-provenance-trust-model.md"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 8,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}
