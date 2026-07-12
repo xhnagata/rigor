@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_680814d4-6a7a-442e-b02f-9052275ec785",
+  "taskId": "GH-21",
+  "createdAt": "2026-07-12T05:14:40.118Z",
+  "sessionArtifactId": "attempt-session_35f74063-a40c-4dd8-b442-5498a49c6503",
+  "sessionHash": "0b1d7c03c6c6dde1d85bef8ff514ff71282dbff1f91488438b3c792d0fc21ef8",
+  "routingPlanArtifactId": "routing-plan_08aabc2a-0d37-4386-889e-e38b061f2b3b",
+  "routingPlanHash": "c0a4de901c808f031ae2b4ffdc5b4caa489bcb50b3c7e25aeb94f6e2e3f512d7",
+  "contractArtifactId": "contract_c06662b0-3aec-4aca-a6e7-78ff206ddb72",
+  "contractHash": "be1e4ad287ffbbf259a0cbeb32f7b7ee92de9daa1b0bb1ffea588402adefe87f",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-fable-5",
+  "capabilityClass": "frontier",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T05:01:54.811Z",
+  "completedAt": "2026-07-12T05:14:40.118Z",
+  "durationMs": 765307,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "1c082b7ff88113f0085a295e74366e435c914dd2",
+  "afterHead": "1c082b7ff88113f0085a295e74366e435c914dd2",
+  "beforeTreeHash": "7f757012796c38a79e3a8279f4dd10665ae41880a5b3a751832b3aea6c95f9fb",
+  "afterTreeHash": "5aea12ac0c907100e9eec4b8d00cbbae605760554ff0b00f00ec5f252085fdf8",
+  "changedPathsBefore": [],
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/test-integrity.md",
+    "docs/threat-model.md"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_023560f9-a4d9-443e-a531-c8601e4d7185",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  },
+  "externalSessionId": "aea5a1628cb34baee"
+}

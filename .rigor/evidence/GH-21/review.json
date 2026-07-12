@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_99894034-2ff8-4f2a-9c2f-46f74c07eeb3",
+  "taskId": "GH-21",
+  "createdAt": "2026-07-12T05:15:03.850Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_c06662b0-3aec-4aca-a6e7-78ff206ddb72",
+  "verificationArtifactId": "verification_023560f9-a4d9-443e-a531-c8601e4d7185",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/mvp-limitations.md",
+    "docs/orchestration.md",
+    "docs/test-integrity.md",
+    "docs/threat-model.md"
+  ],
+  "acceptanceCriteria": [
+    "docs/test-integrity.md catalogs assertion deletion/relaxation, tolerance widening, skip/only/todo, case removal, snapshot churn, mock substitution, coverage decline, mutation-score decline, and configured-check weakening as bounded threats.",
+    "Every cataloged signal is classified by confidence, language/framework dependence, false-positive risk, required context, and possible enforcement level, and is explicitly labeled a deterministic fact, a tool-derived measurement, or an advisory interpretation.",
+    "Every proposed signal either has a falsifiable test (a concrete repository change that must fire it and a concrete benign change that must not) or is explicitly rejected with the reason.",
+    "docs/test-integrity.md defines attacker and accidental-change scenarios relevant to Rigor attempts.",
+    "docs/test-integrity.md specifies a minimal shadow-mode event format that records signals without enforcing them, aligned with existing artifact conventions (no raw command output, repository-relative paths, opaque digests).",
+    "docs/test-integrity.md explains how the catalog interacts with the #13 failure-fingerprint/progress comparison (weakeningSignals, fail-closed reduced) and with #16 outcome-based calibration.",
+    "High-confidence candidates for shadow-mode collection (#22) are explicitly identified and distinguished from rejected or advisory-only signals.",
+    "docs/test-integrity.md states what must never be advertised as a semantic guarantee, and docs/threat-model.md and docs/mvp-limitations.md reference the catalog while remaining honest that semantic test quality is not guaranteed.",
+    "CHANGELOG.md documents the design under an Unreleased heading following the one-entry-per-issue convention.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass, and git diff --check is clean."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
