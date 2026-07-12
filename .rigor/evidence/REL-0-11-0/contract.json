@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_b0034076-ba15-4627-a405-c29e4fae6e31",
+  "taskId": "REL-0-11-0",
+  "createdAt": "2026-07-12T16:04:15.466Z",
+  "preflightArtifactId": "preflight_5d87ac55-1ced-41c8-8448-50dc885e4d75",
+  "preflightHash": "f14ad6ac26cc0cecdc7b69a66ff4034e207c6ebead7f9536aba0c4576c0d82d0",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "CHANGELOG.md gains a 0.11.0 section describing the #16 evaluation benchmark and calibration feature",
+    "package.json and .claude-plugin/plugin.json both declare version 0.11.0",
+    "dist/rigor.cjs is rebuilt from the release source and committed byte-identical to a fresh build",
+    "npm run test:all, npm run bench, claude plugin validate . --strict, and git diff --check pass",
+    "The release commit lands on main only through a protected pull request with rigor and quality checks green",
+    "rigor release-check passes on the merged main SHA before tagging v0.11.0"
+  ],
+  "allowedPaths": [
+    "CHANGELOG.md",
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "dist/rigor.cjs"
+  ],
+  "constraints": [
+    "Version bump, changelog, and rebuild only; no source, schema, policy, or workflow changes",
+    "Follow docs/release.md; never direct-push the release commit to main",
+    "Tag and publish only after the deterministic release-check gate passes"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
