@@ -806,9 +806,13 @@ var MODEL_PROFILES_SCHEMA = "rigor.model-profiles.v1";
 var ROUTING_DECISION_SCHEMA = "rigor.routing-decision.v1";
 var ATTEMPT_SCHEMA = "rigor.attempt.v1";
 var CONSULTATION_SCHEMA = "rigor.consultation.v1";
+var CONSULTATION_V2_SCHEMA = "rigor.consultation.v2";
 var CONSULTATION_REQUEST_SCHEMA = "rigor.consultation-request.v1";
 var CONSULTATION_SESSION_SCHEMA = "rigor.consultation-session.v1";
 var CONSULTATION_RESULT_INPUT_SCHEMA = "rigor.consultation-result-input.v1";
+var CONSULTATION_RESULT_INPUT_V2_SCHEMA = "rigor.consultation-result-input.v2";
+var CONSULTATION_DECISION_INPUT_SCHEMA = "rigor.independent-review-input.v1";
+var CONSULTATION_DECISION_SCHEMA = "rigor.independent-review-decision.v1";
 var ROUTING_PLAN_SCHEMA = "rigor.routing-plan.v1";
 var ATTEMPT_SESSION_SCHEMA = "rigor.attempt-session.v1";
 var ATTEMPT_RESULT_INPUT_SCHEMA = "rigor.attempt-result-input.v1";
@@ -1458,9 +1462,9 @@ async function aggregateOutcomes(root) {
 function applyOutcome(totals, candidateMap, outcome) {
   const completeness = totals.dataCompleteness;
   totals.total += 1;
-  const decision = outcome.decision;
-  if (decision === "accepted") totals.accepted += 1;
-  else if (decision === "rejected") totals.rejected += 1;
+  const decision2 = outcome.decision;
+  if (decision2 === "accepted") totals.accepted += 1;
+  else if (decision2 === "rejected") totals.rejected += 1;
   if (outcome.acceptedWithoutModelCodeChanges === true)
     totals.acceptedWithoutModelCodeChanges += 1;
   if (outcome.revertStatus === "reverted") totals.reverted += 1;
@@ -1519,7 +1523,7 @@ function applyOutcome(totals, candidateMap, outcome) {
     candidateMap.set(candidate, entry);
   }
   entry.outcomes += 1;
-  if (decision === "accepted") entry.accepted += 1;
+  if (decision2 === "accepted") entry.accepted += 1;
   entry.retriesTotal += optionalNumber(outcome.retryCount) ?? 0;
   if (elapsed !== void 0) {
     entry.elapsedTotal += elapsed;
@@ -2097,7 +2101,7 @@ function classicFacts(body) {
   return facts;
 }
 function evaluateGovernance(input) {
-  const findings = [];
+  const findings2 = [];
   const rulesKnown = input.rules.status === 200;
   const classicKnown = input.protection.status === 200 || input.protection.status === 404;
   const ruleset = rulesetFacts(rulesKnown ? input.rules.body : null);
@@ -2106,21 +2110,21 @@ function evaluateGovernance(input) {
   );
   const branchRequirement = (id, fromRuleset, fromClassic, requirement) => {
     if (rulesKnown && fromRuleset || classicKnown && fromClassic) {
-      findings.push({ id, status: "satisfied", detail: requirement });
+      findings2.push({ id, status: "satisfied", detail: requirement });
     } else if (!rulesKnown && !classicKnown) {
-      findings.push({
+      findings2.push({
         id,
         status: "unverifiable",
         detail: `${requirement}: branch rules and classic protection could not be fully read with the available credentials`
       });
     } else if (!classicKnown) {
-      findings.push({
+      findings2.push({
         id,
         status: "unverifiable",
         detail: `${requirement}: not satisfied by rulesets, and classic protection could not be fully read with the available credentials`
       });
     } else {
-      findings.push({
+      findings2.push({
         id,
         status: "failed",
         detail: `${requirement}: not required by any active ruleset or classic protection on ${input.branch}`
@@ -2176,13 +2180,13 @@ function evaluateGovernance(input) {
     "branch deletion is blocked"
   );
   if (input.codeowners.state === "unverifiable") {
-    findings.push({
+    findings2.push({
       id: "codeowners-sampled-coverage",
       status: "unverifiable",
       detail: "CODEOWNERS could not be fully read with the available credentials"
     });
   } else if (input.codeowners.state === "missing") {
-    findings.push({
+    findings2.push({
       id: "codeowners-sampled-coverage",
       status: "failed",
       detail: "no CODEOWNERS file exists at .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS"
@@ -2192,7 +2196,7 @@ function evaluateGovernance(input) {
     const uncovered = input.sampledPaths.filter(
       (pathname) => codeownersOwners(entries, pathname).length === 0
     );
-    findings.push(
+    findings2.push(
       uncovered.length === 0 ? {
         id: "codeowners-sampled-coverage",
         status: "satisfied",
@@ -2214,26 +2218,26 @@ function evaluateGovernance(input) {
       if (!Array.isArray(rules) || rules.length === 0) unprotected.push(name);
     }
     if (list.length === 0) {
-      findings.push({
+      findings2.push({
         id: "deployment-environments",
         status: "satisfied",
         detail: "no deployment environments are configured"
       });
     } else if (unprotected.length === 0) {
-      findings.push({
+      findings2.push({
         id: "deployment-environments",
         status: "satisfied",
         detail: `all ${String(list.length)} deployment environments have protection rules`
       });
     } else {
-      findings.push({
+      findings2.push({
         id: "deployment-environments",
         status: "failed",
         detail: `deployment environments without protection rules: ${unprotected.join(", ")}`
       });
     }
   } else {
-    findings.push({
+    findings2.push({
       id: "deployment-environments",
       status: "unverifiable",
       detail: "deployment environments could not be fully read with the available credentials"
@@ -2245,8 +2249,8 @@ function evaluateGovernance(input) {
     branch: input.branch,
     requiredCheckContext: input.requiredCheckContext,
     sampledPaths: input.sampledPaths,
-    findings,
-    status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
+    findings: findings2,
+    status: findings2.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
   };
 }
 var CODEOWNERS_LOCATIONS = [
@@ -2403,8 +2407,8 @@ function isRecord2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function evaluateRelease(facts) {
-  const findings = [];
-  findings.push(
+  const findings2 = [];
+  findings2.push(
     facts.dirty ? {
       id: "clean-tree",
       status: "failed",
@@ -2416,19 +2420,19 @@ function evaluateRelease(facts) {
     }
   );
   if (facts.packageVersion === facts.version && facts.manifestVersion === facts.version) {
-    findings.push({
+    findings2.push({
       id: "version-sync",
       status: "satisfied",
       detail: `package.json and .claude-plugin/plugin.json both declare ${facts.version}`
     });
   } else {
-    findings.push({
+    findings2.push({
       id: "version-sync",
       status: "failed",
       detail: `version mismatch: package.json=${facts.packageVersion || "(unreadable)"}, .claude-plugin/plugin.json=${facts.manifestVersion || "(unreadable)"}, requested=${facts.version}`
     });
   }
-  findings.push(
+  findings2.push(
     facts.changelogVersions.includes(facts.version) ? {
       id: "changelog-entry",
       status: "satisfied",
@@ -2439,7 +2443,7 @@ function evaluateRelease(facts) {
       detail: `CHANGELOG.md has no section for ${facts.version}`
     }
   );
-  findings.push(
+  findings2.push(
     facts.bundleMatches ? {
       id: "bundle-built",
       status: "satisfied",
@@ -2450,7 +2454,26 @@ function evaluateRelease(facts) {
       detail: "committed dist/rigor.cjs differs from a fresh build; rebuild and commit it"
     }
   );
-  findings.push(
+  if (facts.ciBundleMatches === null) {
+    findings2.push({
+      id: "ci-bundle-sync",
+      status: "satisfied",
+      detail: "no committed dist/rigor.cjs and .rigor/rigor-ci.cjs pair in this repository; the dogfooding CI-verifier sync invariant does not apply"
+    });
+  } else if (facts.ciBundleMatches) {
+    findings2.push({
+      id: "ci-bundle-sync",
+      status: "satisfied",
+      detail: ".rigor/rigor-ci.cjs is byte-identical to the committed dist/rigor.cjs"
+    });
+  } else {
+    findings2.push({
+      id: "ci-bundle-sync",
+      status: "failed",
+      detail: "committed .rigor/rigor-ci.cjs differs from dist/rigor.cjs; regenerate it with /bin/cp -f dist/rigor.cjs .rigor/rigor-ci.cjs"
+    });
+  }
+  findings2.push(
     facts.branch === facts.expectedBranch ? {
       id: "expected-branch",
       status: "satisfied",
@@ -2462,44 +2485,44 @@ function evaluateRelease(facts) {
     }
   );
   if (facts.expectedSha === null) {
-    findings.push({
+    findings2.push({
       id: "expected-commit",
       status: "satisfied",
       detail: `HEAD is ${facts.head ?? "(none)"}; no expected SHA was pinned`
     });
   } else if (facts.head === facts.expectedSha) {
-    findings.push({
+    findings2.push({
       id: "expected-commit",
       status: "satisfied",
       detail: `HEAD is the expected commit ${facts.expectedSha}`
     });
   } else {
-    findings.push({
+    findings2.push({
       id: "expected-commit",
       status: "failed",
       detail: `HEAD is ${facts.head ?? "(none)"}, not the expected commit ${facts.expectedSha}`
     });
   }
   if (facts.ci.state === "success") {
-    findings.push({
+    findings2.push({
       id: "ci-success",
       status: "satisfied",
       detail: facts.ci.detail
     });
   } else if (facts.ci.state === "failed") {
-    findings.push({
+    findings2.push({
       id: "ci-success",
       status: "failed",
       detail: facts.ci.detail
     });
   } else if (facts.ci.state === "unverifiable") {
-    findings.push({
+    findings2.push({
       id: "ci-success",
       status: "unverifiable",
       detail: facts.ci.detail
     });
   } else {
-    findings.push({
+    findings2.push({
       id: "ci-success",
       status: "unverifiable",
       detail: "GitHub CI was not checked; pass --repo to verify the required check(s) for the exact SHA"
@@ -2511,8 +2534,8 @@ function evaluateRelease(facts) {
     branch: facts.branch,
     head: facts.head,
     requiredChecks: facts.requiredChecks,
-    findings,
-    status: findings.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
+    findings: findings2,
+    status: findings2.every((finding) => finding.status === "satisfied") ? "passed" : "failed"
   };
 }
 async function releaseCiFact(read, ref, sha, requiredChecks) {
@@ -2596,6 +2619,17 @@ async function bundleMatchesFreshBuild(root) {
     await (0, import_promises7.rm)(temp, { force: true }).catch(() => void 0);
   }
 }
+async function ciBundleFact(root) {
+  try {
+    const [dist, ci] = await Promise.all([
+      (0, import_promises7.readFile)(import_node_path8.default.join(root, "dist", "rigor.cjs")),
+      (0, import_promises7.readFile)(import_node_path8.default.join(root, ".rigor", "rigor-ci.cjs"))
+    ]);
+    return dist.equals(ci);
+  } catch {
+    return null;
+  }
+}
 async function releaseVerify(root, options2, read) {
   const packageVersion = await readJsonVersion(import_node_path8.default.join(root, "package.json"));
   const manifestVersion = await readJsonVersion(
@@ -2610,6 +2644,7 @@ async function releaseVerify(root, options2, read) {
   const branch = branchResult.stdout.toString("utf8").trim();
   const changelogVersions = await readChangelogVersions(root);
   const bundleMatches = await bundleMatchesFreshBuild(root);
+  const ciBundleMatches = await ciBundleFact(root);
   let ci;
   if (options2.repo && read) {
     ci = facts.head === null ? {
@@ -2638,6 +2673,7 @@ async function releaseVerify(root, options2, read) {
     dirty: facts.dirty,
     changelogVersions,
     bundleMatches,
+    ciBundleMatches,
     requiredChecks: options2.requiredChecks,
     ci
   });
@@ -2770,14 +2806,14 @@ function parseRoutingInput(value) {
   }
   if (item.schemaVersion === ROUTING_INPUT_V2_SCHEMA) {
     const assessmentRecord = record(item.assessment, "assessment");
-    const confidence = oneOf(
+    const confidence2 = oneOf(
       assessmentRecord.confidence,
       confidenceLevels,
       "assessment.confidence"
     );
     const evidence = parseEvidence(assessmentRecord.evidence);
     const signals = parseSignals(item.signals);
-    if (confidence === "high" && (signals.ambiguity === "critical" || signals.verificationStrength === "weak"))
+    if (confidence2 === "high" && (signals.ambiguity === "critical" || signals.verificationStrength === "weak"))
       throw new RigorError(
         "Contradictory assessment: high confidence with critical ambiguity or weak verification",
         EXIT.inputError
@@ -2794,7 +2830,7 @@ function parseRoutingInput(value) {
       budget: parseBudget(item.budget),
       assessment: {
         inputSchemaVersion: ROUTING_INPUT_V2_SCHEMA,
-        confidence,
+        confidence: confidence2,
         evidence
       }
     };
@@ -2864,9 +2900,9 @@ function requiredCapability(input) {
   const weaknessBump = input.signals.verificationStrength === "weak" ? 1 : 0;
   return capabilityClasses[Math.min(signalRank + weaknessBump, 3)];
 }
-function exclusionReason(candidate, input, preflight, required, availability) {
+function exclusionReason(candidate, input, preflight, required, availability2) {
   if (!candidate.enabled) return "DISABLED";
-  const state = availability.get(candidate.id);
+  const state = availability2.get(candidate.id);
   if (state === "incompatible") return "INCOMPATIBLE";
   if (state === "unavailable") return "UNAVAILABLE";
   if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
@@ -2878,24 +2914,24 @@ function exclusionReason(candidate, input, preflight, required, availability) {
     return "BUDGET_EXCEEDED";
   return null;
 }
-function route(preflight, input, profiles, availability) {
+function route(preflight, input, profiles, availability2) {
   if (input.taskId !== preflight.taskId)
     throw new RigorError(
       "Routing taskId does not match preflight",
       EXIT.inputError
     );
   const availabilityStates2 = /* @__PURE__ */ new Map();
-  if (availability !== void 0) {
-    if (availability.modelProfilesHash !== hash(profiles))
+  if (availability2 !== void 0) {
+    if (availability2.modelProfilesHash !== hash(profiles))
       throw new RigorError(
         "Availability report does not match the model profiles",
         EXIT.inputError
       );
-    for (const entry of availability.candidates)
+    for (const entry of availability2.candidates)
       availabilityStates2.set(entry.candidateId, entry.state);
   }
   const required = requiredCapability(input);
-  const confidence = input.assessment?.confidence ?? "medium";
+  const confidence2 = input.assessment?.confidence ?? "medium";
   const eligible = [];
   const excluded = [];
   for (const candidate of profiles.candidates) {
@@ -2912,7 +2948,7 @@ function route(preflight, input, profiles, availability) {
   eligible.sort(
     (left, right) => left.relativeCost - right.relativeCost || capabilityClasses.indexOf(left.capabilityClass) - capabilityClasses.indexOf(right.capabilityClass) || left.id.localeCompare(right.id)
   );
-  const selected = confidence === "low" ? void 0 : eligible[0];
+  const selected = confidence2 === "low" ? void 0 : eligible[0];
   const selection = selected ? {
     candidateId: selected.id,
     provider: selected.provider,
@@ -2920,7 +2956,7 @@ function route(preflight, input, profiles, availability) {
     capabilityClass: selected.capabilityClass,
     relativeCost: selected.relativeCost
   } : null;
-  const status = confidence === "low" ? "requires-review" : selection ? "selected" : "unroutable";
+  const status = confidence2 === "low" ? "requires-review" : selection ? "selected" : "unroutable";
   return {
     schemaVersion: ROUTING_DECISION_SCHEMA,
     mode: "dry-run",
@@ -2940,17 +2976,17 @@ function route(preflight, input, profiles, availability) {
       requireIndependentReview: preflight.riskTier === "high" || preflight.riskTier === "critical" || preflight.protectedPaths.length > 0
     },
     budget: input.budget,
-    ...availability === void 0 ? {} : { availabilityReportHash: hash(availability) },
+    ...availability2 === void 0 ? {} : { availabilityReportHash: hash(availability2) },
     assessment: {
       inputSchemaVersion: input.schemaVersion,
-      confidence,
+      confidence: confidence2,
       evidenceCount: input.assessment?.evidence.length ?? 0
     },
     status
   };
 }
-function createRoutingPlan(decision, preflight, contract, now = /* @__PURE__ */ new Date()) {
-  if (decision.status !== "selected" || decision.selection === null || decision.taskId !== contract.taskId || preflight.taskId !== contract.taskId)
+function createRoutingPlan(decision2, preflight, contract, now = /* @__PURE__ */ new Date()) {
+  if (decision2.status !== "selected" || decision2.selection === null || decision2.taskId !== contract.taskId || preflight.taskId !== contract.taskId)
     throw new RigorError(
       "A selected, task-matched routing decision is required",
       EXIT.policyViolation
@@ -2965,7 +3001,7 @@ function createRoutingPlan(decision, preflight, contract, now = /* @__PURE__ */ 
     mode: _mode,
     status: _status,
     ...rest
-  } = decision;
+  } = decision2;
   void _schemaVersion;
   void _mode;
   void _status;
@@ -3393,6 +3429,23 @@ var outcomes = [
   "investigate",
   "ask-human"
 ];
+var severities = [
+  "critical",
+  "high",
+  "medium",
+  "low",
+  "informational"
+];
+var reproducibility = [
+  "always",
+  "intermittent",
+  "not-reproduced"
+];
+var confidence = [
+  "low",
+  "medium",
+  "high"
+];
 function oneOf3(value, values, name) {
   if (typeof value !== "string" || !values.includes(value))
     throw new RigorError(`${name} is invalid`, EXIT.inputError);
@@ -3400,6 +3453,86 @@ function oneOf3(value, values, name) {
 }
 function optionalText(value, name) {
   return value === void 0 ? void 0 : textField(value, name, 512);
+}
+function evidencePath(value, name) {
+  const result = textField(value, name, 1024);
+  if (result.startsWith("/") || result.startsWith("\\") || /^[A-Za-z]:/u.test(result) || result.split(/[\\/]/u).includes(".."))
+    throw new RigorError(
+      `${name} must be a repository-relative path`,
+      EXIT.inputError
+    );
+  return result;
+}
+function exactKeys(item, allowed, name) {
+  const unexpected = Object.keys(item).filter((key) => !allowed.includes(key));
+  if (unexpected.length > 0)
+    throw new RigorError(
+      `${name} contains unsupported fields: ${unexpected.join(", ")}`,
+      EXIT.inputError
+    );
+}
+function findings(value) {
+  if (!Array.isArray(value) || value.length > 100)
+    throw new RigorError(
+      "findings must contain at most 100 items",
+      EXIT.inputError
+    );
+  return value.map((raw, index) => {
+    const item = record(raw, `findings[${index}]`);
+    exactKeys(
+      item,
+      [
+        "severity",
+        "evidenceLocation",
+        "reproducibility",
+        "requiredAction",
+        "confidence"
+      ],
+      `findings[${index}]`
+    );
+    const location = record(
+      item.evidenceLocation,
+      `findings[${index}].evidenceLocation`
+    );
+    exactKeys(
+      location,
+      ["path", "line"],
+      `findings[${index}].evidenceLocation`
+    );
+    const finding = {
+      severity: oneOf3(item.severity, severities, `findings[${index}].severity`),
+      evidenceLocation: {
+        path: evidencePath(
+          location.path,
+          `findings[${index}].evidenceLocation.path`
+        )
+      },
+      reproducibility: oneOf3(
+        item.reproducibility,
+        reproducibility,
+        `findings[${index}].reproducibility`
+      ),
+      requiredAction: textField(
+        item.requiredAction,
+        `findings[${index}].requiredAction`,
+        2e3
+      ),
+      confidence: oneOf3(
+        item.confidence,
+        confidence,
+        `findings[${index}].confidence`
+      )
+    };
+    if (location.line !== void 0) {
+      if (!Number.isInteger(location.line) || location.line < 1 || location.line > 1e7)
+        throw new RigorError(
+          `findings[${index}].evidenceLocation.line is invalid`,
+          EXIT.inputError
+        );
+      finding.evidenceLocation.line = location.line;
+    }
+    return finding;
+  });
 }
 function filteredChangedPaths(paths) {
   return paths.filter(
@@ -3468,26 +3601,65 @@ function parseConsultationSession(value) {
 }
 function parseConsultationResultInput(value) {
   const item = record(value, "consultation result input");
-  if (item.schemaVersion !== CONSULTATION_RESULT_INPUT_SCHEMA)
+  if (item.schemaVersion !== CONSULTATION_RESULT_INPUT_SCHEMA && item.schemaVersion !== CONSULTATION_RESULT_INPUT_V2_SCHEMA)
     throw new RigorError(
       "Unsupported consultation result input schema",
       EXIT.inputError
     );
-  if (!Number.isInteger(item.findingCount) || item.findingCount < 0)
+  const structuredFindings = item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA ? findings(item.findings) : void 0;
+  if (item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA)
+    exactKeys(
+      item,
+      [
+        "schemaVersion",
+        "taskId",
+        "status",
+        "outcome",
+        "findings",
+        "externalJobId",
+        "externalSessionId",
+        "externalTurnId",
+        "model",
+        "reasoningEffort",
+        "usageStatus",
+        "modelStatus",
+        "reasoningEffortStatus"
+      ],
+      "consultation result input"
+    );
+  if (item.schemaVersion === CONSULTATION_RESULT_INPUT_SCHEMA && (!Number.isInteger(item.findingCount) || item.findingCount < 0))
     throw new RigorError("findingCount is invalid", EXIT.inputError);
+  const modelStatus = item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA ? oneOf3(item.modelStatus, ["recorded", "unavailable"], "modelStatus") : void 0;
+  const reasoningEffortStatus = item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA ? oneOf3(
+    item.reasoningEffortStatus,
+    ["recorded", "unavailable"],
+    "reasoningEffortStatus"
+  ) : void 0;
+  const model = optionalText(item.model, "model");
+  const reasoningEffort = optionalText(item.reasoningEffort, "reasoningEffort");
+  if (item.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA && (modelStatus === "recorded" !== (model !== void 0) || reasoningEffortStatus === "recorded" !== (reasoningEffort !== void 0)))
+    throw new RigorError(
+      "Recorded/unavailable metadata status is inconsistent",
+      EXIT.inputError
+    );
   const result = {
-    schemaVersion: CONSULTATION_RESULT_INPUT_SCHEMA,
+    schemaVersion: item.schemaVersion,
     taskId: taskId(item.taskId),
     status: oneOf3(item.status, ["completed", "failed"], "status"),
     outcome: oneOf3(item.outcome, outcomes, "outcome"),
-    findingCount: item.findingCount,
-    requiredActions: strings(item.requiredActions, "requiredActions", 100),
+    findingCount: structuredFindings === void 0 ? item.findingCount : structuredFindings.length,
+    requiredActions: structuredFindings === void 0 ? strings(item.requiredActions, "requiredActions", 100) : structuredFindings.map((finding) => finding.requiredAction),
     usageStatus: oneOf3(
       item.usageStatus,
       ["recorded", "unavailable"],
       "usageStatus"
     )
   };
+  if (structuredFindings !== void 0) {
+    result.findings = structuredFindings;
+    result.modelStatus = modelStatus;
+    result.reasoningEffortStatus = reasoningEffortStatus;
+  }
   for (const [key, value2] of Object.entries({
     externalJobId: optionalText(item.externalJobId, "externalJobId"),
     externalSessionId: optionalText(
@@ -3495,8 +3667,8 @@ function parseConsultationResultInput(value) {
       "externalSessionId"
     ),
     externalTurnId: optionalText(item.externalTurnId, "externalTurnId"),
-    model: optionalText(item.model, "model"),
-    reasoningEffort: optionalText(item.reasoningEffort, "reasoningEffort")
+    model,
+    reasoningEffort
   }))
     if (value2 !== void 0) Object.assign(result, { [key]: value2 });
   return result;
@@ -3567,7 +3739,7 @@ async function finishConsultation(root, session, input, now = /* @__PURE__ */ ne
   const changedPathsAfter = filteredChangedPaths(facts.changedPaths);
   const mutated = session.beforeHead !== facts.head || session.beforeTreeHash !== afterTreeHash || JSON.stringify(session.changedPathsBefore) !== JSON.stringify(changedPathsAfter);
   const consultation = {
-    schemaVersion: CONSULTATION_SCHEMA,
+    schemaVersion: input.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA ? CONSULTATION_V2_SCHEMA : CONSULTATION_SCHEMA,
     artifactId: artifactId("consultation"),
     taskId: session.taskId,
     createdAt: now.toISOString(),
@@ -3589,6 +3761,11 @@ async function finishConsultation(root, session, input, now = /* @__PURE__ */ ne
     findingCount: input.findingCount,
     requiredActions: input.requiredActions
   };
+  if (input.schemaVersion === CONSULTATION_RESULT_INPUT_V2_SCHEMA) {
+    consultation.findings = input.findings;
+    consultation.modelStatus = input.modelStatus;
+    consultation.reasoningEffortStatus = input.reasoningEffortStatus;
+  }
   for (const key of [
     "externalJobId",
     "externalSessionId",
@@ -3797,16 +3974,16 @@ function parseAttempt(value) {
       EXIT.inputError
     );
   if (item.progress !== void 0) {
-    const progress = record(item.progress, "attempt.progress");
+    const progress2 = record(item.progress, "attempt.progress");
     oneOf4(
-      progress.status,
+      progress2.status,
       ["first", "unchanged", "reduced", "expanded", "incomparable"],
       "attempt.progress.status"
     );
-    strings(progress.weakeningSignals, "attempt.progress.weakeningSignals");
-    if (progress.comparedToAttemptArtifactId !== null && progress.comparedToAttemptArtifactId !== void 0)
+    strings(progress2.weakeningSignals, "attempt.progress.weakeningSignals");
+    if (progress2.comparedToAttemptArtifactId !== null && progress2.comparedToAttemptArtifactId !== void 0)
       textField(
-        progress.comparedToAttemptArtifactId,
+        progress2.comparedToAttemptArtifactId,
         "attempt.progress.comparedToAttemptArtifactId",
         128
       );
@@ -3956,9 +4133,9 @@ async function finishAttempt(root, session, contract, input, verification, now =
   const failureCategory = aggregateCategory(failureFacts);
   const { finishedAttempts } = await attemptState(root, session.taskId);
   const prior = mostRecentPriorAttempt(finishedAttempts, session.sequence);
-  let progress;
+  let progress2;
   if (prior === null) {
-    progress = {
+    progress2 = {
       status: "first",
       comparedToAttemptArtifactId: null,
       weakeningSignals: []
@@ -3971,14 +4148,14 @@ async function finishAttempt(root, session, contract, input, verification, now =
     );
     const priorFailureFacts = Array.isArray(prior.failureFacts) ? prior.failureFacts : null;
     if (priorFailureFacts === null) {
-      progress = {
+      progress2 = {
         status: "incomparable",
         comparedToAttemptArtifactId,
         weakeningSignals: []
       };
     } else {
       const comparison = compareFailures(priorFailureFacts, failureFacts);
-      progress = {
+      progress2 = {
         status: comparison.status,
         comparedToAttemptArtifactId,
         weakeningSignals: comparison.weakeningSignals
@@ -4017,7 +4194,7 @@ async function finishAttempt(root, session, contract, input, verification, now =
     failureFingerprint,
     failureCategory,
     failureFacts,
-    progress
+    progress: progress2
   };
   for (const key of [
     "failureClass",
@@ -4112,7 +4289,7 @@ function parseOutcomeInput(value) {
   const item = record(value, "outcome input");
   if (item.schemaVersion !== OUTCOME_INPUT_SCHEMA)
     throw new RigorError("Unsupported outcome input schema", EXIT.inputError);
-  const findings = record(item.reviewFindings, "reviewFindings");
+  const findings2 = record(item.reviewFindings, "reviewFindings");
   const input = {
     schemaVersion: OUTCOME_INPUT_SCHEMA,
     taskId: taskId(item.taskId),
@@ -4130,14 +4307,14 @@ function parseOutcomeInput(value) {
     escalationCount: integer2(item.escalationCount, "escalationCount", 0, 100),
     reviewFindings: {
       critical: integer2(
-        findings.critical,
+        findings2.critical,
         "reviewFindings.critical",
         0,
         1e4
       ),
-      high: integer2(findings.high, "reviewFindings.high", 0, 1e4),
-      medium: integer2(findings.medium, "reviewFindings.medium", 0, 1e4),
-      low: integer2(findings.low, "reviewFindings.low", 0, 1e4)
+      high: integer2(findings2.high, "reviewFindings.high", 0, 1e4),
+      medium: integer2(findings2.medium, "reviewFindings.medium", 0, 1e4),
+      low: integer2(findings2.low, "reviewFindings.low", 0, 1e4)
     },
     revertStatus: oneOf5(
       item.revertStatus,
@@ -4255,7 +4432,7 @@ function createOutcome(input, links, now = /* @__PURE__ */ new Date()) {
   }
   if (input.commit !== void 0) linkage.commit = input.commit;
   if (input.pullRequest !== void 0) linkage.pullRequest = input.pullRequest;
-  const findings = input.reviewFindings;
+  const findings2 = input.reviewFindings;
   const outcome = {
     schemaVersion: OUTCOME_SCHEMA,
     artifactId: artifactId("outcome"),
@@ -4267,8 +4444,8 @@ function createOutcome(input, links, now = /* @__PURE__ */ new Date()) {
     escalationCount: input.escalationCount,
     retryCount,
     reviewFindings: {
-      ...findings,
-      total: findings.critical + findings.high + findings.medium + findings.low
+      ...findings2,
+      total: findings2.critical + findings2.high + findings2.medium + findings2.low
     },
     revertStatus: input.revertStatus,
     escapedDefectStatus: input.escapedDefectStatus,
@@ -4561,9 +4738,9 @@ function validateEscalationArtifacts(input, contract, plans, attempts) {
       );
   }
 }
-function stop(input, profiles, availability, decision, reasonCode) {
-  return baseDecision(input, profiles, availability, {
-    decision,
+function stop(input, profiles, availability2, decision2, reasonCode) {
+  return baseDecision(input, profiles, availability2, {
+    decision: decision2,
     reasonCode,
     target: null,
     selection: null,
@@ -4571,13 +4748,13 @@ function stop(input, profiles, availability, decision, reasonCode) {
     excluded: []
   });
 }
-function baseDecision(input, profiles, availability, result) {
+function baseDecision(input, profiles, availability2, result) {
   return {
     schemaVersion: ESCALATION_DECISION_SCHEMA,
     taskId: input.taskId,
     inputHash: hash(input),
     modelProfilesHash: hash(profiles),
-    availabilityReportHash: availability === void 0 ? null : hash(availability),
+    availabilityReportHash: availability2 === void 0 ? null : hash(availability2),
     decision: result.decision,
     reasonCode: result.reasonCode,
     targetCapabilityClass: result.target,
@@ -4628,20 +4805,20 @@ function desiredClass(input) {
     target: capabilities2[currentIndex + 1] ?? null
   };
 }
-function exclusionReason2(candidate, input, target, availability) {
+function exclusionReason2(candidate, input, target, availability2) {
   if (!candidate.enabled) return "DISABLED";
   if (!candidate.purposes.includes(input.purpose)) return "PURPOSE_UNSUPPORTED";
   if (candidate.requiresAdditionalExternalTransmission && input.externalTransmission === "denied")
     return "EXTERNAL_TRANSMISSION_DENIED";
-  if (availability.get(candidate.id) === "unavailable") return "UNAVAILABLE";
-  if (availability.get(candidate.id) === "incompatible") return "INCOMPATIBLE";
+  if (availability2.get(candidate.id) === "unavailable") return "UNAVAILABLE";
+  if (availability2.get(candidate.id) === "incompatible") return "INCOMPATIBLE";
   if (candidate.capabilityClass !== target) return "CAPABILITY_NOT_SELECTED";
   if (input.consumedRelativeCost + candidate.relativeCost > input.budget.maxRelativeCost)
     return "BUDGET_EXCEEDED";
   return null;
 }
-function selectEscalation(input, profiles, availability) {
-  if (input.routingPlan.modelProfilesHash !== hash(profiles) || availability !== void 0 && availability.modelProfilesHash !== hash(profiles))
+function selectEscalation(input, profiles, availability2) {
+  if (input.routingPlan.modelProfilesHash !== hash(profiles) || availability2 !== void 0 && availability2.modelProfilesHash !== hash(profiles))
     throw new RigorError(
       "Profiles or availability are stale or inconsistent",
       EXIT.inputError
@@ -4650,7 +4827,7 @@ function selectEscalation(input, profiles, availability) {
     return stop(
       input,
       profiles,
-      availability,
+      availability2,
       "stop-policy-violation",
       input.concerns.scopeViolation ? "SCOPE_VIOLATION" : input.concerns.protectedTestMutation ? "PROTECTED_TEST_MUTATION" : input.concerns.configuredCheckRemoval ? "CONFIGURED_CHECK_REMOVAL" : "CONFIGURED_CHECK_WEAKENING"
     );
@@ -4658,7 +4835,7 @@ function selectEscalation(input, profiles, availability) {
     return stop(
       input,
       profiles,
-      availability,
+      availability2,
       "stop-human-decision",
       input.concerns.requirementsChangeRequired ? "REQUIREMENTS_CHANGE_REQUIRED" : input.concerns.acceptanceCriteriaChangeRequired ? "ACCEPTANCE_CRITERIA_CHANGE_REQUIRED" : "HUMAN_ONLY_DECISION"
     );
@@ -4666,7 +4843,7 @@ function selectEscalation(input, profiles, availability) {
     return stop(
       input,
       profiles,
-      availability,
+      availability2,
       "stop-budget-exhausted",
       input.attemptCount >= input.budget.maxAttempts ? "MAX_ATTEMPTS_EXHAUSTED" : input.elapsedMs >= input.budget.maxDurationMs ? "MAX_DURATION_EXHAUSTED" : "MAX_RELATIVE_COST_EXHAUSTED"
     );
@@ -4675,7 +4852,7 @@ function selectEscalation(input, profiles, availability) {
     return stop(
       input,
       profiles,
-      availability,
+      availability2,
       stopInfrastructure ? "stop-infrastructure" : "retry-infrastructure",
       input.failureCategory === "timeout" ? stopInfrastructure ? "TIMEOUT_RETRY_LIMIT" : "TIMEOUT_RETRY" : stopInfrastructure ? "INFRASTRUCTURE_RETRY_LIMIT" : "INFRASTRUCTURE_RETRY"
     );
@@ -4685,12 +4862,12 @@ function selectEscalation(input, profiles, availability) {
     return stop(
       input,
       profiles,
-      availability,
+      availability2,
       "stop-no-eligible-candidate",
       "NO_HIGHER_CAPABILITY_CLASS"
     );
   const availabilityStates2 = new Map(
-    availability?.candidates.map((candidate) => [
+    availability2?.candidates.map((candidate) => [
       candidate.candidateId,
       candidate.state
     ]) ?? []
@@ -4712,7 +4889,7 @@ function selectEscalation(input, profiles, availability) {
   );
   const selected = eligible[0];
   if (selected === void 0)
-    return baseDecision(input, profiles, availability, {
+    return baseDecision(input, profiles, availability2, {
       decision: "stop-no-eligible-candidate",
       reasonCode: "NO_ELIGIBLE_CANDIDATE",
       target: desired.target,
@@ -4720,7 +4897,7 @@ function selectEscalation(input, profiles, availability) {
       eligible: [],
       excluded
     });
-  return baseDecision(input, profiles, availability, {
+  return baseDecision(input, profiles, availability2, {
     decision: desired.decision,
     reasonCode: desired.reasonCode,
     target: desired.target,
@@ -5230,6 +5407,186 @@ async function hasUnfinishedAttempt(root, task) {
   return [...sessions].some((id) => !finished.has(id));
 }
 
+// src/review-selection.ts
+var risks2 = ["low", "medium", "high", "critical"];
+var confidences = ["low", "medium", "high"];
+var progress = ["none", "changed", "unchanged"];
+var availability = [
+  "available",
+  "unavailable",
+  "unknown",
+  "incompatible"
+];
+var unavailableActions = ["skip", "stop", "continue-claude-only"];
+function oneOf7(value, allowed, name) {
+  if (typeof value !== "string" || !allowed.includes(value))
+    throw new RigorError(`${name} is invalid`, EXIT.inputError);
+  return value;
+}
+function bool4(value, name) {
+  if (typeof value !== "boolean")
+    throw new RigorError(`${name} must be boolean`, EXIT.inputError);
+  return value;
+}
+function integer4(value, name, minimum) {
+  if (!Number.isInteger(value) || value < minimum || value > 20)
+    throw new RigorError(`${name} is out of range`, EXIT.inputError);
+  return value;
+}
+function exactKeys2(item, allowed, name) {
+  const unexpected = Object.keys(item).filter((key) => !allowed.includes(key));
+  if (unexpected.length > 0)
+    throw new RigorError(
+      `${name} contains unsupported fields: ${unexpected.join(", ")}`,
+      EXIT.inputError
+    );
+}
+function parseConsultationDecisionInput(value) {
+  const item = record(value, "consultation decision input");
+  if (item.schemaVersion !== CONSULTATION_DECISION_INPUT_SCHEMA)
+    throw new RigorError(
+      "Unsupported consultation decision input schema",
+      EXIT.inputError
+    );
+  exactKeys2(
+    item,
+    [
+      "schemaVersion",
+      "taskId",
+      "riskTier",
+      "assessmentConfidence",
+      "failureProgress",
+      "fingerprintRepetitions",
+      "concerns",
+      "humanRequested",
+      "externalTransmission",
+      "pluginAvailability",
+      "policy"
+    ],
+    "consultation decision input"
+  );
+  const concerns = record(item.concerns, "concerns");
+  const policy = record(item.policy, "policy");
+  exactKeys2(concerns, ["security", "dataIntegrity"], "concerns");
+  exactKeys2(
+    policy,
+    ["unchangedFailureThreshold", "unavailableAction"],
+    "policy"
+  );
+  return {
+    schemaVersion: CONSULTATION_DECISION_INPUT_SCHEMA,
+    taskId: taskId(item.taskId),
+    riskTier: oneOf7(item.riskTier, risks2, "riskTier"),
+    assessmentConfidence: oneOf7(
+      item.assessmentConfidence,
+      confidences,
+      "assessmentConfidence"
+    ),
+    failureProgress: oneOf7(item.failureProgress, progress, "failureProgress"),
+    fingerprintRepetitions: integer4(
+      item.fingerprintRepetitions,
+      "fingerprintRepetitions",
+      0
+    ),
+    concerns: {
+      security: bool4(concerns.security, "concerns.security"),
+      dataIntegrity: bool4(concerns.dataIntegrity, "concerns.dataIntegrity")
+    },
+    humanRequested: bool4(item.humanRequested, "humanRequested"),
+    externalTransmission: oneOf7(
+      item.externalTransmission,
+      ["allowed", "denied"],
+      "externalTransmission"
+    ),
+    pluginAvailability: oneOf7(
+      item.pluginAvailability,
+      availability,
+      "pluginAvailability"
+    ),
+    policy: {
+      unchangedFailureThreshold: integer4(
+        policy.unchangedFailureThreshold,
+        "policy.unchangedFailureThreshold",
+        2
+      ),
+      unavailableAction: oneOf7(
+        policy.unavailableAction,
+        unavailableActions,
+        "policy.unavailableAction"
+      )
+    }
+  };
+}
+function triggers(input) {
+  const result = [];
+  if (input.riskTier === "high") result.push("HIGH_RISK");
+  if (input.riskTier === "critical") result.push("CRITICAL_RISK");
+  if (input.assessmentConfidence === "low")
+    result.push("LOW_ASSESSMENT_CONFIDENCE");
+  if (input.failureProgress === "unchanged" && input.fingerprintRepetitions >= input.policy.unchangedFailureThreshold)
+    result.push("REPEATED_UNCHANGED_FAILURE");
+  if (input.concerns.security) result.push("SECURITY_CONCERN");
+  if (input.concerns.dataIntegrity) result.push("DATA_INTEGRITY_CONCERN");
+  if (input.humanRequested) result.push("HUMAN_REQUEST");
+  return result;
+}
+function decision(input, result) {
+  return {
+    schemaVersion: CONSULTATION_DECISION_SCHEMA,
+    taskId: input.taskId,
+    inputHash: hash(input),
+    pluginAvailability: input.pluginAvailability,
+    externalTransmission: input.externalTransmission,
+    ...result,
+    // Last so no spread value can ever widen the decision into an approval.
+    approvalEffect: "none"
+  };
+}
+function selectConsultation(input) {
+  if (input.externalTransmission === "denied")
+    return decision(input, {
+      decision: "continue-claude-only",
+      reasonCode: "EXTERNAL_TRANSMISSION_DENIED",
+      triggerReasons: triggers(input),
+      invocationAllowed: false
+    });
+  const triggerReasons = triggers(input);
+  if (triggerReasons.length === 0)
+    return decision(input, {
+      decision: "skip-independent-review",
+      reasonCode: "NO_REVIEW_TRIGGER",
+      triggerReasons,
+      invocationAllowed: false
+    });
+  if (input.pluginAvailability === "available")
+    return decision(input, {
+      decision: "request-independent-review",
+      reasonCode: "REVIEW_TRIGGERED",
+      triggerReasons,
+      invocationAllowed: true
+    });
+  if (input.policy.unavailableAction === "stop")
+    return decision(input, {
+      decision: "stop-required-review",
+      reasonCode: "REQUIRED_REVIEW_PLUGIN_UNAVAILABLE",
+      triggerReasons,
+      invocationAllowed: false
+    });
+  if (input.policy.unavailableAction === "continue-claude-only")
+    return decision(input, {
+      decision: "continue-claude-only",
+      reasonCode: "CLAUDE_ONLY_PLUGIN_UNAVAILABLE",
+      triggerReasons,
+      invocationAllowed: false
+    });
+  return decision(input, {
+    decision: "skip-independent-review",
+    reasonCode: "OPTIONAL_REVIEW_PLUGIN_UNAVAILABLE",
+    triggerReasons,
+    invocationAllowed: false
+  });
+}
+
 // src/cli.ts
 function option(args, name, required = true) {
   const index = args.indexOf(name);
@@ -5273,7 +5630,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   const [command, ...args] = argv;
   if (!command || command === "help" || command === "--help") {
     import_node_process.default.stdout.write(
-      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n"
+      "Usage: rigor <setup|preflight|contract|availability|route|attempt-start|attempt-finish|consult-decide|consult-start|consult-finish|verify|escalate|review|outcome|retrospect|test-integrity-scan|test-integrity-classify|governance|release-check|ci|hook> [options]\n"
     );
     return EXIT.success;
   }
@@ -5286,8 +5643,8 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
   if (command === "hook") {
     if (args[0] !== "user-prompt")
       throw new RigorError("Unknown hook", EXIT.inputError);
-    const decision = await userPromptHook(await stdinJson(), cwd);
-    if (decision) output(decision);
+    const decision2 = await userPromptHook(await stdinJson(), cwd);
+    if (decision2) output(decision2);
     return EXIT.success;
   }
   const policy = await loadPolicy(root);
@@ -5332,8 +5689,8 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
       await readJson(option(args, "--profiles"))
     );
     const availabilityPath = option(args, "--availability", false);
-    const availability = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
-    const result = route(preflight, input, profiles, availability);
+    const availability2 = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
+    const result = route(preflight, input, profiles, availability2);
     if (result.status !== "selected") {
       output(result);
       return EXIT.policyViolation;
@@ -5392,6 +5749,14 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
     output({ ...result.session, saved: result.saved });
     return EXIT.success;
   }
+  if (command === "consult-decide") {
+    const input = parseConsultationDecisionInput(
+      await readJson(option(args, "--input"))
+    );
+    const result = selectConsultation(input);
+    output(result);
+    return result.decision === "stop-required-review" ? EXIT.policyViolation : EXIT.success;
+  }
   if (command === "consult-finish") {
     const session = parseConsultationSession(
       await readJson(option(args, "--session"))
@@ -5436,7 +5801,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
         await readJson(option(args, "--profiles"))
       );
       const availabilityPath = option(args, "--availability", false);
-      const availability = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
+      const availability2 = availabilityPath ? parseAvailabilityReport(await readJson(availabilityPath)) : void 0;
       const contract = parseContract(
         await readJson(option(args, "--contract"))
       );
@@ -5460,12 +5825,12 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
       );
       attempts.sort((left, right) => left.sequence - right.sequence);
       validateEscalationArtifacts(input, contract, plans, attempts);
-      const decision = selectEscalation(input, profiles, availability);
+      const decision2 = selectEscalation(input, profiles, availability2);
       if (args.includes("--dry-run")) {
-        output(decision);
+        output(decision2);
       } else {
         const evidence = {
-          ...decision,
+          ...decision2,
           artifactId: artifactId("escalation-decision"),
           createdAt: (/* @__PURE__ */ new Date()).toISOString()
         };
@@ -5478,7 +5843,7 @@ async function main(argv = import_node_process.default.argv.slice(2), cwd = impo
         );
         output({ ...evidence, saved: saved2 });
       }
-      return decision.decision.startsWith("stop-") ? EXIT.policyViolation : EXIT.success;
+      return decision2.decision.startsWith("stop-") ? EXIT.policyViolation : EXIT.success;
     }
     const result = createEscalation(parseEscalationInput(rawInput));
     const task = String(record(result, "escalation").taskId);

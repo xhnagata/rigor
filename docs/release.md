@@ -64,6 +64,11 @@ Each finding:
 - `changelog-entry` — `CHANGELOG.md` has a section for the requested version.
 - `bundle-built` — the committed `dist/rigor.cjs` is byte-identical to a fresh
   build (the check builds to a throwaway file and never mutates `dist`).
+- `ci-bundle-sync` — the committed `.rigor/rigor-ci.cjs` is byte-identical to
+  the committed `dist/rigor.cjs`. This applies only in this repository, where
+  both files exist; in a consumer repository that carries only the setup-written
+  `.rigor/rigor-ci.cjs` and no source `dist/` tree the pair is absent and the
+  finding is satisfied as not-applicable, so it never fails a consumer.
 - `expected-branch` — `HEAD` is on the expected branch (`main` by default).
 - `expected-commit` — `HEAD` matches `--expected-sha` when one is pinned.
 - `ci-success` — the required GitHub check(s) completed successfully for the
@@ -91,7 +96,15 @@ All steps are human-authorized; Rigor performs none of them.
 2. Bump the version in both `package.json` and `.claude-plugin/plugin.json` to
    `X.Y.Z`. The manifest version is the Claude Code cache version, so it must
    change for users to receive an update.
-3. Run `npm run build` and commit the rebuilt `dist/rigor.cjs`.
+3. Run `npm run build`. Whenever the rebuilt `dist/rigor.cjs` bytes changed,
+   also refresh the pinned CI verifier so the two stay byte-identical:
+   `/bin/cp -f dist/rigor.cjs .rigor/rigor-ci.cjs`. Commit both files. Any
+   release whose `dist/rigor.cjs` bytes changed MUST regenerate
+   `.rigor/rigor-ci.cjs` in the same commit; the `rigor` PR gate executes the
+   committed `.rigor/rigor-ci.cjs`, so a stale copy silently enforces old
+   verification logic (the #29 / #44 recurrence). The `ci-bundle-sync`
+   release-check finding and the `test/ci-bundle.test.ts` check in
+   `npm run test:all` both fail loudly on drift.
 4. Open a pull request with these changes.
 5. Obtain the required checks (`rigor` and `quality`) green and the required
    approval, then merge the pull request. Never direct-push the release commit.

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_d4362a31-5827-4022-a9b8-21e73d7854f0",
+  "taskId": "GH-44",
+  "createdAt": "2026-07-12T14:23:13.873Z",
+  "sessionArtifactId": "attempt-session_8c9ddb8e-f0e7-472f-bfc4-d17e35427fd3",
+  "sessionHash": "6091ff4486a58e689332974abd6c5a49d4f9c4858791306014c5ac5d94db231c",
+  "routingPlanArtifactId": "routing-plan_6bab7f98-5c6b-4f19-b115-2286e0c11a40",
+  "routingPlanHash": "b25b49194383c2fa9b8012e099c06423b89a6a8f79c6566c37dbc72129c80c72",
+  "contractArtifactId": "contract_a0416603-bd67-415c-85fa-1fcd4763d403",
+  "contractHash": "3527ea9e7587cb631057f8e3b8673a439a6314364b35d61bd4042afc78ce3ef0",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-haiku-4-5-20251001",
+  "capabilityClass": "economy",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T14:15:50.182Z",
+  "completedAt": "2026-07-12T14:23:13.873Z",
+  "durationMs": 443691,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "afterHead": "8b349ce4cec1e1dcd6ea6ec51adabfcf866c8fff",
+  "beforeTreeHash": "f2768047fa24c330daf3428d0e4e86fa416aec8b4ea6a4ed059ac81e9f3b6437",
+  "afterTreeHash": "27d16b18b4f5636918e69ad0815294136c9cd05690f0a098fbccdf09eef940d1",
+  "changedPathsBefore": [],
+  "changedPaths": [
+    ".rigor/rigor-ci.cjs",
+    "dist/rigor.cjs",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "src/release.ts",
+    "test/ci-bundle.test.ts",
+    "test/release.test.ts"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_9e975bc2-ff24-47c8-90b9-31abbf6b9011",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  }
+}

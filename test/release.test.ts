@@ -20,6 +20,7 @@ function facts(overrides: Partial<ReleaseFacts> = {}): ReleaseFacts {
     dirty: false,
     changelogVersions: ["1.2.3", "1.2.2"],
     bundleMatches: true,
+    ciBundleMatches: true,
     requiredChecks: ["quality"],
     ci: { state: "success", detail: "all required checks succeeded" },
     ...overrides,
@@ -74,6 +75,24 @@ test("a stale bundle fails bundle-built", () => {
   const report = evaluateRelease(facts({ bundleMatches: false }));
   assert.equal(finding(report, "bundle-built")?.status, "failed");
   assert.equal(report.status, "failed");
+});
+
+test("a drifted CI bundle fails ci-bundle-sync", () => {
+  const report = evaluateRelease(facts({ ciBundleMatches: false }));
+  assert.equal(finding(report, "ci-bundle-sync")?.status, "failed");
+  assert.equal(report.status, "failed");
+});
+
+test("a synced CI bundle satisfies ci-bundle-sync", () => {
+  const report = evaluateRelease(facts({ ciBundleMatches: true }));
+  assert.equal(finding(report, "ci-bundle-sync")?.status, "satisfied");
+});
+
+test("ci-bundle-sync is satisfied (not applicable) when the pair is absent", () => {
+  const report = evaluateRelease(facts({ ciBundleMatches: null }));
+  const item = finding(report, "ci-bundle-sync");
+  assert.equal(item?.status, "satisfied");
+  assert.ok(item?.detail.includes("does not apply"));
 });
 
 test("the wrong branch fails expected-branch", () => {
