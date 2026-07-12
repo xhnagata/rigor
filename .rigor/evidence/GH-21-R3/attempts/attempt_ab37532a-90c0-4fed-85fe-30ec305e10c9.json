@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "rigor.attempt.v1",
+  "artifactId": "attempt_ab37532a-90c0-4fed-85fe-30ec305e10c9",
+  "taskId": "GH-21-R3",
+  "createdAt": "2026-07-12T13:33:19.258Z",
+  "sessionArtifactId": "attempt-session_6b27a709-3696-4dd2-ab15-8d7c93cfcaef",
+  "sessionHash": "cceb08254fec5ee033fc4571e245657363ab9f48dda2ec188109653d0af057a9",
+  "routingPlanArtifactId": "routing-plan_31739d69-dfc0-4684-988b-b17f54425b4e",
+  "routingPlanHash": "244a1a7e773c57152e96402ac9f9c7dfccb5025850ca2a50aeff7413f10306a6",
+  "contractArtifactId": "contract_2c21f7d6-daff-47de-acdb-6bc3eb8e5553",
+  "contractHash": "30f40e094d5aa87a857f18cea3482145f13e924563689a60c9875d66c5894bd2",
+  "sequence": 1,
+  "provider": "claude",
+  "model": "claude-opus-4-8",
+  "capabilityClass": "premium",
+  "purpose": "implementation",
+  "startedAt": "2026-07-12T13:26:50.223Z",
+  "completedAt": "2026-07-12T13:33:19.258Z",
+  "durationMs": 389035,
+  "executionIdentityStatus": "unverified",
+  "status": "completed",
+  "beforeHead": "b469fc67229a7f346130a1ecce9845323b8d3fc1",
+  "afterHead": "b469fc67229a7f346130a1ecce9845323b8d3fc1",
+  "beforeTreeHash": "7626636b44676b5661718b3fb8aef5b86944d8d34bb80d68d7b46734aaa19c06",
+  "afterTreeHash": "c3f69b613f5805e9223ff53bac0b80bffd9bd02e4260739ff0f19b4ae2a8baac",
+  "changedPathsBefore": [],
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/test-integrity.md"
+  ],
+  "scopeViolations": [],
+  "verificationArtifactId": "verification_9e025e63-043d-4a8e-b4de-5287df4e5255",
+  "failureFingerprint": null,
+  "failureCategory": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ],
+  "progress": {
+    "status": "first",
+    "comparedToAttemptArtifactId": null,
+    "weakeningSignals": []
+  },
+  "externalSessionId": "a3de4dfddb10629b7"
+}

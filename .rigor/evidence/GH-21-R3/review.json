@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_56ca22e5-393e-47e8-b292-424cefdc1160",
+  "taskId": "GH-21-R3",
+  "createdAt": "2026-07-12T13:33:19.346Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_2c21f7d6-daff-47de-acdb-6bc3eb8e5553",
+  "verificationArtifactId": "verification_9e025e63-043d-4a8e-b4de-5287df4e5255",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "docs/test-integrity.md"
+  ],
+  "acceptanceCriteria": [
+    "TI-12 (mutation-score decline) moves from rejected to conditional shadow, restricted to repositories that already run a pinned mutation tool as a configured check with comparable scores over the same configuration and mutant set; no default mutation run is introduced; the falsifiable-tests row gains a must-fire/must-not-fire pair consistent with that scope; TI-12 is not described as implemented.",
+    "TI-13 and TI-15 move from advisory only to shadow candidate status that is explicitly PROPOSED and lower priority: the document distinguishes the implemented scanner set (TI-05..TI-09, collected by rigor test-integrity-scan per #22) from these proposed additions that the scanner does not yet evaluate, without renaming or weakening the implemented rung.",
+    "TI-13 and TI-15 confidence cells split into a deterministic configured-rule-match component (high) and an advisory weakening-interpretation component (low-medium); TI-11's confidence cell distinguishes measurement accuracy under identical tool, version, configuration, and scope from the advisory interpretation that a decline indicates weakening.",
+    "TI-01's false-positive-risk wording claims only detection of a configured-check definition change without inferring intent, and its must-not-fire case becomes an unrelated .rigor/policy.json edit that leaves the checks array untouched.",
+    "TI-08's must-not-fire case additionally covers a snapshot-only diff with no accompanying implementation changes, matching the implemented conjunctive detector in src/test-integrity.ts which returns null when either side of the conjunction is empty.",
+    "The catalog states explicitly that the implemented TI-02/TI-03/TI-04 gate constrains cross-attempt progress classification (reduced/incomparable), not verification, review, or merge outcomes.",
+    "All scenario tables, the enforcement ladder, the shadow-candidate/implemented-collection sections, and cross-references remain mutually consistent; every existing label (deterministic fact / tool-derived measurement / advisory interpretation) is unchanged; TI-16 remains rejected as an authoritative check and TI-10/TI-14 remain advisory only.",
+    "CHANGELOG.md documents the amendment under the existing Unreleased heading alongside the #15 entry, attributing the revisions to the recorded GH-21-R2 Codex consultation without describing Codex agreement as approval or verification.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass, and git diff --check is clean."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
