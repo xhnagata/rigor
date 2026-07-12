@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_2d51537a-b6d9-4f38-ba47-32889ceb4994",
+  "taskId": "REL-0-7-0",
+  "createdAt": "2026-07-12T00:45:28.128Z",
+  "preflightArtifactId": "preflight_79aa9f4e-82d9-4f18-a510-057fbf561cca",
+  "preflightHash": "b967ff356e2dfe9dc143c62ed4520cd092932072052250f88bb9477dc38b5c9b",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.7.0.",
+    "CHANGELOG.md has a 0.7.0 section dated 2026-07-12 summarizing the #13 deterministic failure-fingerprint and cross-attempt progress feature.",
+    "dist/rigor.cjs remains byte-identical to a fresh build (no bundle change).",
+    "rigor release-check --version 0.7.0 passes, and npm run test:all, npm run bench, and claude plugin validate . --strict pass."
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Version bump and changelog only; no source, schema, test, or bundle behavior changes.",
+    "Do not modify dist/rigor.cjs, .rigor/policy.json, .rigor/rigor-ci.cjs, or any protected path.",
+    "Release must reach main only through a protected pull request with required checks green; never direct-push a release commit."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
