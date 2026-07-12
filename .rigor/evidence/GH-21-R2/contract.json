@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_92dbdbb0-6de7-42ef-ae3e-97c09b7b718b",
+  "taskId": "GH-21-R2",
+  "createdAt": "2026-07-12T06:28:36.934Z",
+  "preflightArtifactId": "preflight_dfcd3fd9-a6b9-4b1e-a8f7-5a899225fb8a",
+  "preflightHash": "7ddc67adae8d32acc4f6d16f22b5c4b775b712f8316ab850440477f83565b88b",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "TI-12 (mutation-score decline) moves from rejected to conditional shadow, restricted to repositories that already run a pinned mutation tool as a configured check with comparable scores over the same configuration; no default mutation run is introduced and the falsifiable-tests table gains a must-fire/must-not-fire pair consistent with that scope.",
+    "TI-13 and TI-15 move from advisory only to shadow candidate (#22) at explicitly lower priority than TI-05/TI-06/TI-09/TI-07/TI-08, with their confidence cells split into a deterministic configured-rule-match component and an advisory weakening-interpretation component.",
+    "TI-11's confidence cell distinguishes measurement accuracy (given identical tool, version, configuration, and scope) from the advisory interpretation that a decline indicates weakening.",
+    "TI-01's false-positive-risk wording claims only detection of a configured-check definition change without inferring intent, and its must-not-fire case becomes an unrelated .rigor/policy.json edit that leaves the checks array untouched.",
+    "TI-08 gains a must-not-fire case for snapshot-only changes without accompanying implementation changes.",
+    "The catalog states explicitly that the implemented TI-02/TI-03/TI-04 gate constrains cross-attempt progress classification (reduced/incomparable), not verification, review, or merge outcomes.",
+    "The shadow-candidate summary section and scenario tables remain consistent with the updated enforcement levels, and every existing label (deterministic fact / tool-derived measurement / advisory interpretation) is unchanged.",
+    "CHANGELOG.md documents the amendment under an Unreleased heading, attributing the revisions to a recorded Codex consultation without describing Codex agreement as approval or verification.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass, and git diff --check is clean."
+  ],
+  "allowedPaths": [
+    "docs/test-integrity.md",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Documentation-only change: touch nothing outside docs/test-integrity.md and CHANGELOG.md (GH-21-R2 evidence under .rigor/evidence/ is written by Rigor commands, not the implementation agent).",
+    "No signal may be promoted to deterministic fact, described as implemented, or given any enforcement effect; TI-16 remains rejected as an authoritative check and TI-10/TI-14 remain advisory only.",
+    "Do not weaken or remove any existing threat scenario, falsifiable test, honesty disclaimer, or the 'What must never be advertised' section.",
+    "Enforcement beyond shadow collection remains contingent on #22 false-positive evidence and #16 outcome calibration followed by a separate human decision; the amendment must not pre-commit any threshold or promotion rule."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
