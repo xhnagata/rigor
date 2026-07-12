@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/escalation-decision.v1.schema.json",
+  "title": "Rigor escalation decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "inputHash",
+    "modelProfilesHash",
+    "availabilityReportHash",
+    "decision",
+    "reasonCode",
+    "targetCapabilityClass",
+    "selection",
+    "eligibleCandidates",
+    "excludedCandidates",
+    "budget",
+    "facts",
+    "speculation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.escalation-decision.v1" },
+    "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "inputHash": { "$ref": "#/$defs/digest" },
+    "modelProfilesHash": { "$ref": "#/$defs/digest" },
+    "availabilityReportHash": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+    },
+    "decision": {
+      "enum": [
+        "retry-current",
+        "escalate-adjacent",
+        "escalate-direct",
+        "retry-infrastructure",
+        "stop-infrastructure",
+        "stop-human-decision",
+        "stop-policy-violation",
+        "stop-budget-exhausted",
+        "stop-no-eligible-candidate"
+      ]
+    },
+    "reasonCode": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Z][A-Z_]*$"
+    },
+    "targetCapabilityClass": {
+      "oneOf": [
+        { "type": "null" },
+        { "enum": ["economy", "standard", "premium", "frontier"] }
+      ]
+    },
+    "selection": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "candidateId",
+            "provider",
+            "capabilityClass",
+            "relativeCost"
+          ],
+          "properties": {
+            "candidateId": { "type": "string", "minLength": 1 },
+            "provider": { "type": "string", "minLength": 1 },
+            "model": { "type": "string", "minLength": 1 },
+            "capabilityClass": { "$ref": "#/$defs/capability" },
+            "relativeCost": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "eligibleCandidates": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "excludedCandidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidateId", "reasonCode"],
+        "properties": {
+          "candidateId": { "type": "string", "minLength": 1 },
+          "reasonCode": {
+            "enum": [
+              "DISABLED",
+              "PURPOSE_UNSUPPORTED",
+              "EXTERNAL_TRANSMISSION_DENIED",
+              "BUDGET_EXCEEDED",
+              "UNAVAILABLE",
+              "INCOMPATIBLE",
+              "CAPABILITY_NOT_SELECTED"
+            ]
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attemptCount",
+        "maxAttempts",
+        "elapsedMs",
+        "maxDurationMs",
+        "consumedRelativeCost",
+        "remainingRelativeCost",
+        "maxRelativeCost"
+      ],
+      "properties": {
+        "attemptCount": { "type": "integer", "minimum": 1 },
+        "maxAttempts": { "type": "integer", "minimum": 1 },
+        "elapsedMs": { "type": "integer", "minimum": 0 },
+        "maxDurationMs": { "type": "integer", "minimum": 1000 },
+        "consumedRelativeCost": { "type": "integer", "minimum": 0 },
+        "remainingRelativeCost": { "type": "integer" },
+        "maxRelativeCost": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "failureCategory",
+        "progress",
+        "fingerprintRepetitions",
+        "riskTier",
+        "currentCapabilityClass",
+        "concerns"
+      ],
+      "properties": {
+        "failureCategory": {
+          "enum": [
+            "implementation",
+            "infrastructure",
+            "timeout",
+            "flaky",
+            "mixed"
+          ]
+        },
+        "progress": {
+          "enum": ["first", "unchanged", "reduced", "expanded", "incomparable"]
+        },
+        "fingerprintRepetitions": { "type": "integer", "minimum": 0 },
+        "riskTier": { "enum": ["low", "medium", "high", "critical"] },
+        "currentCapabilityClass": { "$ref": "#/$defs/capability" },
+        "concerns": { "$ref": "#/$defs/concerns" }
+      }
+    },
+    "speculation": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "capability": {
+      "enum": ["economy", "standard", "premium", "frontier"]
+    },
+    "concerns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirementsChangeRequired",
+        "acceptanceCriteriaChangeRequired",
+        "humanOnlyDecision",
+        "scopeViolation",
+        "protectedTestMutation",
+        "configuredCheckRemoval",
+        "configuredCheckWeakening",
+        "security",
+        "dataIntegrity",
+        "architectureChange",
+        "contractContradiction"
+      ],
+      "properties": {
+        "requirementsChangeRequired": { "type": "boolean" },
+        "acceptanceCriteriaChangeRequired": { "type": "boolean" },
+        "humanOnlyDecision": { "type": "boolean" },
+        "scopeViolation": { "type": "boolean" },
+        "protectedTestMutation": { "type": "boolean" },
+        "configuredCheckRemoval": { "type": "boolean" },
+        "configuredCheckWeakening": { "type": "boolean" },
+        "security": { "type": "boolean" },
+        "dataIntegrity": { "type": "boolean" },
+        "architectureChange": { "type": "boolean" },
+        "contractContradiction": { "type": "boolean" }
+      }
+    }
+  }
+}

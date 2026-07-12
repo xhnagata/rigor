@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_b1b1b87c-1282-44f5-b46b-0c3be5111791",
+  "taskId": "GH-14",
+  "createdAt": "2026-07-12T05:35:12.187Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_1f8d4713-3178-47e5-be7a-454f25acabc4",
+  "verificationArtifactId": "verification_80b56e33-9fa2-4a45-a444-7ab094e10258",
+  "changedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "The same validated input deterministically returns the same bounded escalation decision",
+    "Policy, human-decision, budget, and infrastructure stops precede candidate selection",
+    "Adjacent and direct escalation use eligible candidates only and record exclusions",
+    "Legacy escalation v1 remains accepted and new decision evidence is append-only",
+    "Targeted and repository-wide verification passes"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

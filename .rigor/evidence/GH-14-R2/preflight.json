@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_6c3d15c0-4e6b-47aa-9c84-961895a0f125",
+  "taskId": "GH-14-R2",
+  "createdAt": "2026-07-12T06:18:18.778Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "7dc4e8a16044b29bf21fd67dea35a741a71b8a91606d338fbea7d0d9a19f25fa",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+    "dirty": true,
+    "changedPaths": [
+      ".rigor/evidence/GH-14/consultations/consultation-session_56c4d714-4182-4e9b-b7a6-0b61f3c28721.json",
+      ".rigor/evidence/GH-14/consultations/consultation_40516265-8251-4326-9146-03575f819b7f.json",
+      ".rigor/evidence/GH-14/contract.json",
+      ".rigor/evidence/GH-14/escalation.json",
+      ".rigor/evidence/GH-14/preflight.json",
+      ".rigor/evidence/GH-14/review.json",
+      ".rigor/evidence/GH-14/routing/routing-plan_ca0c6172-277a-4447-a985-fd312568a544.json",
+      ".rigor/evidence/GH-14/verification.json",
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "docs/threat-model.md",
+      "schemas/artifacts.v1.schema.json",
+      "schemas/escalation-decision-input.v1.schema.json",
+      "schemas/escalation-decision.v1.schema.json",
+      "src/cli.ts",
+      "src/escalation.ts",
+      "src/types.ts",
+      "test/escalation.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/escalation.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/escalation.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

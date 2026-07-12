@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "rigor.consultation-session.v1",
+  "artifactId": "consultation-session_56c4d714-4182-4e9b-b7a6-0b61f3c28721",
+  "taskId": "GH-14",
+  "createdAt": "2026-07-12T06:05:15.299Z",
+  "preflightArtifactId": "preflight_db6148f4-73df-4e39-aa72-c0ff8f4985a4",
+  "preflightHash": "d17582b1e0f9c5ec3e9272e0cded0c34b78a09b6e60199c5e968bdbb40c2e255",
+  "provider": "codex-plugin-cc",
+  "mode": "consultation",
+  "requestedDecision": "Refine one threat-model table row's wording so it is precisely backed by code. Current row for 'Endless repeated attempts' claims infrastructure/timeout retries are 'bounded separately', but the implemented stop-infrastructure fires only when the same failure fingerprint repeats more than the configurable infrastructureRetries threshold; infrastructure failures with null or varying fingerprints retry until the global attempt/duration/relative-cost budget stops. Propose accurate replacement wording (one table cell, concise) that discloses the fingerprint-gated bound and the budget backstop without overclaiming.",
+  "transmissionDecision": "allowed",
+  "beforeHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "beforeTreeHash": "137b12d5bce203a70fc2fd70e24d108edeab1dcf2081f218915b34cf78891141",
+  "changedPathsBefore": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ]
+}

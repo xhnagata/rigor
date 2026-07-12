@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "rigor.consultation.v1",
+  "artifactId": "consultation_40516265-8251-4326-9146-03575f819b7f",
+  "taskId": "GH-14",
+  "createdAt": "2026-07-12T06:07:55.730Z",
+  "sessionArtifactId": "consultation-session_56c4d714-4182-4e9b-b7a6-0b61f3c28721",
+  "sessionHash": "af5af4201a055d094e09e77805846dd75e677363130646df87199f9c24f83221",
+  "provider": "codex-plugin-cc",
+  "mode": "consultation",
+  "requestedDecision": "Refine one threat-model table row's wording so it is precisely backed by code. Current row for 'Endless repeated attempts' claims infrastructure/timeout retries are 'bounded separately', but the implemented stop-infrastructure fires only when the same failure fingerprint repeats more than the configurable infrastructureRetries threshold; infrastructure failures with null or varying fingerprints retry until the global attempt/duration/relative-cost budget stops. Propose accurate replacement wording (one table cell, concise) that discloses the fingerprint-gated bound and the budget backstop without overclaiming.",
+  "transmissionDecision": "allowed",
+  "beforeTreeHash": "137b12d5bce203a70fc2fd70e24d108edeab1dcf2081f218915b34cf78891141",
+  "afterTreeHash": "137b12d5bce203a70fc2fd70e24d108edeab1dcf2081f218915b34cf78891141",
+  "beforeHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "afterHead": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+  "changedPathsBefore": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "changedPathsAfter": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "usageStatus": "unavailable",
+  "status": "completed",
+  "outcome": "revise",
+  "findingCount": 1,
+  "requiredActions": [
+    "Replace the threat-model 'Endless repeated attempts' clause so the infrastructure retry limit is disclosed as identical-fingerprint-gated with the global attempt/duration/relative-cost budget as the backstop"
+  ],
+  "externalSessionId": "019f54ef-2a2a-73c3-8da6-3389c1884dd4",
+  "externalTurnId": "019f54ef-3361-76f2-8025-b22cc31ba596",
+  "model": "gpt-5.6-sol"
+}

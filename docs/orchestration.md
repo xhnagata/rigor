@@ -110,6 +110,8 @@ External job, session, turn, model, effort, and usage identifiers are optional b
 - `attempt-session.v1.schema.json` records the selected candidate, budgets, and pre-execution Git state.
 - `attempt-result-input.v1.schema.json` records completion, failure, cancellation, and available external IDs.
 - `attempt.v1.schema.json` records duration, before/after state, scope violations, linked passing verification, a Rigor-derived `failureFingerprint`/`failureCategory`/`failureFacts` copied from that verification, and a `progress` comparison against the most recent prior finished attempt.
+- `escalation-decision-input.v1.schema.json` describes linked attempt facts, deterministic failure/progress facts, safety and human-decision gates, consumed budgets, configurable thresholds, and separately identified model-authored speculation.
+- `escalation-decision.v1.schema.json` describes the deterministic retry/escalate/stop result, selected capability/candidate, every candidate exclusion, linked input hashes, and the remaining relative-cost budget.
 - `consultation-request.v1.schema.json` bounds the decision sent to `codex-plugin-cc`.
 - `consultation-session.v1.schema.json` records the pre-consultation Git snapshot.
 - `consultation-result-input.v1.schema.json` accepts a minimal normalized result without raw transcript or chain of thought.
@@ -186,6 +188,43 @@ Failure categorization is conservative: `infrastructure` requires a specific, un
 The weakening signals recorded here are the implemented subset of a broader test-weakening threat catalog; [test-integrity.md](test-integrity.md) classifies the remaining proposed, unimplemented signals and their planned shadow-mode collection.
 
 All of this is deterministically derived by Rigor code from the verification's own check output — never copied from model input. It is kept entirely separate from the model-supplied, speculative `failureClass` on `attempt-result-input.v1`/`attempt.v1`, which remains free-form text for human review and is never treated as a fact.
+
+## Bounded escalation decisions
+
+The legacy `rigor.escalation-input.v1` and `rigor.escalation.v1` schemas remain accepted unchanged. They are narrative handoff artifacts and are not silently reinterpreted as selector inputs. Deterministic selection uses the explicit `rigor.escalation-decision-input.v1` schema instead. This is an additive migration: callers may continue using the legacy command, while new callers supply `--profiles`, `--contract`, every routing plan referenced by the history with repeated `--plan` arguments, and every linked attempt in sequence with repeated `--attempt` arguments. `--dry-run` returns the pure decision without writing; omitting it saves a new file under `.rigor/evidence/<task>/escalations/`, so decision evidence is append-only rather than replacing `escalation.json`.
+
+Parsing and link validation fail closed before selection. The CLI checks task IDs, artifact IDs and hashes, routing-plan/profile linkage, the current attempt's binding to the named routing plan, agreement between the input budget and the plan-authorized budget, complete consecutive attempt sequences, elapsed time and relative-cost totals, current failure/progress/capability facts, and fingerprint repetition counts. Unsupported versions, malformed input, and stale or inconsistent linked artifacts exit `3`. Raw logs, provider transcripts, secrets, token counts, reasoning effort, provider cost, and unverified runtime identity are not fields in either decision schema.
+
+The selector is pure: for the same parsed input, profiles, and availability report it returns the same decision. Its security-significant evaluation order is:
+
+1. malformed, stale, or inconsistent input (parser/link validator);
+2. scope violation, protected-test mutation, configured-check removal, or configured-check weakening (`stop-policy-violation`);
+3. requirements/acceptance-criteria changes or another human-only choice (`stop-human-decision`);
+4. maximum attempts, elapsed duration, or relative-cost exhaustion (`stop-budget-exhausted`);
+5. infrastructure and timeout handling (`retry-infrastructure`, then `stop-infrastructure` once an identical failure fingerprint exceeds the retry limit; varying or absent fingerprints stay bounded by the budget stop above), with no model candidate selected;
+6. failure-set progress and fingerprint repetition;
+7. adjacent or direct target capability selection;
+8. candidate eligibility (enabled, purpose-compatible, transmission-permitted, available/unknown rather than unavailable/incompatible, exact selected capability, and affordable);
+9. deterministic tie-break by capability order, relative cost, then candidate ID;
+10. a structured retry, escalation, or `stop-no-eligible-candidate` decision.
+
+For an ordinary implementation defect, the next adjacent class is selected. A reduced failure set retries the current class; expanded and incomparable sets select the adjacent class. A contract contradiction, repeated unchanged fingerprint, safety/data-integrity concern, or architecture change can jump directly to premium or frontier when the policy, availability, and remaining budget permit it. Infrastructure and timeout failures never select premium/frontier merely because they are infrastructure failures.
+
+The default `unchangedAttemptsBeforeDirect: 2` and `infrastructureRetries: 2` values are **initial hypotheses**, not empirically established quality guarantees. Both are configurable in the input's `thresholds`; omission uses those defaults. Human reviewers should revisit them using outcome evidence, especially for critical repositories, slow checks, or costly candidates. Maximum attempts, duration, and relative cost remain hard bounds regardless of apparent progress.
+
+Example (paths abbreviated):
+
+```sh
+rigor escalate --dry-run \
+  --input /tmp/escalation-decision-input.json \
+  --profiles /tmp/model-profiles.json \
+  --availability /tmp/availability.json \
+  --contract .rigor/evidence/GH-14/contract.json \
+  --plan .rigor/evidence/GH-14/routing/routing-plan_ID.json \
+  --attempt .rigor/evidence/GH-14/attempts/attempt_1.json
+```
+
+Remove `--dry-run` to append the decision evidence. Rigor computes and records the decision only; it does not invoke a model or provider API.
 
 ## Consultation protocol
 

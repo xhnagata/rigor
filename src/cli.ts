@@ -59,8 +59,14 @@ import {
   parseReviewArtifact,
 } from "./outcome.js";
 import { parseIntent } from "./schema.js";
+import {
+  parseEscalationDecisionInput,
+  selectEscalation,
+  validateEscalationArtifacts,
+} from "./escalation.js";
 import { setup } from "./setup.js";
-import { readJson, record } from "./util.js";
+import { artifactId, readJson, record } from "./util.js";
+import { ESCALATION_DECISION_INPUT_SCHEMA } from "./types.js";
 import type { Verification } from "./types.js";
 
 function option(
@@ -73,6 +79,18 @@ function option(
   if (required && (!value || value.startsWith("--")))
     throw new RigorError(`Missing ${name}`, EXIT.inputError);
   return value;
+}
+
+function options(args: string[], name: string): string[] {
+  const result: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== name) continue;
+    const value = args[index + 1];
+    if (!value || value.startsWith("--"))
+      throw new RigorError(`Missing ${name}`, EXIT.inputError);
+    result.push(value);
+  }
+  return result;
 }
 
 function output(value: unknown): void {
@@ -271,9 +289,65 @@ export async function main(
     return result.status === "passed" ? EXIT.success : EXIT.policyViolation;
   }
   if (command === "escalate") {
-    const result = createEscalation(
-      parseEscalationInput(await readJson(option(args, "--input")!)),
-    );
+    const rawInput = await readJson(option(args, "--input")!);
+    if (
+      record(rawInput, "escalation input").schemaVersion ===
+      ESCALATION_DECISION_INPUT_SCHEMA
+    ) {
+      const input = parseEscalationDecisionInput(rawInput);
+      const profiles = parseModelProfiles(
+        await readJson(option(args, "--profiles")!),
+      );
+      const availabilityPath = option(args, "--availability", false);
+      const availability = availabilityPath
+        ? parseAvailabilityReport(await readJson(availabilityPath))
+        : undefined;
+      const contract = parseContract(
+        await readJson(option(args, "--contract")!),
+      );
+      const planPaths = options(args, "--plan");
+      if (planPaths.length === 0)
+        throw new RigorError(
+          "At least one --plan is required",
+          EXIT.inputError,
+        );
+      const plans = await Promise.all(
+        planPaths.map(async (file) => parseRoutingPlan(await readJson(file))),
+      );
+      const attemptPaths = options(args, "--attempt");
+      if (attemptPaths.length === 0)
+        throw new RigorError(
+          "At least one --attempt is required",
+          EXIT.inputError,
+        );
+      const attempts = await Promise.all(
+        attemptPaths.map(async (file) => parseAttempt(await readJson(file))),
+      );
+      attempts.sort((left, right) => left.sequence - right.sequence);
+      validateEscalationArtifacts(input, contract, plans, attempts);
+      const decision = selectEscalation(input, profiles, availability);
+      if (args.includes("--dry-run")) {
+        output(decision);
+      } else {
+        const evidence = {
+          ...decision,
+          artifactId: artifactId("escalation-decision"),
+          createdAt: new Date().toISOString(),
+        };
+        const saved = await saveCollectionArtifact(
+          root,
+          input.taskId,
+          "escalations",
+          "escalation-decision",
+          evidence,
+        );
+        output({ ...evidence, saved });
+      }
+      return decision.decision.startsWith("stop-")
+        ? EXIT.policyViolation
+        : EXIT.success;
+    }
+    const result = createEscalation(parseEscalationInput(rawInput));
     const task = String(record(result, "escalation").taskId);
     const saved = await saveArtifact(root, task, "escalation", result);
     output({ ...record(result, "escalation"), saved });

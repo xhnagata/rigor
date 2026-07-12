@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_db6148f4-73df-4e39-aa72-c0ff8f4985a4",
+  "taskId": "GH-14",
+  "createdAt": "2026-07-12T05:32:22.029Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "39ea629c29d61985437c59f37da27d28b556a2ea25c7d42db7da92c0e66cb956",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor/node_modules/rigor-gh-14-current",
+    "head": "8c122deb4e69f1ac486fb8b7f11400e42b4f1e7e",
+    "dirty": true,
+    "changedPaths": [
+      "README.md",
+      "dist/rigor.cjs",
+      "docs/orchestration.md",
+      "docs/threat-model.md",
+      "schemas/artifacts.v1.schema.json",
+      "schemas/escalation-decision-input.v1.schema.json",
+      "schemas/escalation-decision.v1.schema.json",
+      "src/cli.ts",
+      "src/escalation.ts",
+      "src/types.ts",
+      "test/escalation.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "riskTier": "high",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "a protected path is discovered",
+    "a required check fails twice without a new hypothesis"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/orchestration.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/cli.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/escalation.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "runtime-code",
+      "path": "src/types.ts",
+      "reason": "Runtime code affects shipped behavior."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/escalation.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

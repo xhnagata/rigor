@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xhnagata/rigor/schemas/escalation-decision-input.v1.schema.json",
+  "title": "Rigor escalation decision input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "purpose",
+    "contract",
+    "routingPlan",
+    "currentAttempt",
+    "previousAttempts",
+    "riskTier",
+    "externalTransmission",
+    "failureCategory",
+    "progress",
+    "fingerprintRepetitions",
+    "currentCapabilityClass",
+    "attemptCount",
+    "elapsedMs",
+    "consumedRelativeCost",
+    "budget",
+    "concerns",
+    "speculation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rigor.escalation-decision-input.v1" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "purpose": { "$ref": "#/$defs/purpose" },
+    "contract": { "$ref": "#/$defs/link" },
+    "routingPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactId", "artifactHash", "modelProfilesHash"],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "artifactHash": { "$ref": "#/$defs/digest" },
+        "modelProfilesHash": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "currentAttempt": { "$ref": "#/$defs/attempt" },
+    "previousAttempts": {
+      "type": "array",
+      "maxItems": 19,
+      "items": { "$ref": "#/$defs/attempt" }
+    },
+    "riskTier": { "enum": ["low", "medium", "high", "critical"] },
+    "externalTransmission": { "enum": ["allowed", "denied"] },
+    "failureCategory": { "$ref": "#/$defs/failureCategory" },
+    "progress": { "$ref": "#/$defs/progress" },
+    "fingerprintRepetitions": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "currentCapabilityClass": { "$ref": "#/$defs/capability" },
+    "attemptCount": { "type": "integer", "minimum": 1, "maximum": 20 },
+    "elapsedMs": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+    "consumedRelativeCost": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAttempts", "maxDurationMs", "maxRelativeCost"],
+      "properties": {
+        "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "maxDurationMs": { "type": "integer", "minimum": 1000 },
+        "maxRelativeCost": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "concerns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirementsChangeRequired",
+        "acceptanceCriteriaChangeRequired",
+        "humanOnlyDecision",
+        "scopeViolation",
+        "protectedTestMutation",
+        "configuredCheckRemoval",
+        "configuredCheckWeakening",
+        "security",
+        "dataIntegrity",
+        "architectureChange",
+        "contractContradiction"
+      ],
+      "properties": {
+        "requirementsChangeRequired": { "type": "boolean" },
+        "acceptanceCriteriaChangeRequired": { "type": "boolean" },
+        "humanOnlyDecision": { "type": "boolean" },
+        "scopeViolation": { "type": "boolean" },
+        "protectedTestMutation": { "type": "boolean" },
+        "configuredCheckRemoval": { "type": "boolean" },
+        "configuredCheckWeakening": { "type": "boolean" },
+        "security": { "type": "boolean" },
+        "dataIntegrity": { "type": "boolean" },
+        "architectureChange": { "type": "boolean" },
+        "contractContradiction": { "type": "boolean" }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unchangedAttemptsBeforeDirect", "infrastructureRetries"],
+      "properties": {
+        "unchangedAttemptsBeforeDirect": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 20
+        },
+        "infrastructureRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        }
+      }
+    },
+    "speculation": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "type": "string", "minLength": 1, "maxLength": 10000 }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactId", "artifactHash"],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "artifactHash": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "capability": { "enum": ["economy", "standard", "premium", "frontier"] },
+    "purpose": {
+      "enum": [
+        "implementation",
+        "consultation",
+        "review",
+        "adversarial-review",
+        "rescue"
+      ]
+    },
+    "failureCategory": {
+      "enum": ["implementation", "infrastructure", "timeout", "flaky", "mixed"]
+    },
+    "progress": {
+      "enum": ["first", "unchanged", "reduced", "expanded", "incomparable"]
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "artifactHash",
+        "routingPlanArtifactId",
+        "routingPlanHash",
+        "sequence",
+        "capabilityClass",
+        "failureCategory",
+        "progress",
+        "failureFingerprint",
+        "durationMs",
+        "relativeCost"
+      ],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "artifactHash": { "$ref": "#/$defs/digest" },
+        "routingPlanArtifactId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "routingPlanHash": { "$ref": "#/$defs/digest" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "capabilityClass": { "$ref": "#/$defs/capability" },
+        "failureCategory": { "$ref": "#/$defs/failureCategory" },
+        "progress": { "$ref": "#/$defs/progress" },
+        "failureFingerprint": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "relativeCost": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        }
+      }
+    }
+  }
+}

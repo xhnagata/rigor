@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_2856bcd2-1294-4dc9-9994-fd6dc47c0910",
+  "taskId": "GH-14-R2",
+  "createdAt": "2026-07-12T06:18:59.340Z",
+  "externalTransmission": "allowed",
+  "riskTier": "high",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_2f2f5e67-5159-490c-92c9-e4e21422b4b7",
+  "verificationArtifactId": "verification_c8eb2261-f01c-44f9-af10-07ce45f2ff6c",
+  "changedPaths": [
+    "README.md",
+    "dist/rigor.cjs",
+    "docs/orchestration.md",
+    "docs/threat-model.md",
+    "schemas/artifacts.v1.schema.json",
+    "schemas/escalation-decision-input.v1.schema.json",
+    "schemas/escalation-decision.v1.schema.json",
+    "src/cli.ts",
+    "src/escalation.ts",
+    "src/types.ts",
+    "test/escalation.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "The recorded required check passes over the full uncommitted GH-14 diff including this remediation; other verification commands (format:check, lint, typecheck, test, test:all, bench, validate-plugin, plugin validate --strict) are rerun and their results reported in the PR",
+    "The current attempt must be bound to the named routing plan and the input budget must equal the plan-authorized budget, both failing closed",
+    "Escalation decision schemas reject extra link properties, unbounded numerics, and reason codes the selector never emits",
+    "Threat-model and orchestration wording disclose that the infrastructure retry limit is identical-fingerprint-gated with the global budget as backstop",
+    "No existing test is modified, removed, or weakened; remediation behavior is covered by additive tests only"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
