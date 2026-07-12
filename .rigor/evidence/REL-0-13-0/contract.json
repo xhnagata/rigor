@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_c68f922d-8464-4721-b9bb-ccf4b139e801",
+  "taskId": "REL-0-13-0",
+  "createdAt": "2026-07-12T21:50:04.727Z",
+  "preflightArtifactId": "preflight_b6ec87b7-3abe-4cf5-90d9-e99e6d015c2d",
+  "preflightHash": "e63bd3cd7ecbef13594a63506f7524a66ba704777eed34eadaf4d0e7ff370199",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare 0.13.0.",
+    "CHANGELOG.md promotes the Unreleased section to a dated 0.13.0 heading; no entry content is altered.",
+    "dist/rigor.cjs is byte-identical to a fresh build and .rigor/rigor-ci.cjs stays byte-identical to it (no source change).",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass; git diff --check is clean."
+  ],
+  "allowedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "constraints": [
+    "Version bump and changelog promotion only; no source, dist, schema, workflow, or evidence changes beyond task evidence.",
+    "Do not modify dist/rigor.cjs or .rigor/rigor-ci.cjs; both must remain byte-identical to a fresh build."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_6baeaa80-aced-4658-b15f-2363bbc4a1c7",
+  "taskId": "REL-0-13-0",
+  "createdAt": "2026-07-12T21:50:24.654Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_c68f922d-8464-4721-b9bb-ccf4b139e801",
+  "verificationArtifactId": "verification_8f7a6188-b2ab-4fbc-b90f-905292638e32",
+  "changedPaths": [
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "package.json"
+  ],
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare 0.13.0.",
+    "CHANGELOG.md promotes the Unreleased section to a dated 0.13.0 heading; no entry content is altered.",
+    "dist/rigor.cjs is byte-identical to a fresh build and .rigor/rigor-ci.cjs stays byte-identical to it (no source change).",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass; git diff --check is clean."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
