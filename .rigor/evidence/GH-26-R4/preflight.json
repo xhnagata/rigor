@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_4dfdf9d0-6102-4841-9785-bd9fc7cf786e",
+  "taskId": "GH-26-R4",
+  "createdAt": "2026-07-13T04:12:39.011Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "3e705d4192c3c58512f9076a16be6e720db7d9a0db10de7911e8652c53088dfd",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "62f93cef9f20e4cba73421ec4b3db88cf32277d8",
+    "dirty": true,
+    "changedPaths": [
+      ".github/workflows/consumer-portability.yml",
+      "docs/adr/0001-provenance-trust-model.md",
+      "docs/provenance.md",
+      "docs/threat-model.md",
+      "scripts/install-verified.mjs",
+      "scripts/package-plugin.mjs",
+      "test/provenance.test.ts"
+    ]
+  },
+  "plannedPaths": [
+    ".github/workflows/consumer-portability.yml",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/provenance.md",
+    "docs/threat-model.md",
+    "scripts/install-verified.mjs",
+    "scripts/package-plugin.mjs",
+    "test/provenance.test.ts"
+  ],
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "protectedPaths": [
+    ".github/workflows/consumer-portability.yml"
+  ],
+  "requireHumanApproval": true,
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ],
+  "reasons": [
+    {
+      "ruleId": "governance",
+      "path": ".github/workflows/consumer-portability.yml",
+      "reason": "Governance and enforcement changes can weaken controls."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/adr/0001-provenance-trust-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/provenance.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/provenance.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}

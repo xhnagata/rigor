@@ -212,18 +212,23 @@ End to end, the wrapper:
    detached-manifest mix-and-match check (`compareManifestToArtifacts`);
 3. confirms the pinned version+commit is in the consumer's approved set and
    not denied (`checkApproval` — replay/freshness);
-4. on success, extracts ONLY the verified bytes into a fresh, read-only local
-   seed directory and confirms the promoted seed's uncompressed-tar contents
-   match the attested archive's contents byte-for-byte — the tar rebuilt from
-   the extracted tree (via
-   [`scripts/package-plugin.mjs`](../scripts/package-plugin.mjs)'s
-   `buildArchiveTar`) is compared against the `gunzip` of the archive we hold
+4. on success, extracts ONLY the verified bytes — the in-memory attested
+   buffer written into an `mkdtemp` private directory (mode 0700, an
+   unpredictable name), never the on-disk archive path, which could be swapped
+   after the initial read — into a fresh, read-only local seed directory, then
+   confirms the seed is EXACTLY the attested payload two ways:
+   (a) [`collectSeedFiles`](../scripts/package-plugin.mjs) walks the WHOLE seed
+   and rejects any extra file, extra directory, symlink, non-regular node, or
+   unexpected executable bit, so an injected extra file (e.g. a root-level
+   `.mcp.json` that Claude Code would load) cannot ride along with a
+   bytewise-matching allowlist subset; and (b) the seed's uncompressed-tar
+   digest (`buildArchiveTar`) must equal the `gunzip` of the archive we hold
    (`checkSeedIntegrity` — closes the TOCTOU gap between what was verified and
-   what will execute). The comparison is at the tar layer, not the recompressed
-   `.tar.gz` digest, so it is deterministic across every supported consumer
-   Node/zlib build; a gzip-digest comparison would reject a legitimate attested
-   release whenever the consumer's `zlib` deflate differs from the pinned
-   producer runtime (issue #26);
+   what will execute). The digest comparison is at the tar layer, not the
+   recompressed `.tar.gz` digest, so it is deterministic across every supported
+   consumer Node/zlib build; a gzip-digest comparison would reject a legitimate
+   attested release whenever the consumer's `zlib` deflate differs from the
+   pinned producer runtime (issue #26);
 5. prints (or, with `--launch`, executes) `claude --plugin-dir <seed>` so the
    session loads the exact tree that was verified;
 6. refuses and exits non-zero on ANY verification, approval, freshness, or
@@ -233,8 +238,8 @@ End to end, the wrapper:
 
 To adopt the wrapper: copy `scripts/install-verified.mjs`,
 `scripts/verify-provenance.mjs`, and `scripts/package-plugin.mjs` (the wrapper
-imports `collectPluginFiles`/`buildArchiveTar` from it to re-derive the seed's
-tar) outside the plugin tree (for example, into an internal tooling
+imports `collectSeedFiles`/`buildArchiveTar` from it to strictly re-derive the
+seed's tar) outside the plugin tree (for example, into an internal tooling
 repository), write a consumer-held policy file (approved
 versions, denylist, offline age limits, break-glass permission), and run:
 

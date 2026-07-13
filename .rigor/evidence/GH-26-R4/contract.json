@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_788fa4ba-b912-400d-a9cf-5f05d7616ba9",
+  "taskId": "GH-26-R4",
+  "createdAt": "2026-07-13T04:12:39.066Z",
+  "preflightArtifactId": "preflight_4dfdf9d0-6102-4841-9785-bd9fc7cf786e",
+  "preflightHash": "ed779097621ade51920fc28ce8e7346d3979296c328a4f5aed95ef68af8ea35b",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "scripts/package-plugin.mjs adds collectSeedFiles(seedRoot): a strict recursive walk of the entire seed that rejects any extra file, extra directory, symlink, non-regular node, or unexpected executable bit (only bin/rigor may be executable) and requires all 21 allowlisted files; collectPluginFiles (producer) is unchanged.",
+    "scripts/install-verified.mjs extracts the verified in-memory archiveBytes via a private temp file (not the on-disk archive path) and validates the seed with collectSeedFiles before promotion; an injected root file/dir/symlink now fails closed with a refuse receipt and no seed left on disk.",
+    "test/provenance.test.ts adds collectSeedFiles negative cases (extra root file, extra directory, symlink, unexpected exec bit, missing file) and the exact-tree accept case; npm run test:all (374 tests) is rerun and reported in the PR; recorded git-diff-check passes.",
+    ".github/workflows/consumer-portability.yml adds a negative integration step: each consumer Node builds an archive with an injected root .mcp.json and asserts the wrapper refuses (non-zero) and leaves no seed; workflow still requests only contents: read.",
+    "docs/provenance.md, docs/threat-model.md, docs/adr/0001-provenance-trust-model.md describe the exact-tree strict check and verified-bytes extraction."
+  ],
+  "allowedPaths": [
+    "scripts/install-verified.mjs",
+    "scripts/package-plugin.mjs",
+    "test/provenance.test.ts",
+    "docs/provenance.md",
+    "docs/threat-model.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    ".github/workflows/consumer-portability.yml"
+  ],
+  "constraints": [
+    "Do not change the attestation trust decision or the producer collectPluginFiles behavior; the strict check is consumer-only.",
+    "Preserve #26 cross-Node portability (tar-layer digest comparison) and all existing negative cases.",
+    "The CI workflow must request no write permissions and must not create tags, releases, or attestations.",
+    "No src/**, dist/**, schema, or policy changes; scripts/tests/docs/workflow only."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}
