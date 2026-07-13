@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_cec77b3a-0be7-44e0-8cae-f128e19b7f34",
+  "taskId": "DOC-README-015",
+  "createdAt": "2026-07-13T05:40:18.538Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_95d07782-8ff8-4381-9620-0b7099bbb21e",
+  "verificationArtifactId": "verification_6a549f83-a974-4aae-8b02-4a722abe9772",
+  "changedPaths": [
+    "README.ja.md",
+    "README.md"
+  ],
+  "acceptanceCriteria": [
+    "English and Japanese READMEs identify v0.15.0 as the latest immutable release",
+    "Both READMEs describe v0.15.0 consumer-boundary hardening",
+    "Both READMEs state the material maturity and enforcement limits found in the repository review"
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

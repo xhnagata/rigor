@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_c8294f50-3e38-4e62-a70f-d5604bed892d",
+  "taskId": "DOC-README-015",
+  "createdAt": "2026-07-13T05:40:18.308Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "b277b50473d8eb8021206ce9b3ed253eb0a6db9034406da06fe1006cce90caf0",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor",
+    "head": "abc3f712affc1ca4064b4a0b19efac83cd8cdfaf",
+    "dirty": true,
+    "changedPaths": [
+      "README.ja.md",
+      "README.md"
+    ]
+  },
+  "plannedPaths": [
+    "README.ja.md",
+    "README.md"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "dirty-worktree",
+      "reason": "The worktree already contains changes that can affect evidence."
+    }
+  ]
+}
