@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_704c19df-04d0-4b74-a51d-81f9d88df68b",
+  "taskId": "GH-26",
+  "contractArtifactId": "contract_d0e8d907-0afb-463a-b370-22408f2be345",
+  "createdAt": "2026-07-13T01:25:36.577Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "e159a4baf82d19193ca6d473a5fc5edd92282796",
+  "treeHash": "1153a525b258b6748ece05809cc0b838b799a6f9bd9a9a1a84567dc39d0ca9c4",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/mvp-limitations.md",
+    "docs/provenance.md",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "scripts/install-verified.mjs",
+    "scripts/verify-provenance.mjs",
+    "test/fixtures/provenance/README.md",
+    "test/fixtures/provenance/positive-real-v0.13.0.json",
+    "test/provenance.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 10,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

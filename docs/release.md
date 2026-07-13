@@ -7,11 +7,15 @@ pushes, or changes any GitHub setting; every step below is a human-authorized
 action.
 
 This gate is a producer-side release control, not consumer-verifiable
-provenance. It does not sign or attest `dist/rigor.cjs`, authenticate a plugin
-cache, or prove to a downloader that the bytes it received came from the checked
-workflow and source commit. [ADR 0001](adr/0001-provenance-trust-model.md)
-defines the proposed provenance design and treats the missing pre-execution
-consumer verifier as a blocker for an end-to-end distribution guarantee.
+provenance by itself. It does not sign or attest `dist/rigor.cjs`, authenticate
+a plugin cache, or prove to a downloader that the bytes it received came from
+the checked workflow and source commit. [ADR 0001](adr/0001-provenance-trust-model.md)
+defines the provenance design: producer attestations
+([#25](https://github.com/xhnagata/rigor/issues/25)) plus a consumer-owned
+verified-install/managed-promotion boundary
+([#26](https://github.com/xhnagata/rigor/issues/26)) that only protects a
+consumer who runs it independently — an ordinary, unmanaged marketplace install
+remains outside any end-to-end distribution guarantee.
 
 ## The protected path
 
@@ -139,6 +143,17 @@ release as attested only for versions this workflow actually signed. Do not
 retroactively describe any past version (including the current one at
 implementation time) as attested.
 
+**GitHub immutable releases are enabled** by the repository owner (an
+out-of-band repository-settings action; Rigor performs no GitHub configuration
+writes and this repository's workflows are unchanged by that setting). This
+locks a published tag and its release assets against retroactive
+modification, but it is complementary to build provenance, not a substitute:
+consumer policy must still pin the **exact source commit and subject
+digests**, not the tag name, and keep an independent deny/staleness policy,
+because deletion of a release or attestation is still not retroactive
+revocation of already downloaded bytes. See
+[provenance.md](provenance.md#immutable-releases-owner-enabled-pins-remain-independent).
+
 ## Verification
 
 A consumer verifies a downloaded subject against independently held policy with
@@ -154,10 +169,16 @@ verification command, consumer-held policy (gh pinning, ≤7-day trusted-root
 refresh, ≤30-day offline age, consumer-distributed denylist), root rotation,
 attestation deletion/withdrawal, and rollback.
 
+[#26](https://github.com/xhnagata/rigor/issues/26) consumer enforcement is
+implemented via a verified-install/managed-promotion boundary
+([`scripts/install-verified.mjs`](../scripts/install-verified.mjs), documented
+in [provenance.md](provenance.md#consumer-enforcement-26)), but only for a
+consumer who runs it, with independently held policy, from outside the plugin.
 The ordinary Claude Code marketplace still has no confirmed pre-activation
-verifier over the exact cached bytes, so [#26](https://github.com/xhnagata/rigor/issues/26)
-remains blocked and no end-to-end distribution guarantee is claimed. These steps
-supplement rather than replace the pre-tag gate above.
+verifier over the exact cached bytes — experimentally observed in Claude Code
+2.1.207 — so an unmanaged personal marketplace install remains outside this
+guarantee and no end-to-end distribution guarantee is claimed for it. These
+steps supplement rather than replace the pre-tag gate above.
 
 See the [threat model](threat-model.md) for the read-only GitHub API trust
 boundary that `rigor governance` and `rigor release-check` rely on.

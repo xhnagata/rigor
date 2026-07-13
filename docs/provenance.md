@@ -16,11 +16,20 @@ a fail-closed reference verifier and its operational policy.
 - It **does not** claim any SLSA Build Level. #25 may show the format is
   SLSA-compatible; a level claim needs a separate assessment of the build
   platform and provenance path.
-- It **does not** unblock [#26](https://github.com/xhnagata/rigor/issues/26).
-  The ordinary Claude Code marketplace install/update flow still has **no
-  confirmed pre-activation verification point** that checks the exact cached
-  bytes before hooks, skills, agents, or `bin/rigor` execute, so there is no
-  end-to-end distribution guarantee for a normal marketplace install.
+- [#26](https://github.com/xhnagata/rigor/issues/26) consumer enforcement is
+  now **implemented** via a verified-install/managed-promotion boundary (see
+  ["Consumer enforcement (#26)"](#consumer-enforcement-26) below) — but ONLY
+  for a consumer who runs
+  [`scripts/install-verified.mjs`](../scripts/install-verified.mjs) from
+  outside the plugin, holding its own policy independently. The ordinary
+  Claude Code marketplace install/update flow still has **no confirmed
+  pre-activation verification point** that checks the exact cached bytes
+  before hooks, skills, agents, or `bin/rigor` execute — this was
+  experimentally observed in Claude Code 2.1.207, which exposes only
+  session-scoped `--plugin-dir`/`--plugin-url` explicit loads, not a
+  marketplace-install callback — so an unmanaged personal marketplace install
+  remains outside this guarantee and there is no end-to-end distribution
+  guarantee for it.
 - It **does not** verify runtime model identity. Configured Claude/Codex model
   names remain `unverified`.
 - A manifest, checksum, tag, release page, or CI badge placed beside an artifact
@@ -154,13 +163,148 @@ withdrawn version's tag/commit/digests. Because the producer grants no
 is a separate human-authorized action; rollback of distributed bytes is a
 consumer-policy change, not a producer capability.
 
-## Immutable releases (documented option, not enabled)
+## Consumer enforcement (#26)
 
-GitHub immutable releases are a complementary control that locks a published tag
-and its assets once enabled. Enabling them is a separately authorized
-repository-settings decision reserved to maintainers, and **#25 does not enable
-them.** Until they are enabled and used, consumer policy must treat every tag as
-mutable and pin the exact source commit and subject digests.
+[ADR 0001](adr/0001-provenance-trust-model.md) names three viable pre-execution
+consumer-enforcement boundaries and rejects a fourth class outright: a
+marketplace pre-activation hook (**not available** — see below), an
+organization seed/promotion pipeline (**recommended**), and a verified-local
+`claude --plugin-dir` wrapper (**implemented as reference code here**).
+Explicitly **rejected** as enforcement: a plugin `SessionStart` self-check
+(runs only after the plugin already loaded), a verifier shipped _inside_ the
+distribution it protects with no independent policy, manual README guidance a
+user can skip, and a checksum/manifest distributed beside the artifact.
+
+### The marketplace has no pre-activation hook
+
+Experimentally confirmed in **Claude Code 2.1.207**: the ordinary Claude Code
+marketplace install/update flow copies the repository plugin into
+`~/.claude/plugins/cache` and executes it with no documented callback that a
+producer or consumer can use to verify the exact cached bytes before
+hooks/skills/agents/`bin/rigor` load. `claude --plugin-dir <path>` **does**
+exist and loads an explicit local directory (or `.zip`) for the session, which
+is what makes a verified-local-tree boundary real: verification and execution
+can share the same immutable bytes. This is a session-scoped explicit load,
+not a marketplace-install callback — it does not add any hook to the ordinary
+marketplace path.
+
+### The verified-install / managed-promotion wrapper
+
+[`scripts/install-verified.mjs`](../scripts/install-verified.mjs) is a
+reference implementation of the verified-local-tree / managed-promotion path.
+It is producer-provided REFERENCE code, but it is only an enforcement boundary
+when a **consumer** copies it (and its policy: approved versions, denylist,
+break-glass permission, offline age limits) to a location **outside** the
+plugin tree it protects and runs it from there. A verifier or policy shipped
+_inside_ the distribution it verifies is not itself a boundary — the same
+unreviewed change that could compromise the plugin could also disable or
+rewrite a verifier living beside it; only an independently held copy and
+policy break that circularity.
+
+End to end, the wrapper:
+
+1. downloads the complete-plugin archive and recomputes its SHA-256 (never
+   trusts a checksum distributed beside it);
+2. verifies that digest against GitHub Artifact Attestations and the
+   consumer's independently held policy, reusing every decision function
+   exported by [`scripts/verify-provenance.mjs`](../scripts/verify-provenance.mjs)
+   (`evaluateVerification`, the gh version/shape guards) plus the
+   detached-manifest mix-and-match check (`compareManifestToArtifacts`);
+3. confirms the pinned version+commit is in the consumer's approved set and
+   not denied (`checkApproval` — replay/freshness);
+4. on success, extracts ONLY the verified bytes into a fresh, read-only local
+   seed directory and confirms the promoted seed re-packages (via
+   [`scripts/package-plugin.mjs`](../scripts/package-plugin.mjs)) to the exact
+   verified archive digest (`checkSeedIntegrity` — closes the TOCTOU gap
+   between what was verified and what will execute);
+5. prints (or, with `--launch`, executes) `claude --plugin-dir <seed>` so the
+   session loads the exact tree that was verified;
+6. refuses and exits non-zero on ANY verification, approval, freshness, or
+   seed-integrity failure, and never prints `verified` on failure.
+
+### Install, upgrade, and migration
+
+To adopt the wrapper: copy `scripts/install-verified.mjs` and
+`scripts/verify-provenance.mjs` outside the plugin tree (for example, into an
+internal tooling repository), write a consumer-held policy file (approved
+versions, denylist, offline age limits, break-glass permission), and run:
+
+```sh
+node install-verified.mjs \
+  --version X.Y.Z --commit <release-commit-sha> \
+  --archive rigor-X.Y.Z.tar.gz --manifest rigor-X.Y.Z.release-manifest.json \
+  --seed ~/.rigor-verified/current \
+  --policy consumer-policy.json --denylist consumer-denylist.json \
+  --source-digest <release-commit-sha> --signer-digest <workflow-commit-sha>
+```
+
+Migrating from the ordinary marketplace cache means STOPPING use of the
+marketplace-managed plugin (or leaving it installed but launching sessions
+with `--plugin-dir` instead) and always launching with the printed
+`claude --plugin-dir <seed>` command, or `--launch` to have the wrapper exec
+it directly. An upgrade is simply re-running the wrapper against a new
+version's archive once the consumer has approved it (added it to
+`approvedVersions`); the previous seed is replaced only after the new bytes
+verify and re-package correctly.
+
+### Rollback
+
+Rollback re-points the wrapper at a previously approved, still-trusted version
+**by its pinned commit and subject digests, not by tag name** (a tag can move;
+a commit and a verified digest cannot): update the consumer's
+`approvedVersions` to the prior `{ version, commit }` pair, deny the withdrawn
+version's tag/commit/digests in the denylist, and re-run the wrapper. This
+mirrors [Release rollback](#release-rollback) above and never trusts the
+wrapper's own receipt to decide which version is safe.
+
+### Break-glass (never reported as verified)
+
+`--break-glass <file>` supplies an explicit, time-bounded exception used ONLY
+when verification is impossible or failed. It requires an independent human
+`approver` (not the wrapper, not the release), a bounded lifetime (default
+72 hours, `expiresAtMs - issuedAtMs`), an unexpired `expiresAtMs`, and
+`verified: false` — a break-glass activation must never claim to be verified.
+The wrapper prints a `BREAK-GLASS (NOT verified)` banner and records
+`verified: false` in its receipt on this path; it is an emergency-recovery
+exception, not a substitute for verification, and requires
+`policy.allowBreakGlass === true` to be reachable at all.
+
+### Offline last-known-good (max age)
+
+When offline (or `gh`/the attestation service is unavailable), the wrapper may
+continue an **already-verified pinned** seed instead of promoting anything
+new, but only when `policy.allowOfflineLastKnownGood === true`, the pinned
+version's approval still holds, and its freshness (the consumer's trusted-root
+and offline-bundle max-age policy — 7 and 30 days by default, see
+["Consumer-held policy"](#consumer-held-policy-not-shipped-with-the-release)
+above) has not been exceeded. It never promotes new or unverified bytes; a
+new/unverified version while offline, or a pinned version beyond its max age
+with no break-glass exception, refuses.
+
+### Bypassability (stated plainly)
+
+This boundary protects only a consumer who runs the wrapper from outside the
+plugin with independently held policy. A personal marketplace user who
+installs Rigor the ordinary way and never uses `install-verified.mjs` or
+`--plugin-dir` is **outside this guarantee**: Rigor cannot stop an unmanaged
+user from invoking arbitrary bytes, and the ordinary marketplace path has no
+pre-activation verifier to enforce anything even if one were desired. No SLSA
+Build Level is claimed, no native Claude Code marketplace pre-activation
+verifier exists, and configured model identity remains `unverified`.
+
+## Immutable releases (owner-enabled; pins remain independent)
+
+GitHub immutable releases are a complementary control that locks a published
+tag and its assets. **The repository owner has enabled immutable releases**
+(an out-of-band, repository-settings action outside this codebase's control —
+Rigor performs no GitHub configuration writes). Immutable releases make a
+published tag and its assets resistant to retroactive modification, but they
+are not a substitute for build provenance and do not change consumer policy:
+keep pinning the **exact source commit and subject digests** rather than the
+tag name, and keep an independent deny/staleness policy, because attestation
+or release **deletion is still not retroactive revocation** of already
+downloaded bytes (see ["Attestation deletion, withdrawal, and
+revocation"](#attestation-deletion-withdrawal-and-revocation) above).
 
 ## Trust boundaries and residual limits
 

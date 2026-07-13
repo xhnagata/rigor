@@ -1,0 +1,80 @@
+[
+  {
+    "verificationResult": {
+      "statement": {
+        "_type": "https://in-toto.io/Statement/v1",
+        "subject": [
+          {
+            "name": "rigor.cjs",
+            "digest": {
+              "sha256": "8b3c17a3d968c6dc60ef717b1853d86023d1088a4d6a5011c72eba73df272675"
+            }
+          }
+        ],
+        "predicateType": "https://slsa.dev/provenance/v1",
+        "predicate": {
+          "buildDefinition": {
+            "buildType": "https://actions.github.io/buildtypes/workflow/v1",
+            "externalParameters": {
+              "workflow": {
+                "ref": "refs/tags/v0.13.0",
+                "repository": "https://github.com/xhnagata/rigor",
+                "path": ".github/workflows/release.yml"
+              }
+            },
+            "internalParameters": {
+              "github": {
+                "event_name": "push",
+                "repository_id": "1296432215",
+                "repository_owner_id": "1906309",
+                "runner_environment": "github-hosted"
+              }
+            },
+            "resolvedDependencies": [
+              {
+                "uri": "git+https://github.com/xhnagata/rigor@refs/tags/v0.13.0",
+                "digest": {
+                  "gitCommit": "e159a4baf82d19193ca6d473a5fc5edd92282796"
+                }
+              }
+            ]
+          },
+          "runDetails": {
+            "builder": {
+              "id": "https://github.com/xhnagata/rigor/.github/workflows/release.yml@refs/tags/v0.13.0"
+            },
+            "metadata": {
+              "invocationId": "https://github.com/xhnagata/rigor/actions/runs/29210466130/attempts/1"
+            }
+          }
+        }
+      },
+      "signature": {
+        "certificate": {
+          "certificateIssuer": "CN=sigstore-intermediate,O=sigstore.dev",
+          "subjectAlternativeName": "https://github.com/xhnagata/rigor/.github/workflows/release.yml@refs/tags/v0.13.0",
+          "issuer": "https://token.actions.githubusercontent.com",
+          "githubWorkflowTrigger": "push",
+          "githubWorkflowSHA": "e159a4baf82d19193ca6d473a5fc5edd92282796",
+          "githubWorkflowName": "release",
+          "githubWorkflowRepository": "xhnagata/rigor",
+          "githubWorkflowRef": "refs/tags/v0.13.0",
+          "buildSignerURI": "https://github.com/xhnagata/rigor/.github/workflows/release.yml@refs/tags/v0.13.0",
+          "buildSignerDigest": "e159a4baf82d19193ca6d473a5fc5edd92282796",
+          "runnerEnvironment": "github-hosted",
+          "sourceRepositoryURI": "https://github.com/xhnagata/rigor",
+          "sourceRepositoryDigest": "e159a4baf82d19193ca6d473a5fc5edd92282796",
+          "sourceRepositoryRef": "refs/tags/v0.13.0",
+          "sourceRepositoryIdentifier": "1296432215",
+          "sourceRepositoryOwnerURI": "https://github.com/xhnagata",
+          "sourceRepositoryOwnerIdentifier": "1906309",
+          "buildConfigURI": "https://github.com/xhnagata/rigor/.github/workflows/release.yml@refs/tags/v0.13.0",
+          "buildConfigDigest": "e159a4baf82d19193ca6d473a5fc5edd92282796",
+          "buildTrigger": "push",
+          "runInvocationURI": "https://github.com/xhnagata/rigor/actions/runs/29210466130/attempts/1",
+          "sourceRepositoryVisibilityAtSigning": "public"
+        }
+      }
+    }
+  }
+]

@@ -40,6 +40,11 @@ interface PackageModule {
   canonicalJson(value: unknown): string;
   sha256Hex(buf: Buffer): string;
 }
+interface GhVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
 interface VerifyModule {
   defaultPolicy(overrides?: Record<string, unknown>): Record<string, unknown>;
   evaluateVerification(
@@ -58,6 +63,40 @@ interface VerifyModule {
   isDenied(digest: unknown, denylist: unknown[]): boolean;
   freshnessOk(policy: Record<string, unknown>, nowMs: number): CheckResult;
   sha256Hex(buf: Buffer): string;
+  parseGhVersion(str: unknown): GhVersion | null;
+  isSupportedGhVersion(
+    parsed: GhVersion | null,
+    policy: Record<string, unknown>,
+  ): boolean;
+  validateGhShape(ghJson: unknown): CheckResult;
+}
+interface InstallDecisionInput {
+  verify: CheckResult;
+  approval: CheckResult;
+  freshness: CheckResult;
+  seedIntegrity: CheckResult;
+  offline: boolean;
+  breakGlass?: Record<string, unknown>;
+  policy: Record<string, unknown>;
+  nowMs: number;
+}
+interface InstallDecision {
+  action: "promote" | "keep-pinned" | "break-glass" | "refuse";
+  reasons: string[];
+}
+interface InstallModule {
+  checkApproval(
+    version: unknown,
+    commit: unknown,
+    policy: Record<string, unknown>,
+  ): CheckResult;
+  validateBreakGlass(
+    record: unknown,
+    nowMs: number,
+    maxLifetimeMs?: number,
+  ): CheckResult;
+  checkSeedIntegrity(promoted: unknown, verified: unknown): CheckResult;
+  decideInstall(input: InstallDecisionInput): InstallDecision;
 }
 
 const rootDir = path.resolve(
@@ -66,8 +105,10 @@ const rootDir = path.resolve(
 );
 const pkgSpecifier = "../scripts/package-plugin.mjs";
 const verifySpecifier = "../scripts/verify-provenance.mjs";
+const installSpecifier = "../scripts/install-verified.mjs";
 const pkg = (await import(pkgSpecifier)) as unknown as PackageModule;
 const verify = (await import(verifySpecifier)) as unknown as VerifyModule;
+const install = (await import(installSpecifier)) as unknown as InstallModule;
 
 async function pluginVersion(): Promise<string> {
   const manifest = JSON.parse(
@@ -570,4 +611,485 @@ test("NEGATIVE: cert source digest differing from expected fails (explicit)", as
   const result = verify.checkCertificateExtensions(cert, policy);
   assert.equal(result.ok, false);
   assert.ok(result.reasons.some((r) => r.includes("source digest")));
+});
+
+// ---- real gh 2.96.0 fixture (v0.13.0) --------------------------------------
+
+const REAL_SUBJECT_SHA256 =
+  "8b3c17a3d968c6dc60ef717b1853d86023d1088a4d6a5011c72eba73df272675";
+const REAL_SOURCE_DIGEST = "e159a4baf82d19193ca6d473a5fc5edd92282796";
+const REAL_TAG_REF = "refs/tags/v0.13.0";
+
+function realPolicy(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return verify.defaultPolicy({
+    expectedSubjectSha256: REAL_SUBJECT_SHA256,
+    expectedSourceDigest: REAL_SOURCE_DIGEST,
+    expectedSignerDigest: REAL_SOURCE_DIGEST,
+    expectedSourceRef: REAL_TAG_REF,
+    repositoryId: "1296432215",
+    ...overrides,
+  });
+}
+
+test("POSITIVE (real gh 2.96.0 fixture): v0.13.0 verifies true", async () => {
+  const gh = await fixture("positive-real-v0.13.0.json");
+  const result = verify.evaluateVerification(gh, realPolicy());
+  assert.equal(result.ok, true, result.reasons.join("; "));
+});
+
+test("real fixture: repository id is read from sourceRepositoryIdentifier", async () => {
+  const gh = (await fixture("positive-real-v0.13.0.json")) as GhResults;
+  const cert = gh[0]!.verificationResult!.signature!.certificate!;
+  assert.equal(typeof cert.sourceRepositoryIdentifier, "string");
+  assert.equal(cert.sourceRepositoryID, undefined);
+  assert.equal(cert.extensions, undefined);
+  assert.equal(verify.checkCertificateExtensions(cert, realPolicy()).ok, true);
+});
+
+test("NEGATIVE (real fixture): wrong repository id", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  gh[0]!.verificationResult!.signature!.certificate!.sourceRepositoryIdentifier =
+    "999999";
+  assert.equal(verify.evaluateVerification(gh, realPolicy()).ok, false);
+});
+
+test("NEGATIVE (real fixture): wrong source digest", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  gh[0]!.verificationResult!.signature!.certificate!.sourceRepositoryDigest =
+    "d".repeat(40);
+  assert.equal(verify.evaluateVerification(gh, realPolicy()).ok, false);
+});
+
+test("NEGATIVE (real fixture): wrong signer", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  gh[0]!.verificationResult!.signature!.certificate!.buildSignerURI =
+    "https://github.com/attacker/evil/.github/workflows/release.yml@refs/tags/v0.13.0";
+  assert.equal(verify.evaluateVerification(gh, realPolicy()).ok, false);
+});
+
+test("NEGATIVE (real fixture): wrong predicate type", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as Array<Record<string, Record<string, Record<string, unknown>>>>;
+  gh[0]!.verificationResult!.statement!.predicateType =
+    "https://slsa.dev/provenance/v0.2";
+  assert.equal(verify.evaluateVerification(gh, realPolicy()).ok, false);
+});
+
+test("NEGATIVE (real fixture): self-hosted runner", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  gh[0]!.verificationResult!.signature!.certificate!.runnerEnvironment =
+    "self-hosted";
+  assert.equal(verify.evaluateVerification(gh, realPolicy()).ok, false);
+});
+
+test("NEGATIVE (real fixture): a different VALID tag ref is rejected", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  gh[0]!.verificationResult!.signature!.certificate!.sourceRepositoryRef =
+    "refs/tags/v0.14.0";
+  assert.equal(verify.evaluateVerification(gh, realPolicy()).ok, false);
+});
+
+// ---- validateGhShape --------------------------------------------------------
+
+test("validateGhShape: non-array fails closed; empty array and real/legacy fixtures are shape-valid", async () => {
+  assert.equal(verify.validateGhShape({ not: "array" }).ok, false);
+  assert.equal(verify.validateGhShape("nope").ok, false);
+  assert.equal(verify.validateGhShape(null).ok, false);
+  assert.equal(verify.validateGhShape([]).ok, true);
+  assert.equal(
+    verify.validateGhShape(await fixture("positive-real-v0.13.0.json")).ok,
+    true,
+  );
+  assert.equal(verify.validateGhShape(await fixture("positive.json")).ok, true);
+});
+
+test("validateGhShape: rejects an entry missing verificationResult/statement/certificate", async () => {
+  assert.equal(verify.validateGhShape([{}]).ok, false);
+
+  const noStatement = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  delete noStatement[0]!.verificationResult!.statement;
+  const noStatementResult = verify.validateGhShape(noStatement);
+  assert.equal(noStatementResult.ok, false);
+  assert.ok(noStatementResult.reasons.some((r) => r.includes("statement")));
+
+  const noCert = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  delete (noCert[0]!.verificationResult!.signature as Record<string, unknown>)
+    .certificate;
+  const noCertResult = verify.validateGhShape(noCert);
+  assert.equal(noCertResult.ok, false);
+  assert.ok(noCertResult.reasons.some((r) => r.includes("certificate")));
+});
+
+test("validateGhShape: rejects a certificate with no recognized repository-id field", async () => {
+  const gh = structuredClone(
+    await fixture("positive-real-v0.13.0.json"),
+  ) as GhResults;
+  delete gh[0]!.verificationResult!.signature!.certificate!
+    .sourceRepositoryIdentifier;
+  const result = verify.validateGhShape(gh);
+  assert.equal(result.ok, false);
+  assert.ok(result.reasons.some((r) => r.includes("repository-id")));
+});
+
+// ---- gh version pinning -----------------------------------------------------
+
+test("parseGhVersion parses gh --version output", () => {
+  const raw =
+    "gh version 2.96.0 (2026-07-02)\nhttps://github.com/cli/cli/releases/tag/v2.96.0\n";
+  assert.deepEqual(verify.parseGhVersion(raw), {
+    major: 2,
+    minor: 96,
+    patch: 0,
+  });
+  assert.equal(verify.parseGhVersion("no version here"), null);
+  assert.equal(verify.parseGhVersion(undefined), null);
+  assert.equal(verify.parseGhVersion(123 as unknown as string), null);
+});
+
+test("isSupportedGhVersion: accepts 2.96 and 2.90 (the configured floor); rejects other majors and a below-floor minor", () => {
+  const policy = verify.defaultPolicy();
+  assert.equal(
+    verify.isSupportedGhVersion({ major: 2, minor: 96, patch: 0 }, policy),
+    true,
+  );
+  assert.equal(
+    verify.isSupportedGhVersion({ major: 2, minor: 90, patch: 0 }, policy),
+    true,
+  );
+  assert.equal(
+    verify.isSupportedGhVersion({ major: 1, minor: 99, patch: 0 }, policy),
+    false,
+  );
+  assert.equal(
+    verify.isSupportedGhVersion({ major: 3, minor: 0, patch: 0 }, policy),
+    false,
+  );
+  assert.equal(
+    verify.isSupportedGhVersion({ major: 2, minor: 89, patch: 9 }, policy),
+    false,
+  );
+  assert.equal(verify.isSupportedGhVersion(null, policy), false);
+});
+
+// ---- install-verified pure decision functions ------------------------------
+
+function approvalPolicy(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    approvedVersions: { "1.0.0": "a".repeat(40) },
+    denylist: [],
+    ...overrides,
+  };
+}
+
+test("checkApproval: approved version+commit passes", () => {
+  const result = install.checkApproval(
+    "1.0.0",
+    "a".repeat(40),
+    approvalPolicy(),
+  );
+  assert.equal(result.ok, true, result.reasons.join("; "));
+});
+
+test("checkApproval: fails closed on unlisted version, wrong commit, denied version/commit, and empty input", () => {
+  assert.equal(
+    install.checkApproval("9.9.9", "a".repeat(40), approvalPolicy()).ok,
+    false,
+    "unlisted version",
+  );
+  assert.equal(
+    install.checkApproval("1.0.0", "b".repeat(40), approvalPolicy()).ok,
+    false,
+    "wrong commit for the approved version",
+  );
+  assert.equal(
+    install.checkApproval(
+      "1.0.0",
+      "a".repeat(40),
+      approvalPolicy({ denylist: ["1.0.0"] }),
+    ).ok,
+    false,
+    "denied version",
+  );
+  assert.equal(
+    install.checkApproval(
+      "1.0.0",
+      "a".repeat(40),
+      approvalPolicy({ denylist: ["a".repeat(40)] }),
+    ).ok,
+    false,
+    "denied commit",
+  );
+  assert.equal(
+    install.checkApproval("", "", approvalPolicy()).ok,
+    false,
+    "empty",
+  );
+  assert.equal(
+    install.checkApproval(undefined, undefined, approvalPolicy()).ok,
+    false,
+    "missing",
+  );
+});
+
+test("checkApproval: accepts an array-form approvedVersions list", () => {
+  const policy = {
+    approvedVersions: [{ version: "2.0.0", commit: "c".repeat(40) }],
+    denylist: [],
+  };
+  assert.equal(install.checkApproval("2.0.0", "c".repeat(40), policy).ok, true);
+  assert.equal(
+    install.checkApproval("2.0.0", "d".repeat(40), policy).ok,
+    false,
+  );
+});
+
+function validBreakGlass(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const now = Date.now();
+  return {
+    approver: "jane-doe-security-lead",
+    issuedAtMs: now,
+    expiresAtMs: now + 60 * 60 * 1000,
+    verified: false,
+    ...overrides,
+  };
+}
+
+test("validateBreakGlass: a valid record passes", () => {
+  const now = Date.now();
+  const result = install.validateBreakGlass(validBreakGlass(), now);
+  assert.equal(result.ok, true, result.reasons.join("; "));
+});
+
+test("validateBreakGlass: fails closed on missing approver, expired, verified!==false, over-max-lifetime, and missing record", () => {
+  const now = Date.now();
+  assert.equal(
+    install.validateBreakGlass(validBreakGlass({ approver: "" }), now).ok,
+    false,
+    "missing approver",
+  );
+  assert.equal(
+    install.validateBreakGlass(
+      validBreakGlass({ expiresAtMs: now - 1000 }),
+      now,
+    ).ok,
+    false,
+    "expired",
+  );
+  assert.equal(
+    install.validateBreakGlass(validBreakGlass({ verified: true }), now).ok,
+    false,
+    "verified must be false",
+  );
+  const day = 24 * 60 * 60 * 1000;
+  assert.equal(
+    install.validateBreakGlass(
+      validBreakGlass({
+        issuedAtMs: now,
+        expiresAtMs: now + 4 * day, // 96h > default 72h max lifetime
+      }),
+      now,
+    ).ok,
+    false,
+    "over max lifetime",
+  );
+  assert.equal(
+    install.validateBreakGlass(undefined, now).ok,
+    false,
+    "missing record",
+  );
+  assert.equal(install.validateBreakGlass(null, now).ok, false, "null record");
+});
+
+test("checkSeedIntegrity: matching 64-hex digests pass; mismatch/short/empty fail closed", () => {
+  assert.equal(
+    install.checkSeedIntegrity("a".repeat(64), "a".repeat(64)).ok,
+    true,
+  );
+  assert.equal(
+    install.checkSeedIntegrity("a".repeat(64), "b".repeat(64)).ok,
+    false,
+    "mismatch",
+  );
+  assert.equal(
+    install.checkSeedIntegrity("a".repeat(10), "a".repeat(64)).ok,
+    false,
+    "short",
+  );
+  assert.equal(install.checkSeedIntegrity("", "").ok, false, "empty");
+  assert.equal(
+    install.checkSeedIntegrity(undefined, "a".repeat(64)).ok,
+    false,
+    "missing",
+  );
+});
+
+function decideBase(
+  overrides: Partial<{
+    verify: CheckResult;
+    approval: CheckResult;
+    freshness: CheckResult;
+    seedIntegrity: CheckResult;
+    offline: boolean;
+    breakGlass: Record<string, unknown>;
+    policy: Record<string, unknown>;
+    nowMs: number;
+  }> = {},
+) {
+  const nowMs = Date.now();
+  return {
+    verify: { ok: true, reasons: [] },
+    approval: { ok: true, reasons: [] },
+    freshness: { ok: true, reasons: [] },
+    seedIntegrity: { ok: true, reasons: [] },
+    offline: false,
+    policy: {},
+    nowMs,
+    ...overrides,
+  };
+}
+
+test("decideInstall: promotes only when verify, approval, and seed integrity all pass", () => {
+  const decision = install.decideInstall(decideBase());
+  assert.equal(decision.action, "promote");
+});
+
+test("decideInstall: refuses on failed verify with no valid exception", () => {
+  const decision = install.decideInstall(
+    decideBase({ verify: { ok: false, reasons: ["no attestation found"] } }),
+  );
+  assert.equal(decision.action, "refuse");
+  assert.ok(decision.reasons.some((r) => r.includes("no attestation found")));
+});
+
+test("decideInstall: refuses a replayed/denied version even when verify passed", () => {
+  const decision = install.decideInstall(
+    decideBase({ approval: { ok: false, reasons: ["version is denied"] } }),
+  );
+  assert.equal(decision.action, "refuse");
+  assert.ok(decision.reasons.some((r) => r.includes("denied")));
+});
+
+test("decideInstall: refuses on seed-integrity mismatch even when verify and approval passed", () => {
+  const decision = install.decideInstall(
+    decideBase({
+      seedIntegrity: { ok: false, reasons: ["archive digest mismatch"] },
+    }),
+  );
+  assert.equal(decision.action, "refuse");
+  assert.ok(decision.reasons.some((r) => r.includes("mismatch")));
+});
+
+test("decideInstall: keep-pinned only when offline, unverifiable, policy allows it, and the pinned version is approved+fresh", () => {
+  const decision = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["offline"] },
+      offline: true,
+      policy: { allowOfflineLastKnownGood: true },
+    }),
+  );
+  assert.equal(decision.action, "keep-pinned");
+});
+
+test("decideInstall: refuses keep-pinned when stale beyond max age", () => {
+  const decision = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["offline"] },
+      offline: true,
+      freshness: { ok: false, reasons: ["offline bundle exceeds max age"] },
+      policy: { allowOfflineLastKnownGood: true },
+    }),
+  );
+  assert.equal(decision.action, "refuse");
+});
+
+test("decideInstall: refuses keep-pinned when policy does not permit stale operation", () => {
+  const decision = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["offline"] },
+      offline: true,
+      policy: {}, // allowOfflineLastKnownGood not set
+    }),
+  );
+  assert.equal(decision.action, "refuse");
+});
+
+test("decideInstall: break-glass only with a valid record and policy permission; never reported as verified", () => {
+  const nowMs = Date.now();
+  const decision = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["no attestation found"] },
+      breakGlass: validBreakGlass(),
+      policy: { allowBreakGlass: true },
+      nowMs,
+    }),
+  );
+  assert.equal(decision.action, "break-glass");
+});
+
+test("decideInstall: refuses an invalid/expired/without-approver break-glass record", () => {
+  const nowMs = Date.now();
+  const expired = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["no attestation found"] },
+      breakGlass: validBreakGlass({ expiresAtMs: nowMs - 1000 }),
+      policy: { allowBreakGlass: true },
+      nowMs,
+    }),
+  );
+  assert.equal(expired.action, "refuse");
+
+  const noApprover = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["no attestation found"] },
+      breakGlass: validBreakGlass({ approver: "" }),
+      policy: { allowBreakGlass: true },
+      nowMs,
+    }),
+  );
+  assert.equal(noApprover.action, "refuse");
+
+  const policyDenies = install.decideInstall(
+    decideBase({
+      verify: { ok: false, reasons: ["no attestation found"] },
+      breakGlass: validBreakGlass(),
+      policy: {}, // allowBreakGlass not set
+      nowMs,
+    }),
+  );
+  assert.equal(policyDenies.action, "refuse");
+});
+
+test("decideInstall: break-glass never applies when verify passed but approval/seed-integrity failed", () => {
+  const decision = install.decideInstall(
+    decideBase({
+      approval: { ok: false, reasons: ["version is denied"] },
+      breakGlass: validBreakGlass(),
+      policy: { allowBreakGlass: true },
+    }),
+  );
+  // verify.ok is true, so break-glass must not engage even though a valid
+  // record and policy permission are present; a denied/replayed version on
+  // otherwise-verified bytes must refuse.
+  assert.equal(decision.action, "refuse");
 });

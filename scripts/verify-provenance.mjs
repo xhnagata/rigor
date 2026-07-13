@@ -77,11 +77,94 @@ export function defaultPolicy(overrides = {}) {
     denylist: [],
     trustedRootMaxAgeDays: 7,
     offlineMaxAgeDays: 30,
+    // The gh CLI major.minor this verifier's assumed JSON shape is pinned to.
+    // A different major, or a minor below the floor, fails closed rather than
+    // silently trusting an unreviewed output shape.
+    ghVersionMajor: 2,
+    ghVersionMinMinor: 90,
     // expectedSubjectSha256, expectedSourceDigest, expectedSignerDigest,
     // trustedRootFetchedAtMs, offlineBundleFetchedAtMs, nowMs are supplied by
     // the caller for the specific subject/session.
     ...overrides,
   };
+}
+
+/**
+ * Parse a `gh --version` output (or any string carrying a dotted version) into
+ * `{ major, minor, patch }` numbers, or `null` if no version could be found.
+ * Pure and locale-independent: no I/O.
+ */
+export function parseGhVersion(str) {
+  if (typeof str !== "string") return null;
+  const m = str.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return null;
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) };
+}
+
+/**
+ * Is a parsed gh version supported by policy? Accepts the pinned major and
+ * any minor at or above `policy.ghVersionMinMinor` (a newer 2.x gh release is
+ * accepted rather than hard-pinned); rejects a different major, a below-floor
+ * minor, or an unparseable version. Fails closed on anything unrecognized.
+ */
+export function isSupportedGhVersion(parsed, policy) {
+  if (
+    !parsed ||
+    typeof parsed.major !== "number" ||
+    typeof parsed.minor !== "number" ||
+    Number.isNaN(parsed.major) ||
+    Number.isNaN(parsed.minor)
+  )
+    return false;
+  const wantMajor = policy?.ghVersionMajor ?? 2;
+  const minMinor = policy?.ghVersionMinMinor ?? 90;
+  if (parsed.major !== wantMajor) return false;
+  if (parsed.minor < minMinor) return false;
+  return true;
+}
+
+/**
+ * Fail-closed shape validation of the parsed `gh attestation verify --format
+ * json` output, independent of policy content. Rejects a non-array top level,
+ * and — for every entry present — a missing `verificationResult`/`statement`,
+ * a missing `signature.certificate`, or a certificate that carries NONE of
+ * the recognized repository-id fields (`sourceRepositoryIdentifier`,
+ * `sourceRepositoryID`, or the raw extension OID). An empty array is treated
+ * as shape-valid (there is no entry to be malformed); `evaluateVerification`
+ * separately rejects the absent-attestation case.
+ */
+export function validateGhShape(ghJson) {
+  const reasons = [];
+  if (!Array.isArray(ghJson)) {
+    return { ok: false, reasons: ["gh output is not an array"] };
+  }
+  ghJson.forEach((entry, index) => {
+    const vr = entry?.verificationResult;
+    if (!vr || typeof vr !== "object") {
+      reasons.push(`result[${index}]: missing verificationResult`);
+      return;
+    }
+    if (!vr.statement || typeof vr.statement !== "object") {
+      reasons.push(`result[${index}]: missing statement`);
+    }
+    const cert = vr.signature?.certificate;
+    if (!cert || typeof cert !== "object") {
+      reasons.push(`result[${index}]: missing signature.certificate`);
+      return;
+    }
+    const hasRepoId =
+      (cert.sourceRepositoryIdentifier !== undefined &&
+        cert.sourceRepositoryIdentifier !== null) ||
+      (cert.sourceRepositoryID !== undefined &&
+        cert.sourceRepositoryID !== null) ||
+      (cert.extensions?.["1.3.6.1.4.1.57264.1.14"] !== undefined &&
+        cert.extensions?.["1.3.6.1.4.1.57264.1.14"] !== null);
+    if (!hasRepoId)
+      reasons.push(
+        `result[${index}]: certificate lacks a recognized repository-id field`,
+      );
+  });
+  return { ok: reasons.length === 0, reasons };
 }
 
 /**
@@ -152,9 +235,13 @@ export function checkCertificateExtensions(cert, policy) {
   if (!cert || typeof cert !== "object") {
     return { ok: false, reasons: ["certificate summary missing"] };
   }
-  // Numeric repository id: SAN/extension OID 1.3.6.1.4.1.57264.1.14. Prefer the
-  // summary field; fall back to the raw extension map.
+  // Numeric repository id: SAN/extension OID 1.3.6.1.4.1.57264.1.14. gh 2.96.0
+  // emits it as `sourceRepositoryIdentifier` (with `sourceRepositoryOwnerIdentifier`
+  // also available on the certificate); older/other gh JSON shapes emitted
+  // `sourceRepositoryID` or only the raw extension map, so both remain
+  // fallbacks for back-compat with the hand-authored fixture.
   const repoId =
+    cert.sourceRepositoryIdentifier ??
     cert.sourceRepositoryID ??
     cert.extensions?.["1.3.6.1.4.1.57264.1.14"] ??
     null;
@@ -291,6 +378,13 @@ function evaluateOne(entry, policy) {
  */
 export function evaluateVerification(ghJson, policy) {
   const reasons = [];
+  // Reject an unknown/malformed JSON shape before trusting any field read
+  // below: a shape change (gh version drift, a truncated/corrupted payload)
+  // must fail closed rather than silently pass or silently drop a control.
+  const shape = validateGhShape(ghJson);
+  if (!shape.ok) {
+    return { ok: false, reasons: shape.reasons };
+  }
   const entries = resultEntries(ghJson);
   if (entries === null) {
     return { ok: false, reasons: ["gh output is not an array"] };
@@ -337,7 +431,28 @@ function parseArgs(argv) {
   return args;
 }
 
-function runGh(subject, policy, tag) {
+/**
+ * Run `gh --version` and return its raw stdout, or `null` if gh is absent or
+ * the invocation fails. Exported so scripts/install-verified.mjs can reuse the
+ * same gh-version pinning path rather than re-implementing it.
+ */
+export function getGhVersionRaw() {
+  try {
+    const out = execFileSync("gh", ["--version"], { encoding: "utf8" });
+    return out && out.trim() ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Run `gh attestation verify` for `subject` and return `{ ok, json }`.
+ * Exported so scripts/install-verified.mjs can reuse the exact same
+ * invocation rather than re-implementing gh argument assembly. Fails closed
+ * (`ok: false, json: null`) on a nonzero exit, empty stdout, or unparseable
+ * output.
+ */
+export function runGh(subject, policy, tag) {
   const ghArgs = [
     "attestation",
     "verify",
@@ -435,10 +550,42 @@ async function main() {
     }
   }
 
+  // Pin and validate the gh CLI version BEFORE trusting its JSON output: an
+  // absent gh, an unparseable version string, or an unsupported major/minor
+  // must fail closed rather than silently trusting an unreviewed shape.
+  const ghVersionRaw = getGhVersionRaw();
+  if (!ghVersionRaw) {
+    process.stderr.write(
+      "FAILED: gh CLI is not available (gh --version did not succeed)\n",
+    );
+    process.exit(1);
+  }
+  const ghVersion = parseGhVersion(ghVersionRaw);
+  if (!ghVersion) {
+    process.stderr.write(
+      `FAILED: could not parse gh --version output: ${ghVersionRaw.trim()}\n`,
+    );
+    process.exit(1);
+  }
+  if (!isSupportedGhVersion(ghVersion, policy)) {
+    process.stderr.write(
+      `FAILED: unsupported gh CLI version ${ghVersion.major}.${ghVersion.minor}.${ghVersion.patch} ` +
+        `(required: major ${policy.ghVersionMajor}, minor >= ${policy.ghVersionMinMinor})\n`,
+    );
+    process.exit(1);
+  }
+
   const gh = runGh(subject, policy, tag);
   if (!gh.ok) {
     process.stderr.write(
       "FAILED: gh attestation verify did not return usable output\n",
+    );
+    process.exit(1);
+  }
+  const shape = validateGhShape(gh.json);
+  if (!shape.ok) {
+    process.stderr.write(
+      `FAILED: unrecognized gh JSON shape: ${shape.reasons.join("; ")}\n`,
     );
     process.exit(1);
   }
@@ -447,7 +594,9 @@ async function main() {
     process.stderr.write(`FAILED: ${result.reasons.join("; ")}\n`);
     process.exit(1);
   }
-  process.stdout.write(`verified: ${subject} for ${tag}\n`);
+  process.stdout.write(
+    `verified: ${subject} for ${tag} (gh ${ghVersion.major}.${ghVersion.minor}.${ghVersion.patch})\n`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
