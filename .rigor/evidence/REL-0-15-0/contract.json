@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_2231acb4-4146-46e5-8ba9-04efdfd660a2",
+  "taskId": "REL-0-15-0",
+  "createdAt": "2026-07-13T05:25:52.846Z",
+  "preflightArtifactId": "preflight_b78debe8-574f-4429-a597-52493c00cc76",
+  "preflightHash": "1118ffbb65c4dc6abf07da35d482ce0631cbc8c84bf7c6aa3f1d3348f5504151",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "package.json and .claude-plugin/plugin.json both declare version 0.15.0.",
+    "CHANGELOG.md adds a '## 0.15.0 - 2026-07-13' section documenting #64 and #65 above the 0.14.0 section, with no other content changed.",
+    "dist/rigor.cjs is unchanged (no src change) and remains byte-identical to a fresh build and to .rigor/rigor-ci.cjs.",
+    "rigor release-check --version 0.15.0 passes on the merged main SHA before tagging; npm run test:all is rerun and reported in the PR."
+  ],
+  "allowedPaths": [
+    "package.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md"
+  ],
+  "constraints": [
+    "Mechanical release change only: no source, dist, schema, workflow, .rigor, or docs edits.",
+    "Do not create keys, secrets, attestations, or GitHub configuration, and do not change any workflow permission."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}
