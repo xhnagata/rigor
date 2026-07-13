@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_858d7b60-199f-48b6-ac5c-b961f9a3f81e",
+  "taskId": "GH-26-R2",
+  "createdAt": "2026-07-13T02:34:42.098Z",
+  "preflightArtifactId": "preflight_f55742c1-7d79-496d-a704-1a06ff4e3339",
+  "preflightHash": "896765e2a7cf96d191e154350f07ed4472e66c0146f73e51b0673f4bfd0dae58",
+  "riskTier": "critical",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "scripts/package-plugin.mjs exports buildArchiveTar (the uncompressed, runtime-independent ustar payload) and buildArchive returns it as `tar` while still gzipping the attested `.tar.gz`.",
+    "scripts/install-verified.mjs seed-integrity check compares sha256(buildArchiveTar(extracted seed)) against sha256(gunzip(held archive)) instead of a recompressed .tar.gz digest, so a legitimate attested release promotes regardless of the consumer Node/zlib deflate build; content tampering still fails closed.",
+    "test/provenance.test.ts adds a #26 regression test proving the tar-layer check is invariant to gzip deflate encoding and still rejects tampered content, plus a buildArchiveTar/tar-exposure test; the recorded git-diff-check passes and `npm run test:all` (373 tests) is rerun and reported in the PR.",
+    ".github/workflows/consumer-portability.yml packages the plugin on the pinned producer Node 22 and runs the reference wrapper on different consumer Node runtimes (20 and 24), asserting the wrapper promotes and the extracted-tree tar digest matches; the workflow requests only contents: read.",
+    "docs/provenance.md, docs/threat-model.md, and docs/adr/0001-provenance-trust-model.md describe the seed-integrity check as a tar-layer comparison and the consumer copy list includes scripts/package-plugin.mjs."
+  ],
+  "allowedPaths": [
+    "scripts/install-verified.mjs",
+    "scripts/package-plugin.mjs",
+    "test/provenance.test.ts",
+    "docs/provenance.md",
+    "docs/threat-model.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    ".github/workflows/consumer-portability.yml"
+  ],
+  "constraints": [
+    "Do not change the attestation trust decision: the attested subject remains the gzip archive digest; only the local TOCTOU re-package comparison moves to the tar layer.",
+    "The new CI workflow must request no write permissions and must not create tags, releases, assets, or attestations.",
+    "Preserve all existing negative cases (verification/approval/freshness/seed-integrity failures still refuse and never print verified).",
+    "No src/**, dist/**, schema, or policy changes; scripts/tests/docs/workflow only."
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract",
+    "an irreversible or external write is needed",
+    "credentials or personal data are encountered",
+    "independent human approval is unavailable"
+  ]
+}

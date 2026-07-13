@@ -23,9 +23,12 @@
 //   (c) confirms the pinned version+commit is in the consumer's approved set
 //       and not denied (replay/freshness) via checkApproval;
 //   (d) promotes ONLY verified bytes into a read-only local seed directory
-//       and confirms the promoted seed re-packages (via
-//       scripts/package-plugin.mjs) to the exact verified archive digest —
-//       closing the verify/execute TOCTOU gap;
+//       and confirms the promoted seed's uncompressed-tar contents match the
+//       attested archive's contents byte-for-byte (via
+//       scripts/package-plugin.mjs's buildArchiveTar, compared against the
+//       gunzip of the archive we hold) — closing the verify/execute TOCTOU gap
+//       at a layer that is deterministic across every supported consumer
+//       Node/zlib build, unlike the recompressed .tar.gz digest;
 //   (e) instructs (or, with --launch, executes) Claude Code with
 //       `claude --plugin-dir <seed>` so the session loads the exact tree that
 //       was verified. `claude --plugin-dir <path>` was experimentally
@@ -50,6 +53,7 @@
 
 import { readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { gunzipSync } from "node:zlib";
 import path from "node:path";
 import process from "node:process";
 
@@ -66,7 +70,7 @@ import {
   getGhVersionRaw,
   runGh,
 } from "./verify-provenance.mjs";
-import { collectPluginFiles, buildArchive } from "./package-plugin.mjs";
+import { collectPluginFiles, buildArchiveTar } from "./package-plugin.mjs";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_BREAK_GLASS_MAX_LIFETIME_MS = 72 * HOUR_MS;
@@ -176,26 +180,37 @@ export function validateBreakGlass(
 }
 
 /**
- * Confirms the promoted local seed re-packages to EXACTLY the verified
- * archive digest (closing the TOCTOU gap between what was verified and what
- * will execute). Both digests must be present, 64-hex, and equal; anything
- * missing, malformed, or mismatched fails closed.
+ * Confirms the promoted local seed contains EXACTLY the verified archive's
+ * payload (closing the TOCTOU gap between what was verified and what will
+ * execute). Both operands are SHA-256 digests of the UNCOMPRESSED ustar tar:
+ * `verifiedTarSha256` is taken by decompressing the attested `.tar.gz` we hold
+ * (gunzip is fully specified and runtime-independent), and
+ * `promotedTarSha256` is the tar rebuilt from the extracted seed via
+ * `buildArchiveTar`. Comparing at the tar layer — not the recompressed
+ * `.tar.gz` digest — makes this check invariant to the consumer's Node/zlib
+ * deflate build while proving byte-identical paths and file contents. (Modes
+ * are not tamper-checked here: `collectPluginFiles` assigns canonical
+ * allowlist modes rather than reading the extracted stat, so both tars carry
+ * the same modes by construction; the promoted seed is additionally made
+ * read-only after this check.)
+ * A recompressed-gzip comparison here would fail closed on a legitimate,
+ * attested release whenever the consumer's zlib emits a different deflate
+ * stream than the pinned producer runtime (issue #26). Both digests must be
+ * present, 64-hex, and equal; anything missing, malformed, or mismatched fails
+ * closed.
  */
-export function checkSeedIntegrity(
-  promotedArchiveSha256,
-  verifiedArchiveSha256,
-) {
+export function checkSeedIntegrity(promotedTarSha256, verifiedTarSha256) {
   const reasons = [];
-  if (!HEX64_RE.test(promotedArchiveSha256 ?? ""))
-    reasons.push("promoted archive sha256 is missing or not 64-hex");
-  if (!HEX64_RE.test(verifiedArchiveSha256 ?? ""))
-    reasons.push("verified archive sha256 is missing or not 64-hex");
+  if (!HEX64_RE.test(promotedTarSha256 ?? ""))
+    reasons.push("promoted seed tar sha256 is missing or not 64-hex");
+  if (!HEX64_RE.test(verifiedTarSha256 ?? ""))
+    reasons.push("verified archive tar sha256 is missing or not 64-hex");
   if (
     reasons.length === 0 &&
-    promotedArchiveSha256.toLowerCase() !== verifiedArchiveSha256.toLowerCase()
+    promotedTarSha256.toLowerCase() !== verifiedTarSha256.toLowerCase()
   ) {
     reasons.push(
-      "promoted seed does not re-package to the verified archive digest",
+      "promoted seed contents do not match the verified archive contents",
     );
   }
   return { ok: reasons.length === 0, reasons };
@@ -532,10 +547,39 @@ async function main() {
     return;
   }
 
-  const entries = await collectPluginFiles(seedDir);
-  const repackaged = buildArchive(version, entries);
-  const repackagedSha256 = sha256Hex(repackaged.archive);
-  const seedIntegrity = checkSeedIntegrity(repackagedSha256, archiveSha256);
+  // Verify at the uncompressed-tar layer: decompress the attested archive we
+  // hold (gunzip is deterministic across runtimes) and compare it to the tar
+  // rebuilt from the extracted seed. The recompressed .tar.gz digest is NOT
+  // comparable across Node/zlib builds, so a gzip-digest check here would
+  // reject legitimate attested releases on a consumer runtime whose deflate
+  // differs from the pinned producer runtime (issue #26).
+  let repackagedTarSha256;
+  let verifiedTarSha256;
+  try {
+    const entries = await collectPluginFiles(seedDir);
+    repackagedTarSha256 = sha256Hex(buildArchiveTar(version, entries));
+    verifiedTarSha256 = sha256Hex(gunzipSync(archiveBytes));
+  } catch (error) {
+    // An unexpected/missing/symlink file in the extracted tree, or a
+    // corrupt archive, must fail closed the SAME way as an extraction or
+    // seed-integrity failure: remove the partial seed and write a refuse
+    // receipt rather than leaving a partially-promoted, non-read-only tree.
+    await removeQuietly(seedDir);
+    await writeReceipt({
+      action: "refuse",
+      verified: false,
+      reasons: [`seed re-derivation failed: ${error.message}`],
+    });
+    process.stderr.write(
+      `FAILED: seed re-derivation failed: ${error.message}\n`,
+    );
+    process.exit(1);
+    return;
+  }
+  const seedIntegrity = checkSeedIntegrity(
+    repackagedTarSha256,
+    verifiedTarSha256,
+  );
 
   if (!seedIntegrity.ok) {
     await removeQuietly(seedDir);
@@ -563,7 +607,7 @@ async function main() {
     action: decision.action,
     verified,
     reasons: decision.reasons,
-    seed: { path: seedDir, repackagedSha256 },
+    seed: { path: seedDir, repackagedTarSha256, verifiedTarSha256 },
   });
 
   if (decision.action === "break-glass") {

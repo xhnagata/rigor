@@ -1,0 +1,117 @@
+# Cross-Node consumer-portability integration test (#26).
+#
+# Regression guard for the #26 failure: a release archive is packaged on the
+# pinned producer runtime (Node 22, as in release.yml) and then installed by the
+# reference consumer wrapper (scripts/install-verified.mjs) on DIFFERENT
+# supported Node runtimes. The wrapper's TOCTOU seed-integrity check must
+# promote the legitimate archive on every consumer runtime, because it now
+# compares the extracted tree at the runtime-independent uncompressed-tar layer
+# (gunzip is fully specified) rather than at the recompressed .tar.gz digest
+# (whose deflate stream varies by Node/zlib build). Before the fix, a consumer
+# whose zlib differed from the producer refused a valid attested release.
+#
+# The wrapper is exercised through its real offline + break-glass path, which
+# runs the exact production extraction and seed-integrity code (read archive ->
+# gunzip -> system tar extract -> collectPluginFiles -> buildArchiveTar ->
+# checkSeedIntegrity -> promote) without needing the gh attestation network. If
+# seed integrity failed the wrapper would refuse (exit 1); a break-glass
+# promotion with matching tar digests proves the portability property.
+
+name: consumer-portability
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      # Package the committed tree exactly as a release does (the release
+      # workflow confirms the committed bundle matches source before packaging).
+      - name: Deterministically package the complete plugin (producer Node 22)
+        run: node scripts/package-plugin.mjs --outdir dist-release
+      - name: Record the producer archive digest
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          sha256sum "dist-release/rigor-${version}.tar.gz"
+      - name: Upload the producer archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: producer-archive
+          path: dist-release/rigor-*.tar.gz
+          if-no-files-found: error
+
+  install-portability:
+    needs: package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Consumer runtimes DIFFERENT from the producer's Node 22, spanning the
+        # supported range (esbuild targets node20) and including Node 26, the
+        # runtime on which #26 was originally reported.
+        node-version: [20, 24, 26]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Download the producer archive
+        uses: actions/download-artifact@v4
+        with:
+          name: producer-archive
+          path: producer
+      - name: Install the producer archive with the reference wrapper
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          commit="$(git rev-parse HEAD)"
+          archive="producer/rigor-${version}.tar.gz"
+          echo "consumer Node: $(node -v); producer archive:"
+          sha256sum "$archive"
+
+          # Consumer-held policy permitting a time-bounded break-glass, and a
+          # valid break-glass record. Break-glass exercises the real extraction
+          # and seed-integrity path without the gh attestation network; a
+          # seed-integrity mismatch would still refuse (exit 1).
+          node -e '
+            const fs = require("node:fs");
+            const now = Date.now();
+            fs.writeFileSync("policy.json", JSON.stringify({ allowBreakGlass: true }));
+            fs.writeFileSync("bg.json", JSON.stringify({
+              approver: "ci-portability@rigor.test",
+              issuedAtMs: now - 3600000,
+              expiresAtMs: now + 3600000,
+              verified: false,
+            }));
+          '
+
+          node scripts/install-verified.mjs \
+            --version "$version" --commit "$commit" \
+            --archive "$archive" --seed seed \
+            --policy policy.json --offline --break-glass bg.json
+
+          # Assert the wrapper promoted and that seed-integrity matched at the
+          # runtime-independent tar layer despite the cross-Node gzip encoding.
+          node -e '
+            const r = require("./seed.receipt.json");
+            const fail = (m) => { console.error("FAILED: " + m); process.exit(1); };
+            if (r.action !== "break-glass") fail("expected break-glass, got " + r.action);
+            const { repackagedTarSha256: a, verifiedTarSha256: b } = r.seed || {};
+            if (!/^[0-9a-f]{64}$/.test(a || "")) fail("missing repackagedTarSha256");
+            if (a !== b) fail("seed tar digest mismatch across Node runtimes: " + a + " vs " + b);
+            console.log("OK: cross-Node seed integrity held (" + a + ")");
+          '

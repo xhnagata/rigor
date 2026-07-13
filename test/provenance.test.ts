@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,6 +22,7 @@ interface TarEntry {
 }
 interface BuiltArchive {
   archive: Buffer;
+  tar: Buffer;
   tarName: string;
   topDir: string;
 }
@@ -33,6 +34,7 @@ interface PackageModule {
   PLUGIN_FILES: string[];
   collectPluginFiles(root: string): Promise<StagedEntry[]>;
   buildArchive(version: string, entries: StagedEntry[]): BuiltArchive;
+  buildArchiveTar(version: string, entries: StagedEntry[]): Buffer;
   buildTar(entries: TarEntry[]): Buffer;
   normalizeGzip(buf: Buffer): Buffer;
   buildManifest(fields: Record<string, unknown>): Record<string, unknown>;
@@ -207,6 +209,87 @@ test("archive contains exactly the 21 files plus one top directory", async () =>
       assert.equal(record.mode & 0o777, expectedMode, `${record.name} mode`);
     }
   }
+});
+
+test("buildArchive exposes the uncompressed tar and it equals gunzip(archive)", async () => {
+  const version = await pluginVersion();
+  const built = pkg.buildArchive(
+    version,
+    await pkg.collectPluginFiles(rootDir),
+  );
+  assert.equal(
+    pkg.sha256Hex(built.tar),
+    pkg.sha256Hex(gunzipSync(built.archive)),
+    "exposed tar must be exactly the archive payload",
+  );
+  assert.equal(
+    pkg.sha256Hex(
+      pkg.buildArchiveTar(version, await pkg.collectPluginFiles(rootDir)),
+    ),
+    pkg.sha256Hex(built.tar),
+    "buildArchiveTar must reproduce the archive tar",
+  );
+});
+
+// Regression for issue #26: the consumer TOCTOU seed-integrity check must
+// verify the extracted tree at the runtime-independent tar layer, NOT the
+// recompressed .tar.gz digest. A legitimate attested release produced on the
+// pinned CI Node/zlib build is downloaded and installed on a consumer runtime
+// whose deflate emits different .tar.gz bytes for the same payload; the check
+// must still promote it, while remaining sensitive to real content tampering.
+test("seed-integrity verifies tar contents and is invariant to gzip deflate encoding (#26)", async () => {
+  const version = await pluginVersion();
+  const entries = await pkg.collectPluginFiles(rootDir);
+
+  // The "producer" archive: canonical deterministic gzip (level 9).
+  const producerArchive = pkg.buildArchive(version, entries).archive;
+
+  // Simulate a different consumer Node/zlib deflate build by re-gzipping the
+  // SAME payload at a different level: valid gzip, identical decompressed
+  // content, but a different .tar.gz digest.
+  const producerTar = gunzipSync(producerArchive);
+  const consumerReGzip = gzipSync(producerTar, { level: 6 });
+  assert.notEqual(
+    pkg.sha256Hex(consumerReGzip),
+    pkg.sha256Hex(producerArchive),
+    "precondition: different deflate build yields a different .tar.gz digest",
+  );
+
+  // What the wrapper actually compares: tar rebuilt from the extracted tree vs
+  // gunzip of the attested archive it holds. Runtime-independent → must pass.
+  const verifiedTarSha = pkg.sha256Hex(gunzipSync(producerArchive));
+  const repackagedTarSha = pkg.sha256Hex(pkg.buildArchiveTar(version, entries));
+  assert.equal(
+    install.checkSeedIntegrity(repackagedTarSha, verifiedTarSha).ok,
+    true,
+    "legitimate release must promote despite differing gzip encoding",
+  );
+
+  // A gzip-digest comparison (the old, buggy behavior) would fail closed here.
+  assert.equal(
+    install.checkSeedIntegrity(
+      pkg.sha256Hex(consumerReGzip),
+      pkg.sha256Hex(producerArchive),
+    ).ok,
+    false,
+    "guard: comparing recompressed .tar.gz digests is what broke #26",
+  );
+
+  // Tampering with a file's content must still be caught at the tar layer.
+  const tampered = entries.map((e) =>
+    e.name === "README.md"
+      ? {
+          ...e,
+          content: Buffer.concat([e.content, Buffer.from("\n// tamper")]),
+        }
+      : e,
+  );
+  const tamperedTarSha = pkg.sha256Hex(pkg.buildArchiveTar(version, tampered));
+  assert.equal(
+    install.checkSeedIntegrity(tamperedTarSha, verifiedTarSha).ok,
+    false,
+    "tampered content must fail closed",
+  );
 });
 
 test("collectPluginFiles rejects an unexpected file under a packaged root", async () => {
