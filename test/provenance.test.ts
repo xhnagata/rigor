@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import {
+  readFile,
+  mkdtemp,
+  mkdir,
+  writeFile,
+  symlink,
+  chmod,
+  rm,
+} from "node:fs/promises";
+import os from "node:os";
 import { gunzipSync, gzipSync } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +42,7 @@ interface CheckResult {
 interface PackageModule {
   PLUGIN_FILES: string[];
   collectPluginFiles(root: string): Promise<StagedEntry[]>;
+  collectSeedFiles(root: string): Promise<StagedEntry[]>;
   buildArchive(version: string, entries: StagedEntry[]): BuiltArchive;
   buildArchiveTar(version: string, entries: StagedEntry[]): Buffer;
   buildTar(entries: TarEntry[]): Buffer;
@@ -296,6 +306,92 @@ test("collectPluginFiles rejects an unexpected file under a packaged root", asyn
   // Point at a scratch root missing the plugin tree: collection must fail
   // closed rather than package a partial set.
   await assert.rejects(() => pkg.collectPluginFiles("/nonexistent-root-xyz"));
+});
+
+// A promoted seed laid out with exactly the 21 allowlisted files (bin/rigor
+// carries the executable bit, as it would after extraction).
+async function makeExactSeed(): Promise<string> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rigor-seed-"));
+  for (const rel of pkg.PLUGIN_FILES) {
+    const abs = path.join(dir, rel);
+    await mkdir(path.dirname(abs), { recursive: true });
+    await writeFile(abs, `content:${rel}`);
+    if (rel === "bin/rigor") await chmod(abs, 0o755);
+  }
+  return dir;
+}
+
+// Regression for the exact-tree gap (#26 follow-up): the consumer wrapper must
+// verify the seed is EXACTLY the attested payload, not merely that the 21
+// allowlisted files match. collectSeedFiles (unlike collectPluginFiles) walks
+// the whole seed and rejects extras, so an injected root-level file cannot ride
+// along with a bytewise-matching subset.
+test("collectSeedFiles: accepts the exact tree, rejects extras/symlinks/mode/missing", async () => {
+  // Accept the exact 21-file tree (bin/rigor executable is allowed).
+  let dir = await makeExactSeed();
+  try {
+    const entries = await pkg.collectSeedFiles(dir);
+    assert.equal(entries.length, pkg.PLUGIN_FILES.length);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  // Reject an injected root-level file (e.g. a malicious .mcp.json).
+  dir = await makeExactSeed();
+  try {
+    await writeFile(path.join(dir, ".mcp.json"), "{}");
+    await assert.rejects(
+      () => pkg.collectSeedFiles(dir),
+      /unexpected file in seed: \.mcp\.json/,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  // Reject an unexpected directory (even empty).
+  dir = await makeExactSeed();
+  try {
+    await mkdir(path.join(dir, "evil"));
+    await assert.rejects(
+      () => pkg.collectSeedFiles(dir),
+      /unexpected directory in seed: evil/,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  // Reject a symlink.
+  dir = await makeExactSeed();
+  try {
+    await symlink("nowhere", path.join(dir, "link"));
+    await assert.rejects(() => pkg.collectSeedFiles(dir), /symlink/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  // Reject an unexpected executable bit on a non-bin file.
+  dir = await makeExactSeed();
+  try {
+    await chmod(path.join(dir, "README.md"), 0o755);
+    await assert.rejects(
+      () => pkg.collectSeedFiles(dir),
+      /unexpected executable mode in seed: README\.md/,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  // Reject a missing required file.
+  dir = await makeExactSeed();
+  try {
+    await rm(path.join(dir, "LICENSE"));
+    await assert.rejects(
+      () => pkg.collectSeedFiles(dir),
+      /missing required plugin files/,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 // ---- manifest + schema ----------------------------------------------------

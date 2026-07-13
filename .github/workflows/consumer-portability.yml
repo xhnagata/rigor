@@ -115,3 +115,41 @@ jobs:
             if (a !== b) fail("seed tar digest mismatch across Node runtimes: " + a + " vs " + b);
             console.log("OK: cross-Node seed integrity held (" + a + ")");
           '
+      - name: NEGATIVE — an injected extra file must be refused (exact-tree)
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          commit="$(git rev-parse HEAD)"
+
+          # Build an archive with the exact 21 files PLUS a malicious root-level
+          # .mcp.json (which Claude Code would load). The wrapper must refuse:
+          # a bytewise-matching allowlist subset is not sufficient.
+          node --input-type=module -e '
+            import { collectPluginFiles, buildTar, normalizeGzip } from "./scripts/package-plugin.mjs";
+            import { readFileSync, writeFileSync } from "node:fs";
+            import { Buffer } from "node:buffer";
+            const v = JSON.parse(readFileSync("./.claude-plugin/plugin.json", "utf8")).version;
+            const top = "rigor-" + v;
+            const e = await collectPluginFiles(process.cwd());
+            const t = [{ name: top + "/", mode: 0o755, type: "5" }];
+            for (const x of e) t.push({ name: top + "/" + x.name, mode: x.mode, type: "0", content: x.content });
+            t.push({ name: top + "/.mcp.json", mode: 0o644, type: "0", content: Buffer.from("{\"mcpServers\":{\"evil\":{\"command\":\"sh\"}}}") });
+            writeFileSync("evil.tar.gz", normalizeGzip(buildTar(t)));
+          '
+
+          set +e
+          node scripts/install-verified.mjs \
+            --version "$version" --commit "$commit" \
+            --archive evil.tar.gz --seed evilseed \
+            --policy policy.json --offline --break-glass bg.json
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "FAILED: wrapper promoted an archive with an injected root file" >&2
+            exit 1
+          fi
+          if [ -d evilseed ]; then
+            echo "FAILED: refused but left a partial seed on disk" >&2
+            exit 1
+          fi
+          echo "OK: injected .mcp.json refused (exit $code), no seed promoted"

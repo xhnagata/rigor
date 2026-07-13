@@ -144,6 +144,76 @@ export async function collectPluginFiles(root) {
   return entries;
 }
 
+// The exact set of directories a promoted seed may contain: the parent
+// directories of every allowlisted file (e.g. `skills`, `skills/assess`).
+function expectedSeedDirs() {
+  const dirs = new Set();
+  for (const rel of PLUGIN_FILES) {
+    const parts = rel.split("/");
+    for (let i = 1; i < parts.length; i += 1)
+      dirs.add(parts.slice(0, i).join("/"));
+  }
+  return dirs;
+}
+
+async function walkSeedStrict(root, dir, allow, dirs, found) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(root, full).split(path.sep).join("/");
+    const info = await lstat(full);
+    if (info.isSymbolicLink())
+      throw new Error(`refusing to promote seed with symlink: ${rel}`);
+    if (info.isDirectory()) {
+      if (!dirs.has(rel))
+        throw new Error(`unexpected directory in seed: ${rel}`);
+      await walkSeedStrict(root, full, allow, dirs, found);
+    } else if (info.isFile()) {
+      if (!allow.has(rel)) throw new Error(`unexpected file in seed: ${rel}`);
+      // Only bin/rigor may carry an executable bit; any other executable file
+      // (e.g. a data file tampered to run) is rejected.
+      if ((info.mode & 0o111) !== 0 && !EXECUTABLE_FILES.has(rel))
+        throw new Error(`unexpected executable mode in seed: ${rel}`);
+      found.add(rel);
+    } else {
+      throw new Error(`refusing to promote non-regular file in seed: ${rel}`);
+    }
+  }
+}
+
+/**
+ * STRICT consumer-side collection for a promoted seed. Unlike
+ * `collectPluginFiles` (which scans only `PACKAGED_ROOTS`, because the producer
+ * runs it on the repository root, which legitimately holds many other files),
+ * this walks the ENTIRE `seedRoot` and requires it to contain EXACTLY the
+ * allowlisted plugin file set and their parent directories — nothing else. It
+ * rejects any extra file, extra directory, symlink, non-regular node, or an
+ * unexpected executable bit, and requires every allowlisted file to be present.
+ * Returns the staged entries `{ name, mode, content }` with canonical modes.
+ *
+ * This is what makes "the executed tree equals the attested payload" true: a
+ * bytewise-matching subset of files (e.g. the 21 allowlisted files) is NOT
+ * sufficient if the seed also contains an injected extra file such as a
+ * root-level `.mcp.json`, which Claude Code would load.
+ */
+export async function collectSeedFiles(seedRoot) {
+  const allow = new Set(PLUGIN_FILES);
+  const dirs = expectedSeedDirs();
+  const found = new Set();
+  await walkSeedStrict(seedRoot, seedRoot, allow, dirs, found);
+  const missing = PLUGIN_FILES.filter((rel) => !found.has(rel));
+  if (missing.length > 0)
+    throw new Error(
+      `seed is missing required plugin files: ${missing.join(", ")}`,
+    );
+  const entries = [];
+  for (const rel of PLUGIN_FILES) {
+    const content = await readFile(path.join(seedRoot, rel));
+    entries.push({ name: rel, mode: modeFor(rel), content });
+  }
+  return entries;
+}
+
 // ---- ustar tar writer -----------------------------------------------------
 
 function writeAscii(buf, str, offset, length) {

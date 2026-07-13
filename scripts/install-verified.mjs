@@ -22,13 +22,18 @@
 //       detached-manifest mix-and-match check;
 //   (c) confirms the pinned version+commit is in the consumer's approved set
 //       and not denied (replay/freshness) via checkApproval;
-//   (d) promotes ONLY verified bytes into a read-only local seed directory
-//       and confirms the promoted seed's uncompressed-tar contents match the
-//       attested archive's contents byte-for-byte (via
-//       scripts/package-plugin.mjs's buildArchiveTar, compared against the
-//       gunzip of the archive we hold) — closing the verify/execute TOCTOU gap
-//       at a layer that is deterministic across every supported consumer
-//       Node/zlib build, unlike the recompressed .tar.gz digest;
+//   (d) promotes ONLY verified bytes into a read-only local seed directory by
+//       extracting the in-memory VERIFIED archive buffer (not the on-disk path,
+//       which could be swapped after the initial read/attestation), then
+//       confirms the extracted seed is EXACTLY the attested payload: (1)
+//       collectSeedFiles rejects any extra file, extra directory, symlink,
+//       non-regular node, or unexpected executable bit, so a bytewise-matching
+//       allowlist subset plus an injected file (e.g. a root `.mcp.json`) cannot
+//       promote; and (2) the seed's uncompressed-tar digest must equal the
+//       gunzip of the archive we hold (compared at the tar layer so it is
+//       deterministic across every supported consumer Node/zlib build, unlike
+//       the recompressed .tar.gz digest, issue #26) — closing the
+//       verify/execute TOCTOU gap;
 //   (e) instructs (or, with --launch, executes) Claude Code with
 //       `claude --plugin-dir <seed>` so the session loads the exact tree that
 //       was verified. `claude --plugin-dir <path>` was experimentally
@@ -51,7 +56,7 @@
 // not a trust root: this wrapper re-verifies from scratch on every run and
 // never reads a previously written receipt to decide trust.
 
-import { readFile, writeFile, mkdir, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { gunzipSync } from "node:zlib";
 import path from "node:path";
@@ -70,7 +75,7 @@ import {
   getGhVersionRaw,
   runGh,
 } from "./verify-provenance.mjs";
-import { collectPluginFiles, buildArchiveTar } from "./package-plugin.mjs";
+import { collectSeedFiles, buildArchiveTar } from "./package-plugin.mjs";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_BREAK_GLASS_MAX_LIFETIME_MS = 72 * HOUR_MS;
@@ -189,10 +194,11 @@ export function validateBreakGlass(
  * `buildArchiveTar`. Comparing at the tar layer — not the recompressed
  * `.tar.gz` digest — makes this check invariant to the consumer's Node/zlib
  * deflate build while proving byte-identical paths and file contents. (Modes
- * are not tamper-checked here: `collectPluginFiles` assigns canonical
+ * are not tamper-checked by this digest: `collectSeedFiles` assigns canonical
  * allowlist modes rather than reading the extracted stat, so both tars carry
- * the same modes by construction; the promoted seed is additionally made
- * read-only after this check.)
+ * the same modes by construction. `collectSeedFiles` separately rejects an
+ * unexpected executable bit, and the promoted seed is made read-only after
+ * this check.)
  * A recompressed-gzip comparison here would fail closed on a legitimate,
  * attested release whenever the consumer's zlib emits a different deflate
  * stream than the pinned producer runtime (issue #26). Both digests must be
@@ -520,21 +526,33 @@ async function main() {
     return;
   }
 
-  // decision.action is "promote" or "break-glass": extract the exact archive
-  // bytes into a fresh seed directory, lock it read-only, and re-package it
-  // to confirm no extraction step altered the tree (TOCTOU close).
+  // decision.action is "promote" or "break-glass": extract the exact VERIFIED
+  // bytes into a fresh seed directory, lock it read-only, and confirm the
+  // extracted tree is exactly the attested payload (TOCTOU close).
+  //
+  // Extract the in-memory `archiveBytes` we already read and attested, NOT the
+  // on-disk `archivePath`: the path was read at the top of main() and could be
+  // swapped between that read/attestation and this extraction. Writing the
+  // verified buffer into an mkdtemp'd private directory (mode 0700, an
+  // unpredictable name an attacker cannot pre-plant as a symlink) and untarring
+  // that removes the swap window entirely.
   await removeQuietly(seedDir);
   await mkdir(seedDir, { recursive: true });
+  const parentDir = path.dirname(path.resolve(seedDir));
+  const tmpDir = await mkdtemp(path.join(parentDir, ".rigor-verified-"));
+  const verifiedArchivePath = path.join(tmpDir, "archive.tar.gz");
   try {
+    await writeFile(verifiedArchivePath, archiveBytes);
     execFileSync("tar", [
       "-xzf",
-      path.resolve(archivePath),
+      verifiedArchivePath,
       "-C",
       seedDir,
       "--strip-components=1",
     ]);
   } catch (error) {
     await removeQuietly(seedDir);
+    await removeQuietly(tmpDir);
     await writeReceipt({
       action: "refuse",
       verified: false,
@@ -546,21 +564,25 @@ async function main() {
     process.exit(1);
     return;
   }
+  await removeQuietly(tmpDir);
 
-  // Verify at the uncompressed-tar layer: decompress the attested archive we
-  // hold (gunzip is deterministic across runtimes) and compare it to the tar
-  // rebuilt from the extracted seed. The recompressed .tar.gz digest is NOT
-  // comparable across Node/zlib builds, so a gzip-digest check here would
-  // reject legitimate attested releases on a consumer runtime whose deflate
-  // differs from the pinned producer runtime (issue #26).
+  // Confirm the extracted seed is EXACTLY the attested payload, at two levels:
+  //   1. collectSeedFiles walks the WHOLE seed and rejects any extra file,
+  //      extra directory, symlink, non-regular node, or unexpected executable
+  //      bit — so an injected root-level file (e.g. a malicious `.mcp.json`)
+  //      cannot survive alongside a bytewise-matching allowlist subset.
+  //   2. the uncompressed-tar digest of the strict entry set must equal the
+  //      gunzip of the attested archive we hold. The tar layer (not the
+  //      recompressed .tar.gz) is compared so the check is invariant to the
+  //      consumer's Node/zlib deflate build (issue #26).
   let repackagedTarSha256;
   let verifiedTarSha256;
   try {
-    const entries = await collectPluginFiles(seedDir);
+    const entries = await collectSeedFiles(seedDir);
     repackagedTarSha256 = sha256Hex(buildArchiveTar(version, entries));
     verifiedTarSha256 = sha256Hex(gunzipSync(archiveBytes));
   } catch (error) {
-    // An unexpected/missing/symlink file in the extracted tree, or a
+    // An unexpected/missing/symlink/extra file in the extracted tree, or a
     // corrupt archive, must fail closed the SAME way as an extraction or
     // seed-integrity failure: remove the partial seed and write a refuse
     // receipt rather than leaving a partially-promoted, non-read-only tree.

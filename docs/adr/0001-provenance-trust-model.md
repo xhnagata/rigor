@@ -168,10 +168,14 @@ of the final build platform and provenance generation path.
 
 **Implementation status:** the third path (verified local clone with
 `claude --plugin-dir`) is implemented as `scripts/install-verified.mjs`, tested
-offline against the exact bytes it would promote (`checkSeedIntegrity`
-confirms the promoted seed's uncompressed-tar contents match the attested
-archive before launch — compared at the tar layer, not the recompressed
-`.tar.gz` digest, so it holds across the consumer's Node/zlib build; #26).
+offline against the exact bytes it would promote: it extracts the verified
+in-memory buffer (not the swappable on-disk path), `collectSeedFiles` requires
+the seed to be exactly the attested file set (rejecting any extra
+file/dir/symlink/unexpected-exec-bit, e.g. an injected root `.mcp.json`), and
+`checkSeedIntegrity` confirms the seed's uncompressed-tar digest matches the
+attested archive before launch — compared at the tar layer, not the
+recompressed `.tar.gz` digest, so it holds across the consumer's Node/zlib
+build; #26).
 This closes #26 for a consumer who runs the wrapper independently, with its
 own held policy, from outside the plugin. It does NOT close #26 for the first
 path: the ordinary Claude Code marketplace install/update flow was
@@ -252,12 +256,14 @@ ordinary marketplace install/update flow exposes no supported pre-activation
 hook over its cache — so step 2's path does not apply, and step 3's managed
 promotion path was implemented instead. Step 3: `scripts/install-verified.mjs`
 verifies the attested archive and its detached manifest, then promotes only
-verified bytes into a read-only local seed, confirming via `checkSeedIntegrity`
-that the promoted seed's uncompressed-tar contents match the attested archive —
-a tar-layer comparison independent of the consumer's zlib deflate build, not a
-recompressed `.tar.gz` digest (closing the verify/execute TOCTOU gap without
-rejecting legitimate releases across Node runtimes, #26) — before
-instructing/launching
+verified bytes (the attested in-memory buffer, not the swappable on-disk path)
+into a read-only local seed, confirming via `collectSeedFiles` that the seed is
+exactly the attested file set (no extra file/dir/symlink/unexpected-exec-bit)
+and via `checkSeedIntegrity` that the seed's uncompressed-tar digest matches the
+attested archive — a tar-layer comparison independent of the consumer's zlib
+deflate build, not a recompressed `.tar.gz` digest (closing the verify/execute
+TOCTOU gap without rejecting legitimate releases across Node runtimes, #26) —
+before instructing/launching
 `claude --plugin-dir <seed>`. Step 4: `decideInstall` fails closed by
 construction — `promote` requires verification, approval, and seed integrity
 to all pass; `keep-pinned` is the documented offline last-known-good exception
