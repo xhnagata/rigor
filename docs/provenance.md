@@ -213,10 +213,17 @@ End to end, the wrapper:
 3. confirms the pinned version+commit is in the consumer's approved set and
    not denied (`checkApproval` — replay/freshness);
 4. on success, extracts ONLY the verified bytes into a fresh, read-only local
-   seed directory and confirms the promoted seed re-packages (via
-   [`scripts/package-plugin.mjs`](../scripts/package-plugin.mjs)) to the exact
-   verified archive digest (`checkSeedIntegrity` — closes the TOCTOU gap
-   between what was verified and what will execute);
+   seed directory and confirms the promoted seed's uncompressed-tar contents
+   match the attested archive's contents byte-for-byte — the tar rebuilt from
+   the extracted tree (via
+   [`scripts/package-plugin.mjs`](../scripts/package-plugin.mjs)'s
+   `buildArchiveTar`) is compared against the `gunzip` of the archive we hold
+   (`checkSeedIntegrity` — closes the TOCTOU gap between what was verified and
+   what will execute). The comparison is at the tar layer, not the recompressed
+   `.tar.gz` digest, so it is deterministic across every supported consumer
+   Node/zlib build; a gzip-digest comparison would reject a legitimate attested
+   release whenever the consumer's `zlib` deflate differs from the pinned
+   producer runtime (issue #26);
 5. prints (or, with `--launch`, executes) `claude --plugin-dir <seed>` so the
    session loads the exact tree that was verified;
 6. refuses and exits non-zero on ANY verification, approval, freshness, or
@@ -224,9 +231,11 @@ End to end, the wrapper:
 
 ### Install, upgrade, and migration
 
-To adopt the wrapper: copy `scripts/install-verified.mjs` and
-`scripts/verify-provenance.mjs` outside the plugin tree (for example, into an
-internal tooling repository), write a consumer-held policy file (approved
+To adopt the wrapper: copy `scripts/install-verified.mjs`,
+`scripts/verify-provenance.mjs`, and `scripts/package-plugin.mjs` (the wrapper
+imports `collectPluginFiles`/`buildArchiveTar` from it to re-derive the seed's
+tar) outside the plugin tree (for example, into an internal tooling
+repository), write a consumer-held policy file (approved
 versions, denylist, offline age limits, break-glass permission), and run:
 
 ```sh
@@ -245,7 +254,7 @@ with `--plugin-dir` instead) and always launching with the printed
 it directly. An upgrade is simply re-running the wrapper against a new
 version's archive once the consumer has approved it (added it to
 `approvedVersions`); the previous seed is replaced only after the new bytes
-verify and re-package correctly.
+verify and their extracted-tree contents match the attested archive.
 
 ### Rollback
 

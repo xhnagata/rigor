@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_c5642de6-9b7f-4486-8fc2-6e02d0771470",
+  "taskId": "GH-26-R3",
+  "contractArtifactId": "contract_2d9adf83-a307-404d-956a-e43ca25c70b4",
+  "createdAt": "2026-07-13T02:41:12.180Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "2e1160cd70d7fc1ed032a921c9c7d93be3056821",
+  "treeHash": "0e3620d936d60e5695f52113c14f66b0141742c31c084f44f30a3b459dfa0473",
+  "changedPaths": [
+    ".github/workflows/consumer-portability.yml",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/provenance.md",
+    "docs/threat-model.md",
+    "scripts/install-verified.mjs",
+    "scripts/package-plugin.mjs",
+    "test/provenance.test.ts"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 10,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

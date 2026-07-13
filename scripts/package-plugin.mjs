@@ -235,10 +235,16 @@ export function normalizeGzip(buf) {
 }
 
 /**
- * Assemble the complete `.tar.gz` for `version` from staged `entries`. Returns
- * `{ archive: Buffer, tarName, topDir }`.
+ * Build the deterministic, UNCOMPRESSED ustar tar for `version` from staged
+ * `entries`. This is the layer that fully determines the distributed file tree
+ * (paths, modes, contents, ordering) and is byte-reproducible across every
+ * Node/zlib build, because it uses only the pure ustar writer above and no
+ * deflate. The gzip wrapper (`normalizeGzip`) is the ONLY part of the archive
+ * whose bytes depend on the host zlib build, so consumer-side content
+ * equivalence must be established at THIS layer, not on the recompressed
+ * `.tar.gz`. See `checkSeedIntegrity` in scripts/install-verified.mjs.
  */
-export function buildArchive(version, entries) {
+export function buildArchiveTar(version, entries) {
   const topDir = `rigor-${version}`;
   const tarEntries = [{ name: `${topDir}/`, mode: 0o755, type: "5" }];
   for (const entry of entries) {
@@ -249,9 +255,22 @@ export function buildArchive(version, entries) {
       content: entry.content,
     });
   }
-  const tar = buildTar(tarEntries);
+  return buildTar(tarEntries);
+}
+
+/**
+ * Assemble the complete `.tar.gz` for `version` from staged `entries`. Returns
+ * `{ archive: Buffer, tar: Buffer, tarName, topDir }`. `archive` is the gzipped
+ * distributable (its digest is the attested subject); `tar` is the
+ * runtime-independent uncompressed payload used for consumer-side content
+ * verification.
+ */
+export function buildArchive(version, entries) {
+  const topDir = `rigor-${version}`;
+  const tar = buildArchiveTar(version, entries);
   return {
     archive: normalizeGzip(tar),
+    tar,
     tarName: `${topDir}.tar.gz`,
     topDir,
   };

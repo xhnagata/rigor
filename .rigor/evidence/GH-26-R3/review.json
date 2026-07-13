@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_e4904305-3c67-491c-a6ad-df082b9db34e",
+  "taskId": "GH-26-R3",
+  "createdAt": "2026-07-13T02:41:12.272Z",
+  "externalTransmission": "allowed",
+  "riskTier": "critical",
+  "requireHumanApproval": true,
+  "contractArtifactId": "contract_2d9adf83-a307-404d-956a-e43ca25c70b4",
+  "verificationArtifactId": "verification_c5642de6-9b7f-4486-8fc2-6e02d0771470",
+  "changedPaths": [
+    ".github/workflows/consumer-portability.yml",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/provenance.md",
+    "docs/threat-model.md",
+    "scripts/install-verified.mjs",
+    "scripts/package-plugin.mjs",
+    "test/provenance.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "scripts/package-plugin.mjs exports buildArchiveTar (the uncompressed, runtime-independent ustar payload) and buildArchive returns it as `tar` while still gzipping the attested `.tar.gz`.",
+    "scripts/install-verified.mjs seed-integrity check compares sha256(buildArchiveTar(extracted seed)) against sha256(gunzip(held archive)) instead of a recompressed .tar.gz digest, so a legitimate attested release promotes regardless of the consumer Node/zlib deflate build; content tampering still fails closed.",
+    "test/provenance.test.ts adds a #26 regression test proving the tar-layer check is invariant to gzip deflate encoding and still rejects tampered content, plus a buildArchiveTar/tar-exposure test; the recorded git-diff-check passes and `npm run test:all` (373 tests) is rerun and reported in the PR.",
+    ".github/workflows/consumer-portability.yml packages the plugin on the pinned producer Node 22 and runs the reference wrapper on different consumer Node runtimes (20 and 24), asserting the wrapper promotes and the extracted-tree tar digest matches; the workflow requests only contents: read.",
+    "docs/provenance.md, docs/threat-model.md, and docs/adr/0001-provenance-trust-model.md describe the seed-integrity check as a tar-layer comparison and the consumer copy list includes scripts/package-plugin.mjs."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}
