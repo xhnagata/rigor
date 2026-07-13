@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rigor.verification.v1",
+  "artifactId": "verification_6a549f83-a974-4aae-8b02-4a722abe9772",
+  "taskId": "DOC-README-015",
+  "contractArtifactId": "contract_95d07782-8ff8-4381-9620-0b7099bbb21e",
+  "createdAt": "2026-07-13T05:40:18.432Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "head": "abc3f712affc1ca4064b4a0b19efac83cd8cdfaf",
+  "treeHash": "008f277032ee7b79a4bc134407a186a259c01519a90b7a6cfe6028bd959e945a",
+  "changedPaths": [
+    "README.ja.md",
+    "README.md"
+  ],
+  "scopeViolations": [],
+  "checks": [
+    {
+      "id": "git-diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 10,
+      "outputDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed",
+  "failureFingerprint": null,
+  "failureFacts": [
+    {
+      "checkId": "git-diff-check",
+      "status": "passed",
+      "testStats": null,
+      "failure": null
+    }
+  ]
+}

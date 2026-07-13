@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rigor.contract.v1",
+  "artifactId": "contract_95d07782-8ff8-4381-9620-0b7099bbb21e",
+  "taskId": "DOC-README-015",
+  "createdAt": "2026-07-13T05:40:18.362Z",
+  "preflightArtifactId": "preflight_c8294f50-3e38-4e62-a70f-d5604bed892d",
+  "preflightHash": "08d9c380ac89bfa7e334a7ee04a2815c03eb0e97799f88ffd65b00afb7b8d880",
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "acceptanceCriteria": [
+    "English and Japanese READMEs identify v0.15.0 as the latest immutable release",
+    "Both READMEs describe v0.15.0 consumer-boundary hardening",
+    "Both READMEs state the material maturity and enforcement limits found in the repository review"
+  ],
+  "allowedPaths": [
+    "README.md",
+    "README.ja.md"
+  ],
+  "constraints": [
+    "Keep English and Japanese content aligned",
+    "Preserve the unmanaged marketplace limitation"
+  ],
+  "requiredChecks": [
+    "git-diff-check"
+  ],
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ]
+}

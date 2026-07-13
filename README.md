@@ -2,6 +2,8 @@
 
 [日本語](README.ja.md) | English
 
+Latest release: [v0.15.0](https://github.com/xhnagata/rigor/releases/tag/v0.15.0) (immutable, released 2026-07-13).
+
 Rigor is a Claude Code plugin that makes AI-assisted software changes reviewable and proportionally controlled. It turns an intended change into a risk assessment, a bounded task contract, an optional policy-constrained model-routing preview, deterministic verification evidence, a structured escalation or review bundle, and an independent pull-request check.
 
 Rigor is deliberately not an LLM judge. Lint, types, tests, build commands, Git diffs, policy comparison, and evidence linkage are evaluated by the TypeScript CLI. The plugin's skills and reviewer agent organize work; the local hook gives early feedback; GitHub CI plus an independent human approval form the authoritative merge boundary.
@@ -22,6 +24,17 @@ When used as documented, Rigor deterministically:
 Rigor does not prove that policy or acceptance criteria are correct, detect every secret, prove test quality, attest the local executable, prevent local hook bypass, control production deployment, or prevent a GitHub administrator from bypassing controls. Its transmission result is a decision; the deterministic CLI uploads no repository content. Explicitly invoked orchestration Skills may delegate bounded context through Claude Code or `codex-plugin-cc` only after the policy gate. Secret scanning, DLP, sandboxing, identity, deployment approvals, branch protection, CODEOWNERS, and human judgment remain separate controls.
 
 See [the product definition](docs/product.md), [threat model](docs/threat-model.md), and [architecture](docs/architecture.md) for the concise design basis.
+
+## Current maturity (v0.15.0)
+
+Rigor is suitable for a bounded pilot as an additional process-control layer; it is not yet a standalone production security or compliance control. The following limits are material when evaluating it:
+
+- The generated policy runs only `git diff --check`. A repository must add its own format, lint, typecheck, test, build, and security checks before treating Rigor CI as a meaningful quality gate.
+- `rigor ci` independently derives the pull-request base/head paths, rejects mutation or removal of existing rules/checks, detects test deletion, and reruns the configured checks. The weakening comparison does not currently cover every other policy field; for example, it does not classify changes to `ci.requireEvidence`, `defaultTier`, or `stopConditions` as weakening. Its evidence-linkage pass also does not cryptographically authenticate contributor-committed evidence, independently recompute `contract.allowedPaths` compliance from the pull-request diff, or bind the saved verification `treeHash` to the pull-request head. Evidence is therefore a reviewable consistency record, not proof that the local lifecycle occurred exactly as claimed. Project CI, protected GitHub settings, and independent human approval remain required.
+- Routing, availability, escalation, and consultation decisions are deterministic or explicitly advisory, but their practical benefit is not yet empirically established. As of v0.15.0 this repository has no committed real-task `outcome.json` records; the runnable evaluation report/replay uses synthetic fixtures. Rigor therefore makes no claim that its current routing thresholds improve acceptance rate, quality, elapsed time, or cost.
+- Test-integrity promotion and rollback machinery exists, but the shipped active registry is absent and zero weakening signals are enforced. Semantic test quality remains a human-review responsibility.
+- Validation has primarily been dogfooding in this repository under one maintainer. Broad multi-repository, multi-team, and Windows validation has not yet been demonstrated.
+- The full workflow is intentionally explicit and evidence-heavy: advanced orchestration spans multiple commands, JSON inputs, and append-only/write-once artifacts. Pilot it on a bounded repository and measure review value and operator effort before wider adoption.
 
 ## Requirements and installation
 
@@ -48,6 +61,8 @@ rigor setup
 ```
 
 Review and commit the generated `.rigor/policy.json`, `.rigor/rigor-ci.cjs`, `.rigor/.gitignore`, `.rigor/intent.example.json`, and `.github/workflows/rigor.yml`. Create an intent file outside the repository or in a path covered by your task:
+
+Before enabling the generated workflow as a required check, replace or extend the default `git-diff-check` with the repository's real verification commands. The generated default alone checks whitespace errors, not behavior or acceptance criteria.
 
 ```json
 {
@@ -268,7 +283,7 @@ claude plugin validate . --strict
 
 Releases follow the [release runbook](docs/release.md): the release commit reaches `main` only through a protected pull request with the required `rigor` and `quality` checks green (never a direct push), then the deterministic `rigor release-check` pre-tag gate must pass, and only then does a human tag and publish. The gate confirms a clean tree, synchronized `package.json` and `.claude-plugin/plugin.json` versions, a matching `CHANGELOG.md` entry, a `dist/rigor.cjs` byte-identical to a fresh build, the expected branch and commit, and a successful exact-SHA GitHub CI result; omitting `--repo` leaves CI unverified and the gate fails closed. The manifest version is the Claude Code cache version, so it must change for users to receive an update.
 
-Pushing a release tag also generates keyless GitHub OIDC Artifact Attestations (SLSA v1 build provenance) over `dist/rigor.cjs`, a deterministic complete-plugin archive, and a detached release manifest, verifiable with a fail-closed reference verifier. This is producer provenance ([#25](https://github.com/xhnagata/rigor/issues/25)): no SLSA Build Level is claimed, and a manifest or checksum beside an artifact is not proof. Consumer enforcement ([#26](https://github.com/xhnagata/rigor/issues/26)) is implemented as a verified-install/managed-promotion wrapper, [`scripts/install-verified.mjs`](scripts/install-verified.mjs): a consumer who runs it independently, outside the plugin, with its own held policy, gets bytes verified against the attestation, promoted only into a read-only local seed, and launched with `claude --plugin-dir <seed>`. This protects only that consumer: the ordinary marketplace install still has no confirmed pre-activation verifier over the exact cached bytes (confirmed absent in Claude Code 2.1.207), so an unmanaged install remains outside the guarantee. See [provenance and verification](docs/provenance.md).
+Pushing a release tag also generates keyless GitHub OIDC Artifact Attestations (SLSA v1 build provenance) over `dist/rigor.cjs`, a deterministic complete-plugin archive, and a detached release manifest, verifiable with a fail-closed reference verifier. This is producer provenance ([#25](https://github.com/xhnagata/rigor/issues/25)): no SLSA Build Level is claimed, and a manifest or checksum beside an artifact is not proof. Consumer enforcement ([#26](https://github.com/xhnagata/rigor/issues/26)) is implemented as a verified-install/managed-promotion wrapper, [`scripts/install-verified.mjs`](scripts/install-verified.mjs): a consumer who runs it independently, outside the plugin, with its own held policy, gets bytes verified against the attestation, promoted only into a read-only local seed, and launched with `claude --plugin-dir <seed>`. In v0.15.0, the wrapper compares the runtime-independent uncompressed tar across Node/zlib versions, strictly rejects any extra file, directory, symlink, non-regular node, or unexpected executable bit in the whole seed, and extracts the verified in-memory archive bytes rather than reopening a swappable on-disk path. The portability and negative integration paths run on consumer Node 20, 24, and 26. This protects only that consumer: the ordinary marketplace install still has no confirmed pre-activation verifier over the exact cached bytes (confirmed absent in Claude Code 2.1.207), so an unmanaged install remains outside the guarantee. See [the v0.15.0 release notes](https://github.com/xhnagata/rigor/releases/tag/v0.15.0) and [provenance and verification](docs/provenance.md).
 
 ## Security and known limitations
 
