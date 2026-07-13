@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "rigor.review.v1",
+  "artifactId": "review_298e4e4e-18e9-44ea-981c-59108b3599d5",
+  "taskId": "GH-26",
+  "createdAt": "2026-07-13T01:26:23.858Z",
+  "externalTransmission": "allowed",
+  "riskTier": "low",
+  "requireHumanApproval": false,
+  "contractArtifactId": "contract_d0e8d907-0afb-463a-b370-22408f2be345",
+  "verificationArtifactId": "verification_704c19df-04d0-4b74-a51d-81f9d88df68b",
+  "changedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/mvp-limitations.md",
+    "docs/provenance.md",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "scripts/install-verified.mjs",
+    "scripts/verify-provenance.mjs",
+    "test/fixtures/provenance/README.md",
+    "test/fixtures/provenance/positive-real-v0.13.0.json",
+    "test/provenance.test.ts"
+  ],
+  "acceptanceCriteria": [
+    "scripts/verify-provenance.mjs reads the numeric repository id from certificate.sourceRepositoryIdentifier (with sourceRepositoryOwnerIdentifier available), keeping the pre-existing sourceRepositoryID and extension-OID 1.3.6.1.4.1.57264.1.14 keys as fallbacks, so a real gh 2.96.0 attestation for a legitimate release passes the repository-id check instead of failing closed on null. A committed real fixture captured from `gh attestation verify dist/rigor.cjs --format json` for v0.13.0 (repository id 1296432215, source commit e159a4baf82d19193ca6d473a5fc5edd92282796) verifies true under a policy pinned to that release, and continues to fail closed for a wrong repository id, wrong source digest, wrong signer, wrong predicate, self-hosted runner, and a different valid tag ref.",
+    "scripts/verify-provenance.mjs pins and validates the gh CLI version used for verification: it records the observed `gh --version` (major.minor) and fails closed when gh is absent, its version cannot be parsed, or the returned JSON does not match the expected shape (missing verificationResult/statement/signature.certificate, or a certificate lacking the recognized repository-id field). An unknown or unsupported shape/version is rejected, never accepted, and the verifier never prints `verified` on any such failure.",
+    "scripts/install-verified.mjs is a fail-closed, consumer-OWNED reference verified-install / managed-promotion wrapper that: (a) recomputes the SHA-256 of the exact downloaded complete-plugin archive; (b) verifies it against GitHub Artifact Attestations AND independently held consumer policy by reusing scripts/verify-provenance.mjs decision functions plus the detached-manifest mix-and-match check; (c) confirms the pinned version+commit is in the consumer's approved set and not denied (replay/freshness); (d) promotes ONLY the verified bytes into a read-only local seed directory and confirms the promoted seed re-packages to the exact verified archive digest (TOCTOU: verification and execution use the same immutable bytes); (e) instructs/launches Claude Code with `claude --plugin-dir <seed>` so the executed hooks/skills/agents/bin tree is the verified tree; (f) refuses to promote and exits non-zero on ANY verification, approval, freshness, or seed-integrity failure, never printing `verified` on failure. All trust decisions live in exported pure functions; process spawning, filesystem promotion, and stdout live in a thin main() wrapper guarded by an import.meta.url main check and not exercised by tests.",
+    "install-verified decision logic is explicit and offline-testable: a pure decideInstall function returns promote only when verification passed; otherwise returns keep-pinned (documented offline last-known-good, only for an already-verified pinned version within the consumer maximum age and only when policy permits stale operation), break-glass (only with a valid, human-approved, unexpired, bounded-lifetime break-glass record that is recorded as verified:false, i.e. NOT verified), or refuse (fail closed). The break-glass path never reports the result as verified and requires an independent human approver plus an auditable expiration. A replayed old/denied version, a stale root/bundle beyond max age with no valid exception, a missing/invalid attestation, or a seed-integrity mismatch each yields refuse.",
+    "Offline and unavailable behavior is explicit and tested: freshness (trusted-root max age and offline-bundle max age) fails closed when a required timestamp is absent or exceeded; verification failing offline without a valid last-known-good pin refuses; and the documentation states plainly which environments cannot enforce (ordinary Claude Code marketplace install/update, which was experimentally observed in Claude Code 2.1.207 to expose no pre-activation verification hook over the exact cached bytes — only session-scoped `--plugin-dir`/`--plugin-url` explicit loads).",
+    "test/provenance.test.ts adds offline tests (run under npm run test:all with no network) covering: the real gh 2.96.0 fixture positive verification and its sourceRepositoryIdentifier repo-id read; unknown-gh-JSON-shape rejection; and the install-verified pure decision functions for promote, keep-pinned (valid and stale), break-glass (valid and invalid/expired/without-approver), refuse (missing/invalid attestation, replayed/denied version, wrong repository, wrong workflow), seed-integrity (matching passes, mismatch refuses), and approval/replay checks. Every negative fails closed. No existing test is deleted, weakened, or skipped.",
+    "test/fixtures/provenance/positive-real-v0.13.0.json is a committed, offline fixture captured from real gh 2.96.0 output for v0.13.0 (public certificate data, no secrets, no absolute paths), and test/fixtures/provenance/README.md documents that it is a real capture used to pin the gh JSON shape.",
+    "Documentation is updated accurately: docs/provenance.md gains a consumer-enforcement section describing the verified-install/promotion boundary, install/upgrade usability, migration from the ordinary marketplace cache, rollback to a previously approved pinned version, break-glass (human-approved, expiring, not reported as verified), offline max-age policy, and the plainly-stated bypassability of personal marketplace users who do not use the wrapper; docs/provenance.md and docs/release.md update the immutable-releases wording to state that GitHub immutable releases are now ENABLED by the owner while keeping the exact-source-commit and subject-digest pins and the independent deny/staleness policy (deletion is not retroactive revocation); docs/threat-model.md and docs/mvp-limitations.md update the plugin-distribution/#26 status to describe the implemented consumer boundary and its precise residual limitations so #4 can close; docs/adr/0001-provenance-trust-model.md records that #26 is implemented via the verified-local-tree / managed-promotion path. No doc claims a SLSA Build Level, a native marketplace pre-activation verifier, or provider-attested runtime model identity; configured model identity stays unverified.",
+    "npm run test:all, npm run bench, and claude plugin validate . --strict pass; git diff --check reports no whitespace errors. The committed dist/rigor.cjs, .rigor/rigor-ci.cjs, src/**, bin/**, hooks/**, agents/**, skills/**, and .claude-plugin/** are unchanged (no runtime/bundle change), so ci-bundle-sync stays green.",
+    "CHANGELOG.md documents the #26 consumer-enforcement implementation under the Unreleased heading following the one-entry-per-issue convention."
+  ],
+  "verificationStatus": "passed",
+  "note": "Policy permits transmission; minimize content and re-check destination controls."
+}

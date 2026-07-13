@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "rigor.preflight.v1",
+  "artifactId": "preflight_e8fdd3ef-1ce7-4c14-84dd-ca2efb0420e7",
+  "taskId": "GH-26",
+  "createdAt": "2026-07-13T00:54:57.834Z",
+  "policyHash": "30226d434cef2438f1514a1cc0a32f0038fb05810213b02f776d316983d29011",
+  "intentHash": "b98b4138c8184f8a769fe2420c4640fad235014276780703d1d185bd6b5a363b",
+  "git": {
+    "root": "/Users/xhn/src/private/rigor-gh-26",
+    "head": "e159a4baf82d19193ca6d473a5fc5edd92282796",
+    "dirty": false,
+    "changedPaths": []
+  },
+  "plannedPaths": [
+    "CHANGELOG.md",
+    "README.ja.md",
+    "README.md",
+    "docs/adr/0001-provenance-trust-model.md",
+    "docs/mvp-limitations.md",
+    "docs/provenance.md",
+    "docs/release.md",
+    "docs/threat-model.md",
+    "scripts/install-verified.mjs",
+    "scripts/verify-provenance.mjs",
+    "test/fixtures/provenance/README.md",
+    "test/fixtures/provenance/positive-real-v0.13.0.json",
+    "test/provenance.test.ts"
+  ],
+  "riskTier": "low",
+  "externalTransmission": "allowed",
+  "protectedPaths": [],
+  "requireHumanApproval": false,
+  "stopConditions": [
+    "scope expands beyond the contract"
+  ],
+  "reasons": [
+    {
+      "ruleId": "tests-and-docs",
+      "path": "CHANGELOG.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.ja.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/adr/0001-provenance-trust-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/mvp-limitations.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/provenance.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/release.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "docs/threat-model.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fixtures/provenance/README.md",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/fixtures/provenance/positive-real-v0.13.0.json",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    },
+    {
+      "ruleId": "tests-and-docs",
+      "path": "test/provenance.test.ts",
+      "reason": "Tests and documentation normally have limited direct runtime impact."
+    }
+  ]
+}
